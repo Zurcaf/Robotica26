@@ -1,0 +1,78 @@
+# ===== macOS =====
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+.TemporaryItems
+Icon?
+
+# ===== Windows =====
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+*.stackdump
+
+# ===== Linux =====
+*~
+.directory
+
+# ===== Editores / IDEs =====
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*.sublime-workspace
+.claude/
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.env
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# ===== C / C++ / Arduino / PlatformIO =====
+build/
+out/
+*.o
+*.obj
+*.a
+*.so
+*.dll
+*.exe
+*.elf
+*.bin
+*.hex
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# ===== ROS =====
+devel/
+install/
+log/
+logs/
+*.bag
+
+# ===== MATLAB =====
+*.asv
+*.m~
+slprj/
+
+# ===== Ficheiros temporários / logs =====
+*.log
+*.tmp
+*.bak
+*.orig
