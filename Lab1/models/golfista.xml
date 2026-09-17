@@ -1,0 +1,229 @@
+<!--
+  Robótica - Lab 1, Task 1
+  Modelo simplificado de um golfista (destro) + taco + bola.
+
+  Referencial do mundo: z para cima, x aponta para o alvo, o golfista está
+  virado para -y (para a bola). Unidades SI, ângulos em graus.
+
+  Cadeia cinemática (23 juntas com motor + bola):
+    pé esquerdo (fixo ao chão) -> perna -> coxa -> pélvis -> tronco -> braços -> antebraços -> taco
+                                                     \-> coxa dir. -> perna dir. -> pé dir. (soldado ao chão)
+  Como os dois pés estão presos ao chão, as pernas formam uma cadeia fechada.
+  Na postura inicial (todos os ângulos = 0) todos os frames estão alinhados com o mundo,
+  exceto os braços (rodados -25 graus em x).
+-->
+<mujoco model="golfista">
+
+  <!-- dt pequeno: a cabeça do taco chega a ~40 m/s. Com dt = 0.002 s andava
+       8 cm por passo e podia atravessar a bola (diâmetro 4.3 cm). -->
+  <option timestep="0.00005" integrator="implicitfast" gravity="0 0 -9.81"
+          density="1.2" viscosity="0.000018"/>
+
+  <visual>
+    <map zfar="300"/>
+  </visual>
+
+  <!-- valores por omissão para não repetir em todas as geoms e juntas -->
+  <default>
+    <geom contype="0" conaffinity="0"/>
+    <joint type="hinge"/>
+  </default>
+
+  <worldbody>
+    <light directional="true" pos="0 -2 5" dir="0.2 0.4 -1"/>
+    <geom name="chao" type="plane" size="150 30 0.1" rgba="0.3 0.6 0.3 1"/>
+
+    <!-- alvo (bandeira) a 120 m -->
+    <geom name="bandeira" type="capsule" fromto="120 0 0  120 0 2" size="0.02" rgba="1 0 0 1"/>
+
+    <camera name="frente" pos="0 -3.5 1" xyaxes="1 0 0  0 0 1"/>
+    <camera name="lado" pos="-3.5 -0.5 1.2" xyaxes="0 -1 0  0 0 1"/>
+
+    <!-- ================= PERNA ESQUERDA (raiz da árvore) ================= -->
+    <!-- pé esquerdo: preso ao chão (body sem junta). Frame no tornozelo. -->
+    <body name="pe_esq" pos="0.15 0 0.08">
+      <geom name="pe_esq" type="capsule" fromto="0 0.06 -0.05  0.02 -0.16 -0.05" size="0.03" mass="1" rgba="0.9 0.9 0.9 1"/>
+
+      <!-- perna (canela): frame no tornozelo -->
+      <body name="perna_esq">
+        <!-- Limites das juntas: amplitudes normais (Rajagopal et al. 2016; tabela DSHS),
+             medidas a partir da postura inicial. Ex.: na postura inicial o tornozelo já
+             tem 6.5 graus de dorsiflexão, por isso 40 plantar / 30 dorsi fica -46 / +24. -->
+        <!-- tornozelo: dorsiflexão (+) / flexão plantar (-) -->
+        <joint name="tornozelo_esq_flex" axis="1 0 0" range="-46 24" damping="2" frictionloss="0.5"/>
+        <!-- tornozelo: inversão/eversão (o pé "rola" para o lado) -->
+        <joint name="tornozelo_esq_lado" axis="0 1 0" range="-20 20" damping="2" frictionloss="0.5"/>
+        <!-- tornozelo: abdução/adução (a ponta do pé roda para dentro/fora) -->
+        <joint name="tornozelo_esq_rot" axis="0 0 1" range="-10 10" damping="2" frictionloss="0.5"/>
+        <!-- perna: 0.44 m, 3.5 kg -->
+        <geom name="perna_esq" type="capsule" fromto="0 0 0  -0.03 -0.05 0.44" size="0.05" mass="3.5" rgba="0.2 0.2 0.25 1"/>
+
+        <!-- coxa: frame no joelho -->
+        <body name="coxa_esq" pos="-0.03 -0.05 0.44">
+          <!-- joelho (negativo = dobrar). Flexão máx. 120 graus; já está 13 graus fletido -->
+          <joint name="joelho_esq" axis="1 0 0" range="-107 13" damping="2" frictionloss="0.5"/>
+          <!-- coxa: 0.44 m, 7.5 kg -->
+          <geom name="coxa_esq" type="capsule" fromto="0 0 0  -0.02 0.05 0.44" size="0.065" mass="7.5" rgba="0.2 0.2 0.25 1"/>
+
+          <!-- ================= PÉLVIS ================= -->
+          <!-- frame na anca esquerda -->
+          <body name="pelvis" pos="-0.02 0.05 0.44">
+            <!-- anca esquerda: flexão, abdução e rotação (roda a anca sobre a perna esquerda) -->
+            <!-- flexão (+) 120 / extensão 30 graus; já está 6.5 graus fletida -->
+            <joint name="anca_esq_flex" axis="1 0 0" range="-36 114" damping="2" frictionloss="0.5"/>
+            <!-- abdução (+) 50 / adução 30 graus -->
+            <joint name="anca_esq_abd"  axis="0 1 0" range="-30 50" damping="2" frictionloss="0.5"/>
+            <!-- rotação interna/externa 40 graus -->
+            <joint name="anca_esq_rot"  axis="0 0 1" range="-40 40" damping="2" frictionloss="0.5"/>
+            <!-- pélvis: 10 kg, entre as duas ancas -->
+            <geom name="pelvis" type="capsule" fromto="0.02 0 0  -0.22 0 0" size="0.1" mass="10" rgba="0.2 0.2 0.25 1"/>
+
+            <!-- ================= PERNA DIREITA ================= -->
+            <!-- coxa direita: frame na anca direita (20 cm à direita da esquerda) -->
+            <body name="coxa_dir" pos="-0.2 0 0">
+              <!-- mesmos limites da anca esquerda; aqui a flexão é negativa -->
+              <joint name="anca_dir_flex" axis="1 0 0" range="-114 36" damping="2" frictionloss="0.5"/>
+              <joint name="anca_dir_abd"  axis="0 1 0" range="-30 50" damping="2" frictionloss="0.5"/>
+              <joint name="anca_dir_rot"  axis="0 0 1" range="-40 40" damping="2" frictionloss="0.5"/>
+              <geom name="coxa_dir" type="capsule" fromto="0 0 0  -0.02 -0.05 -0.44" size="0.065" mass="7.5" rgba="0.2 0.2 0.25 1"/>
+
+              <!-- perna direita: frame no joelho -->
+              <body name="perna_dir" pos="-0.02 -0.05 -0.44">
+                <!-- joelho (positivo = dobrar) -->
+                <joint name="joelho_dir" axis="1 0 0" range="-13 107" damping="2" frictionloss="0.5"/>
+                <geom name="perna_dir" type="capsule" fromto="0 0 0  -0.03 0.05 -0.44" size="0.05" mass="3.5" rgba="0.2 0.2 0.25 1"/>
+
+                <!-- pé direito: frame no tornozelo -->
+                <body name="pe_dir" pos="-0.03 0.05 -0.44">
+                  <!-- aqui flexão plantar é positiva e dorsiflexão negativa -->
+                  <joint name="tornozelo_dir_flex" axis="1 0 0" range="-24 46" damping="2" frictionloss="0.5"/>
+                  <joint name="tornozelo_dir_lado" axis="0 1 0" range="-20 20" damping="2" frictionloss="0.5"/>
+                  <joint name="tornozelo_dir_rot"  axis="0 0 1" range="-10 10" damping="2" frictionloss="0.5"/>
+                  <geom name="pe_dir" type="capsule" fromto="0 0.06 -0.05  -0.02 -0.16 -0.05" size="0.03" mass="1" rgba="0.9 0.9 0.9 1"/>
+                </body>
+              </body>
+            </body>
+
+            <!-- ================= TRONCO ================= -->
+            <!-- frame do tronco: a meio das ancas, a 0.96 m do chão -->
+            <body name="tronco" pos="-0.1 0 0">
+              <!-- cintura: rotação, flexão para a frente e inclinação lateral -->
+              <!-- rotação 80 graus para cada lado, flexão (+) 90 / extensão 25, inclinação 45 (DSHS) -->
+              <joint name="tronco_rot"  axis="0 0 1" range="-80 80" damping="2" frictionloss="0.5"/>
+              <joint name="tronco_flex" axis="1 0 0" range="-25 90" damping="2" frictionloss="0.5"/>
+              <joint name="tronco_lado" axis="0 1 0" range="-45 45" damping="2" frictionloss="0.5"/>
+              <!-- tronco 26 kg + cabeça 5 kg -->
+              <geom name="tronco" type="capsule" fromto="0 0 0.05  0 -0.1 0.45" size="0.15" mass="26" rgba="0.2 0.4 0.7 1"/>
+              <geom name="cabeca" type="sphere" pos="0 -0.2 0.62" size="0.1" mass="5" rgba="0.9 0.7 0.6 1"/>
+
+              <!-- ================= BRAÇOS (os dois juntos) ================= -->
+              <!-- frame nos ombros, rodado -25 graus em x: assim o -z local aponta dos
+                   ombros para a bola e o plano do swing é o plano xz local -->
+              <body name="bracos" pos="0 -0.2 0.42" euler="-25 0 0">
+                <!-- ombro: roda os braços dentro do plano do swing (eixo y local) -->
+                <joint name="ombro" axis="0 1 0" range="-150 150" damping="0.5" frictionloss="0.2"/>
+                <!-- ombro: tira os braços do plano do swing (eixo x local) -->
+                <joint name="ombro_fora" axis="1 0 0" range="-45 45" damping="0.5" frictionloss="0.2"/>
+                <!-- braços: 2 x 2.1 kg, 0.3 m -->
+                <geom name="bracos" type="capsule" fromto="0 0 0  0 0 -0.3" size="0.05" mass="4.2" rgba="0.9 0.7 0.6 1"/>
+
+                <!-- antebraços + mãos: frame nos cotovelos -->
+                <body name="antebracos" pos="0 0 -0.3">
+                  <!-- cotovelos: dobram dentro do plano do swing, 0 a 150 graus (DSHS) -->
+                  <joint name="cotovelo" axis="0 1 0" range="0 150" damping="0.3" frictionloss="0.1"/>
+                  <!-- antebraços + mãos: 2 x (1.2 + 0.45) kg, 0.3 m -->
+                  <geom name="antebracos" type="capsule" fromto="0 0 0  0 0 -0.3" size="0.04" mass="3.3" rgba="0.9 0.7 0.6 1"/>
+
+                  <!-- ================= TACO (7-iron simplificado) ================= -->
+                  <!-- frame nas mãos (pulsos) -->
+                  <body name="taco" pos="0 0 -0.3">
+                    <!-- pulso: "wrist cock", levanta o taco dentro do plano do swing.
+                         Junta dois movimentos: desvio radial/cubital do pulso esquerdo (20/30 graus)
+                         e extensão do pulso direito (60 graus), por isso -30 a +80 -->
+                    <joint name="pulso" axis="0 1 0" range="-30 80" damping="0.1" frictionloss="0.05"/>
+                    <!-- pulso: flexão/extensão do pulso esquerdo, tira o taco do plano (60 graus).
+                         É aqui que entra o pulso "shaky" -->
+                    <joint name="pulso_fora" axis="1 0 0" range="-60 60" damping="0.1" frictionloss="0.05"/>
+                    <!-- pronação/supinação dos antebraços (80 graus): roda o taco em torno da haste (abre/fecha a face) -->
+                    <joint name="antebraco_rot" axis="0 0 1" range="-80 80" damping="0.05" frictionloss="0.02"/>
+                    <!-- haste: 0.88 m, 0.15 kg (pega + haste) -->
+                    <geom name="haste" type="capsule" fromto="0 0 0  0 0 -0.88" size="0.008" mass="0.15" rgba="0.7 0.7 0.7 1"/>
+                    <!-- cabeça: placa 1.2 x 8 x 5 cm, 0.26 kg, face virada para +x com loft de 30 graus -->
+                    <geom name="cabeca_taco" type="box" pos="0 0 -0.9" euler="0 -30 -13" size="0.006 0.04 0.025" mass="0.26" rgba="0.3 0.3 0.3 1"/>
+                    <site name="face" pos="0.006 0 -0.9" size="0.005"/>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+
+    <!-- ================= BOLA ================= -->
+    <!-- bola oficial: 45.9 g, raio 2.135 cm. Fica 5 mm acima do chão (relva). -->
+    <body name="bola" pos="0.031 -0.838 0.026">
+      <freejoint/>
+      <!-- fluidshape: arrasto do ar + efeito Magnus (spin). Os coeficientes por
+           omissão davam só ~80 m de carry, por isso baixei o arrasto (1º valor). -->
+      <geom name="bola" type="sphere" size="0.02135" mass="0.0459" rgba="1 1 1 1"
+            fluidshape="ellipsoid" fluidcoef="0.14 0.25 1.5 1.0 1.0"/>
+      <site name="bola" size="0.005"/>
+    </body>
+  </worldbody>
+
+  <!-- ================= PÉ DIREITO PRESO AO CHÃO ================= -->
+  <!-- weld sem body2 = soldado ao mundo, na posição inicial -->
+  <equality>
+    <weld name="pe_dir_no_chao" body1="pe_dir" solref="0.0005 1"/>
+  </equality>
+
+  <!-- ================= CONTACTOS ================= -->
+  <!-- Só estes dois pares colidem (todas as geoms têm contype=0).
+       solref = (constante de tempo, amortecimento), afinado por tentativa e erro. -->
+  <contact>
+    <!-- taco-bola: restituição ~0.8, impacto dura ~0.5 ms -->
+    <pair geom1="cabeca_taco" geom2="bola" condim="3" friction="0.4 0.4" solref="0.002 0.08" solimp="0.99 0.999 0.0001"/>
+    <!-- bola-relva: restituição ~0.4; margin = 5 mm de relva -->
+    <pair geom1="bola" geom2="chao" condim="6" margin="0.005" friction="0.5 0.5 0.005 0.003 0.003" solref="0.004 0.35"/>
+  </contact>
+
+  <!-- ================= ATUADORES ================= -->
+  <!-- servos de posição (ângulo de referência em rad, ctrlrange = limites da junta);
+       forcerange = binário máximo em cada articulação (N m). Os valores são estimativas
+       da ordem de grandeza da força máxima humana, a confirmar com dados medidos. -->
+  <actuator>
+    <!-- pernas -->
+    <position name="m_tornozelo_esq_flex" joint="tornozelo_esq_flex" kp="3000" kv="60" ctrlrange="-0.80 0.42" forcerange="-150 150"/>
+    <position name="m_tornozelo_esq_lado" joint="tornozelo_esq_lado" kp="2000" kv="40" ctrlrange="-0.35 0.35" forcerange="-60 60"/>
+    <position name="m_tornozelo_esq_rot"  joint="tornozelo_esq_rot"  kp="1500" kv="40" ctrlrange="-0.17 0.17" forcerange="-40 40"/>
+    <position name="m_joelho_esq"         joint="joelho_esq"         kp="3000" kv="60" ctrlrange="-1.87 0.23" forcerange="-200 200"/>
+    <position name="m_anca_esq_flex"      joint="anca_esq_flex"      kp="3000" kv="60" ctrlrange="-0.63 1.99" forcerange="-200 200"/>
+    <position name="m_anca_esq_abd"       joint="anca_esq_abd"       kp="2000" kv="40" ctrlrange="-0.52 0.87" forcerange="-120 120"/>
+    <position name="m_anca_esq_rot"       joint="anca_esq_rot"       kp="1500" kv="40" ctrlrange="-0.70 0.70" forcerange="-80 80"/>
+    <position name="m_anca_dir_flex"      joint="anca_dir_flex"      kp="3000" kv="60" ctrlrange="-1.99 0.63" forcerange="-200 200"/>
+    <position name="m_anca_dir_abd"       joint="anca_dir_abd"       kp="2000" kv="40" ctrlrange="-0.52 0.87" forcerange="-120 120"/>
+    <position name="m_anca_dir_rot"       joint="anca_dir_rot"       kp="1500" kv="40" ctrlrange="-0.70 0.70" forcerange="-80 80"/>
+    <position name="m_joelho_dir"         joint="joelho_dir"         kp="3000" kv="60" ctrlrange="-0.23 1.87" forcerange="-200 200"/>
+    <position name="m_tornozelo_dir_flex" joint="tornozelo_dir_flex" kp="3000" kv="60" ctrlrange="-0.42 0.80" forcerange="-150 150"/>
+    <position name="m_tornozelo_dir_lado" joint="tornozelo_dir_lado" kp="2000" kv="40" ctrlrange="-0.35 0.35" forcerange="-60 60"/>
+    <position name="m_tornozelo_dir_rot"  joint="tornozelo_dir_rot"  kp="1500" kv="40" ctrlrange="-0.17 0.17" forcerange="-40 40"/>
+    <!-- tronco -->
+    <position name="m_tronco_rot"  joint="tronco_rot"  kp="1500" kv="60" ctrlrange="-1.40 1.40" forcerange="-150 150"/>
+    <position name="m_tronco_flex" joint="tronco_flex" kp="3000" kv="60" ctrlrange="-0.44 1.57" forcerange="-200 200"/>
+    <position name="m_tronco_lado" joint="tronco_lado" kp="2000" kv="40" ctrlrange="-0.79 0.79" forcerange="-150 150"/>
+    <!-- braços e taco -->
+    <position name="m_ombro"         joint="ombro"         kp="800" kv="30" ctrlrange="-2.62 2.62" forcerange="-160 160"/>
+    <position name="m_ombro_fora"    joint="ombro_fora"    kp="500" kv="20" ctrlrange="-0.78 0.78" forcerange="-100 100"/>
+    <position name="m_cotovelo"      joint="cotovelo"      kp="400" kv="10" ctrlrange="0 2.62"    forcerange="-80 80"/>
+    <position name="m_pulso"         joint="pulso"         kp="150" kv="3"  ctrlrange="-0.52 1.40" forcerange="-50 50"/>
+    <position name="m_pulso_fora"    joint="pulso_fora"    kp="100" kv="2"  ctrlrange="-1.05 1.05" forcerange="-40 40"/>
+    <position name="m_antebraco_rot" joint="antebraco_rot" kp="50"  kv="1"  ctrlrange="-1.40 1.40" forcerange="-20 20"/>
+  </actuator>
+
+  <sensor>
+    <framelinvel name="vel_cabeca_taco" objtype="site" objname="face"/>
+    <framepos    name="pos_bola" objtype="site" objname="bola"/>
+    <framelinvel name="vel_bola" objtype="site" objname="bola"/>
+  </sensor>
+</mujoco>
