@@ -1,0 +1,34 @@
+<!--
+  Pêndulo a bater numa bola — passo 2 do hint 1 do enunciado.
+  Isto É o protótipo do swing: o taco é um pêndulo, a bola é a bola.
+
+  A bola tem um freejoint (6 dof) e está pousada no chão no ponto mais
+  baixo da trajetória do pêndulo. O pêndulo começa levantado (ver qpos0
+  no script Python) e ao descer bate-lhe.
+-->
+<mujoco model="pendulum_ball">
+  <option gravity="0 0 -9.81" timestep="0.0005"/>
+
+  <default>
+    <!-- Contactos um pouco rígidos para a pancada ser "seca" -->
+    <geom solref="0.002 1" solimp="0.9 0.95 0.001"/>
+  </default>
+
+  <worldbody>
+    <light pos="0 0 3" dir="0 0 -1"/>
+    <geom name="floor" type="plane" size="10 10 0.1" rgba="0.8 0.9 0.8 1" friction="0.8 0.005 0.0001"/>
+
+    <body name="pivot" pos="0 0 1.5">
+      <joint name="hinge" type="hinge" axis="0 1 0" damping="0.01"/>
+      <geom name="rod" type="capsule" fromto="0 0 0  0 0 -1.44" size="0.012" mass="0.1" rgba="0.3 0.3 0.3 1"/>
+      <!-- "Cabeça do taco": massa maior na ponta -->
+      <geom name="head" type="box" pos="0 0 -1.46" size="0.04 0.03 0.025" mass="0.25" rgba="0.2 0.2 0.8 1"/>
+    </body>
+
+    <!-- Bola de golfe: 45.9 g, raio 21.3 mm, pousada no chão em frente ao pêndulo -->
+    <body name="ball" pos="0.1 0 0.0213">
+      <freejoint name="ball_free"/>
+      <geom name="ball_geom" type="sphere" size="0.0213" mass="0.0459" rgba="1 1 1 1"/>
+    </body>
+  </worldbody>
+</mujoco>

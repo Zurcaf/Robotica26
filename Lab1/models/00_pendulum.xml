@@ -1,0 +1,26 @@
+<!--
+  Pêndulo simples — passo 1 do hint 1 do enunciado.
+  Objetivo: confirmar que a física do MuJoCo se comporta como esperado
+  antes de construir o golfista.
+
+  Verificação: para pequenas oscilações, o período deve ser
+    T = 2π·sqrt(L/g) = 2π·sqrt(1.0/9.81) ≈ 2.006 s
+-->
+<mujoco model="pendulum">
+  <option gravity="0 0 -9.81" timestep="0.001"/>
+
+  <worldbody>
+    <light pos="0 0 3" dir="0 0 -1"/>
+    <geom name="floor" type="plane" size="2 2 0.1" rgba="0.8 0.9 0.8 1"/>
+
+    <!-- Ponto de suspensão a 1.5 m do chão -->
+    <body name="pivot" pos="0 0 1.5">
+      <!-- Junta de rotação (hinge) em torno do eixo Y = 1 dof -->
+      <joint name="hinge" type="hinge" axis="0 1 0" damping="0.0"/>
+      <!-- Haste sem massa relevante: capsule fina de 1 m a apontar para baixo -->
+      <geom name="rod" type="capsule" fromto="0 0 0  0 0 -1.0" size="0.01" mass="0.01" rgba="0.3 0.3 0.3 1"/>
+      <!-- Massa concentrada na ponta (L = 1.0 m) -->
+      <geom name="bob" type="sphere" pos="0 0 -1.0" size="0.05" mass="1.0" rgba="0.9 0.2 0.2 1"/>
+    </body>
+  </worldbody>
+</mujoco>
