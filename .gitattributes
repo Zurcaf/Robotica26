@@ -1,0 +1,22 @@
+# Normaliza fins de linha: LF no repositório, cada SO converte ao fazer checkout
+* text=auto
+
+# Scripts Windows precisam de CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Scripts Unix precisam de LF
+*.sh text eol=lf
+
+# Binários: nunca converter
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+*.zip binary
+*.stl binary
+*.step binary
+*.stp binary
+*.bag binary

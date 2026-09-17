@@ -76,3 +76,6 @@ slprj/
 *.tmp
 *.bak
 *.orig
+
+# ===== Slides Cruz =====
+Lectures/
