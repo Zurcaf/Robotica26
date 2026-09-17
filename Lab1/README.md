@@ -26,11 +26,22 @@ python src/run_pendulum_ball.py       # pêndulo a bater na bola
 python src/run_pendulum_ball.py --view
 ```
 
-Também podes abrir qualquer XML diretamente no viewer:
+Também podes abrir qualquer XML diretamente no viewer. **Tem de ser caminho absoluto**
+(o viewer perde a pasta atual ao abrir a janela):
 
 ```bash
-python -m mujoco.viewer --mjcf=models/00_pendulum.xml
+# Mac/Linux
+python -m mujoco.viewer --mjcf="$PWD/models/00_pendulum.xml"
+# Windows (PowerShell)
+python -m mujoco.viewer --mjcf="$PWD\models\00_pendulum.xml"
 ```
+
+Ou abre o viewer vazio (`python -m mujoco.viewer`) e arrasta o XML para dentro da janela.
+
+Teclas úteis no viewer: **Space** play/pause · **Backspace** reset · **Ctrl+L** recarregar o XML
+depois de o editares · painel esquerdo *Rendering → Frame → Body* mostra os referenciais.
+
+Nota Mac: não uses `mjpython`, está partido nesta versão; o `python` normal funciona.
 
 ## Estrutura
 
