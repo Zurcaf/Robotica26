@@ -82,3 +82,7 @@ Lectures/
 
 # ===== Notas pessoais =====
 notas/
+
+# ===== Videos gerados (regenera-se com src/video.py) =====
+Lab1/report/*.mp4
+Lab1/report/*.gif
