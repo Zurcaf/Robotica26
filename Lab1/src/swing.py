@@ -59,12 +59,12 @@ DEFAULTS = dict(
     q_top_shoulder=-135.0,  # ângulo braços+taco no topo [deg]
     t_back=0.75,            # duração do backswing [s]
     t_pause=0.05,           # pausa no topo [s]
-    t_down=0.46,            # topo -> impacto [s]
+    t_down=0.38,            # topo -> impacto [s]
     t_sim=6.0,              # duração total simulada [s] (até a bola parar)
     kp=900.0,               # ganhos do PD (rad/s^2 por rad, e por rad/s)
     kd=60.0,
 )
-# Nota: t_down = 0.46 s é mais lento que o downswing real (0.25-0.30 s). Não é
+# Nota: t_down = 0.38 s é mais lento que o downswing real (0.25-0.30 s). Não é
 # escolha estética: com os binários declarados no XML (±150/±100 N·m) um
 # downswing mais rápido satura o motor do ombro, a trajetória deixa de ser
 # seguida e o taco passa ao lado da bola. Ver report/simplificacoes.md.

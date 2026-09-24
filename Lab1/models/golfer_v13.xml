@@ -34,8 +34,8 @@
     - pernas, ancas, pulsos e cotovelos rígidos na pose de endereço;
     - braços + taco = um único corpo rígido: não há "quebra" do pulso (isso é o
       2.º pêndulo do modelo de Cochran & Stobbs → V17);
-    - o braço direito também é rígido; como o eixo passa no ombro ESQUERDO,
-      o ombro direito afasta-se ligeiramente do tronco durante o swing (visual);
+    - os braços rodam em bloco em torno do centro do peito; como são rígidos,
+      os ombros deslizam alguns cm face ao tronco no meio do swing (visual);
     - corpo sem contactos (só visual); só a cabeça do taco bate na bola;
     - a sola da cabeça pode entrar uns mm no chão (não colide com ele —
       os tacos reais também tiram "divot" nos ferros).
@@ -117,29 +117,30 @@
       <geom name="cap"    type="ellipsoid" pos="0.000 -0.400 0.600" size="0.105 0.105 0.05" material="glove" mass="0.01"/>
 
       <!-- ===== Braços + taco: dof 2 (um corpo rígido) ===== -->
-      <body name="arms" pos="0.180 -0.287 0.410">
-        <!-- eixo = normal ao plano de swing (~69° com o chão), a passar no ombro esquerdo -->
-        <joint name="shoulder" axis="0.000 -0.933 0.360" range="-160 170" damping="0.5"/>
+      <body name="arms" pos="0.010 -0.322 0.350">
+        <!-- eixo = normal ao plano de swing, a passar no CENTRO DO PEITO (entre os
+             ombros), como o triângulo dos braços num swing real -->
+        <joint name="shoulder" axis="0.000 -0.938 0.347" range="-160 170" damping="0.5"/>
 
         <!-- braço esquerdo (da frente) ESTICADO -->
-        <geom name="upperarm_l" fromto="0 0 0 -0.068 -0.047 -0.319"        size="0.045" material="shirt" mass="2.2"/>
-        <geom name="forearm_l"  fromto="-0.068 -0.047 -0.319 -0.128 -0.089 -0.600" size="0.036" material="skin"  mass="1.3"/>
-        <geom name="hand_l" type="sphere" pos="-0.128 -0.089 -0.600" size="0.042" material="glove" mass="0.5"/>
+        <geom name="upperarm_l" fromto="0.17 0.035 0.06  0.102 -0.012 -0.259"        size="0.045" material="shirt" mass="2.2"/>
+        <geom name="forearm_l"  fromto="0.102 -0.012 -0.259  0.042 -0.054 -0.54" size="0.036" material="skin"  mass="1.3"/>
+        <geom name="hand_l" type="sphere" pos="0.042 -0.054 -0.54" size="0.042" material="glove" mass="0.5"/>
 
         <!-- braço direito (de trás) DOBRADO, cotovelo encostado ao corpo -->
-        <geom name="upperarm_r" fromto="-0.340 -0.070 -0.120 -0.297 -0.060 -0.437" size="0.045" material="shirt" mass="2.2"/>
-        <geom name="forearm_r"  fromto="-0.297 -0.060 -0.437 -0.135 -0.131 -0.679" size="0.036" material="skin"  mass="1.3"/>
-        <geom name="hand_r" type="sphere" pos="-0.135 -0.131 -0.679" size="0.040" material="skin" mass="0.5"/>
+        <geom name="upperarm_r" fromto="-0.17 -0.035 -0.06  -0.127 -0.025 -0.377" size="0.045" material="shirt" mass="2.2"/>
+        <geom name="forearm_r"  fromto="-0.127 -0.025 -0.377  0.035 -0.096 -0.619" size="0.036" material="skin"  mass="1.3"/>
+        <geom name="hand_r" type="sphere" pos="0.035 -0.096 -0.619" size="0.040" material="skin" mass="0.5"/>
 
         <!-- ===== Taco (ferro 7) ===== -->
-        <geom name="grip"  fromto="-0.121 -0.047 -0.521 -0.141 -0.168 -0.750" size="0.012" material="grip"  mass="0.05"/>
-        <geom name="shaft" fromto="-0.141 -0.168 -0.750 -0.192 -0.477 -1.331"   size="0.006" material="steel" mass="0.11"/>
-        <geom name="hosel" fromto="-0.192 -0.477 -1.331 -0.192 -0.493 -1.335"   size="0.008" material="steel" mass="0.01"/>
+        <geom name="grip"  fromto="0.049 -0.012 -0.461  0.029 -0.133 -0.69" size="0.012" material="grip"  mass="0.05"/>
+        <geom name="shaft" fromto="0.029 -0.133 -0.69  -0.022 -0.442 -1.271"   size="0.006" material="steel" mass="0.11"/>
+        <geom name="hosel" fromto="-0.022 -0.442 -1.271  -0.022 -0.458 -1.275"   size="0.008" material="steel" mass="0.01"/>
         <!-- cabeça: caixa rodada -32° em Y → a face (+x local) fica com loft de 32°.
              Única parte do golfista que colide (bits 2: toca na bola, não no chão). -->
-        <geom name="clubhead" class="contact" type="box" pos="-0.192 -0.513 -1.339" euler="0 -32 0"
+        <geom name="clubhead" class="contact" type="box" pos="-0.022 -0.478 -1.279" euler="0 -32 0"
               size="0.008 0.036 0.022" material="steel" mass="0.26" contype="2" conaffinity="2"/>
-        <site name="clubface" pos="-0.185 -0.513 -1.335" size="0.005" rgba="1 0 0 1"/>
+        <site name="clubface" pos="-0.015 -0.478 -1.275" size="0.005" rgba="1 0 0 1"/>
       </body>
     </body>
 
