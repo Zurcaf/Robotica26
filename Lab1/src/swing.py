@@ -56,7 +56,7 @@ MODEL = "models/golfer_v13.xml"
 # ----------------------------------------------------------------------------
 DEFAULTS = dict(
     q_top_torso=-97.0,      # rotação de ombros no topo do backswing [deg]
-    q_top_shoulder=-135.0,  # ângulo braços+taco no topo [deg]
+    q_top_shoulder=-125.0,  # ângulo braços+taco no topo [deg]
     t_back=0.75,            # duração do backswing [s]
     t_pause=0.05,           # pausa no topo [s]
     t_down=0.38,            # topo -> impacto [s]
@@ -117,12 +117,16 @@ def reference(t, p):
     # 2.0*|q_topo|/T de velocidade no impacto contra 1.57*|q_topo|/T do cosseno
     # (+27 %). Com o cosseno, o pico de binário cai todo no início do
     # downswing, onde a velocidade ainda é zero — desperdício.
+    # O fator 1.35 limita o follow-through: a parábola, se a deixassem correr,
+    # levava as juntas muito para lá do limite e os braços davam a volta completa
+    # ao peito. Com 1.35 a pose final fica ~0.82*|q_topo| depois do impacto, que
+    # é a ordem de grandeza de um "finish" real.
     u = t - t_start_down
-    tau = min(u / t_down, 1.6)                       # 1.6 = fim do follow-through
+    tau = min(u / t_down, 1.35)                      # 1.35 = fim do follow-through
     q = q_top * (1.0 - tau**2)
     v = -q_top * 2.0 * tau / t_down
     a = -q_top * 2.0 * np.ones(2) / t_down**2
-    if u / t_down >= 1.6:                            # pose final estática
+    if u / t_down >= 1.35:                           # pose final estática
         v[:] = 0.0
         a[:] = 0.0
     # A referência nunca pode sair dos limites das juntas declarados no XML,

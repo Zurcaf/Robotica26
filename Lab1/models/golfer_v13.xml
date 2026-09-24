@@ -110,7 +110,6 @@
       <joint name="torso" axis="0.000 -0.574 0.819" range="-100 70" damping="2"/>
       <geom name="waist"  fromto="0 0 0 0.000 -0.126 0.180"  size="0.11" material="shirt" mass="12"/>
       <geom name="chest"  fromto="0.000 -0.126 0.180 0.000 -0.287 0.410" size="0.13" material="shirt" mass="14"/>
-      <geom name="shoulders" fromto="0.180 -0.287 0.410 -0.160 -0.357 0.290" size="0.06" material="shirt" mass="2"/>
       <geom name="neck"   fromto="0.000 -0.287 0.410 0.000 -0.410 0.540" size="0.045" material="skin" mass="1"/>
       <!-- cabeça inclinada para baixo, a "olhar" para a bola -->
       <geom name="head"   type="sphere" pos="0.000 -0.410 0.540" size="0.10" material="skin" mass="5"/>
@@ -120,7 +119,12 @@
       <body name="arms" pos="0.010 -0.322 0.350">
         <!-- eixo = normal ao plano de swing, a passar no CENTRO DO PEITO (entre os
              ombros), como o triângulo dos braços num swing real -->
-        <joint name="shoulder" axis="0.000 -0.938 0.347" range="-160 170" damping="0.5"/>
+        <joint name="shoulder" axis="0.000 -0.938 0.347" range="-150 95" damping="0.5"/>
+
+        <!-- Os "ombros" pertencem a ESTE corpo (e não ao tronco) para que
+             acompanhem os braços. Se ficassem no tronco, os braços descolavam
+             visivelmente dos ombros a meio do swing. -->
+        <geom name="shoulders" fromto="0.170 0.035 0.060  -0.170 -0.035 -0.060" size="0.06" material="shirt" mass="2"/>
 
         <!-- braço esquerdo (da frente) ESTICADO -->
         <geom name="upperarm_l" fromto="0.17 0.035 0.06  0.102 -0.012 -0.259"        size="0.045" material="shirt" mass="2.2"/>
