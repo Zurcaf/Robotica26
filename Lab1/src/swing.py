@@ -163,9 +163,21 @@ def run_swing(model, data, params=None, noise=None, seed=None):
     params : dict  — sobrepõe DEFAULTS (ver acima).
     noise  : dict  — perturbações, todas opcionais:
                      {"shoulder_torque_std": X}  ruído gaussiano [N·m] somado
-                                                 ao binário do ombro em cada passo
+                                                 ao binário do ombro
                                                  ("pulso trémulo" do enunciado)
                      {"torso_torque_std": X}     idem para o tronco
+                     {"freq": f}                 largura de banda do ruído [Hz],
+                                                 por omissão 10 Hz (tremor
+                                                 fisiológico humano: 8-12 Hz)
+
+                 NOTA IMPORTANTE: o ruído é mantido constante durante 1/freq
+                 segundos (amostragem com retenção de ordem zero) e NÃO
+                 re-amostrado a cada passo de integração. Ruído branco por passo
+                 seria fisicamente errado aqui: com dt = 5e-5 s há ~9200 passos
+                 num downswing, as amostras independentes cancelavam-se e o
+                 efeito media-se a quase zero (o desvio do carry dava 0.03 m).
+                 Pior: o resultado dependia do passo de integração escolhido,
+                 o que tira sentido ao teste.
     seed   : int   — semente do gerador, para repetibilidade.
 
     Devolve dict com:
@@ -208,6 +220,8 @@ def run_swing(model, data, params=None, noise=None, seed=None):
 
     M_full = np.zeros((n, n))
     J = np.zeros((3, n))
+    tau_noise = np.zeros(2)
+    t_next_noise = 0.0
 
     hit = False
     launch_done = False
@@ -233,11 +247,13 @@ def run_swing(model, data, params=None, noise=None, seed=None):
         a_cmd = a_ref + kd * (v_ref - v) + kp * (q_ref - q)
         tau = M2 @ a_cmd + h2
 
-        # --- perturbações (Tarefa 2)
-        if noise.get("torso_torque_std"):
-            tau[0] += rng.normal(0.0, noise["torso_torque_std"])
-        if noise.get("shoulder_torque_std"):
-            tau[1] += rng.normal(0.0, noise["shoulder_torque_std"])
+        # --- perturbações (Tarefa 2): ruído com banda limitada
+        if noise:
+            if t >= t_next_noise:
+                t_next_noise += 1.0 / noise.get("freq", 10.0)
+                tau_noise[0] = rng.normal(0.0, noise.get("torso_torque_std", 0.0))
+                tau_noise[1] = rng.normal(0.0, noise.get("shoulder_torque_std", 0.0))
+            tau = tau + tau_noise
 
         # --- saturação: nunca sair do ctrlrange declarado no XML
         tau_sat = np.clip(tau, ctrl_lo, ctrl_hi)
