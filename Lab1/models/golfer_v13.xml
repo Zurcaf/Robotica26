@@ -197,8 +197,22 @@
     <motor name="wrist_motor"    joint="wrist"    gear="1" ctrlrange="-40 40"   ctrllimited="true"/>
   </actuator>
 
+  <!-- Sensores: aparecem como gráficos ao vivo no painel "Sensor" do viewer
+       (Option -> Sensor). Servem para ver o swing como curvas e não só como
+       animação — por exemplo confirmar que a velocidade da cabeça do taco tem
+       o pico NO impacto e não antes (sinal de libertação do pulso cedo demais). -->
   <sensor>
+    <!-- o que interessa medir no impacto -->
     <framelinvel name="clubhead_vel" objtype="site" objname="clubface"/>
     <framepos    name="ball_pos"     objtype="body" objname="ball"/>
+    <framelinvel name="ball_vel"     objtype="body" objname="ball"/>
+    <!-- estado das duas juntas atuadas -->
+    <jointpos    name="q_braco"      joint="shoulder"/>
+    <jointpos    name="q_pulso"      joint="wrist"/>
+    <jointvel    name="w_braco"      joint="shoulder"/>
+    <jointvel    name="w_pulso"      joint="wrist"/>
+    <!-- binário realmente aplicado por cada motor (mostra a saturação) -->
+    <actuatorfrc name="tau_braco"    actuator="shoulder_motor"/>
+    <actuatorfrc name="tau_pulso"    actuator="wrist_motor"/>
   </sensor>
 </mujoco>
