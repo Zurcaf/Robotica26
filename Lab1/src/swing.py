@@ -55,19 +55,19 @@ MODEL = "models/golfer_v13.xml"
 # saíram do varrimento de viabilidade — ver report/simplificacoes.md.
 # ----------------------------------------------------------------------------
 DEFAULTS = dict(
-    q_top_torso=-97.0,      # rotação de ombros no topo do backswing [deg]
-    q_top_shoulder=-125.0,  # ângulo braços+taco no topo [deg]
+    q_top_shoulder=-125.0,  # ângulo dos braços no topo do backswing [deg]
+    q_top_wrist=-95.0,      # armação do pulso no topo [deg] (real: ~90)
+    f_release=0.30,         # fração do downswing em que o pulso começa a soltar
     t_back=0.75,            # duração do backswing [s]
     t_pause=0.05,           # pausa no topo [s]
-    t_down=0.38,            # topo -> impacto [s]
+    t_down=0.30,            # topo -> impacto [s]  (real: 0.25-0.30 s)
     t_sim=6.0,              # duração total simulada [s] (até a bola parar)
     kp=900.0,               # ganhos do PD (rad/s^2 por rad, e por rad/s)
     kd=60.0,
 )
-# Nota: t_down = 0.38 s é mais lento que o downswing real (0.25-0.30 s). Não é
-# escolha estética: com os binários declarados no XML (±150/±100 N·m) um
-# downswing mais rápido satura o motor do ombro, a trajetória deixa de ser
-# seguida e o taco passa ao lado da bola. Ver report/simplificacoes.md.
+# Com o modelo de pêndulo duplo (braço + pulso) o downswing já cabe nos 0.30 s
+# de um swing real sem saturar os motores. No modelo anterior (tronco + braços,
+# dof 90 % redundantes) era preciso 0.38-0.46 s. Ver report/simplificacoes.md.
 
 
 # ----------------------------------------------------------------------------
@@ -95,7 +95,7 @@ def reference(t, p):
 
     Devolve (q_ref, v_ref, a_ref), cada um com 2 elementos [torso, shoulder].
     """
-    q_top = np.radians([p["q_top_torso"], p["q_top_shoulder"]])
+    q_top = np.radians([p["q_top_shoulder"], p["q_top_wrist"]])
     t_back, t_pause, t_down = p["t_back"], p["t_pause"], p["t_down"]
     t_start_down = t_back + t_pause
 
@@ -122,10 +122,29 @@ def reference(t, p):
     # ao peito. Com 1.35 a pose final fica ~0.82*|q_topo| depois do impacto, que
     # é a ordem de grandeza de um "finish" real.
     u = t - t_start_down
+
+    # --- braço (dof 1): parábola desde o topo, cruza zero em u = t_down
     tau = min(u / t_down, 1.35)                      # 1.35 = fim do follow-through
     q = q_top * (1.0 - tau**2)
     v = -q_top * 2.0 * tau / t_down
     a = -q_top * 2.0 * np.ones(2) / t_down**2
+
+    # --- pulso (dof 2): LIBERTAÇÃO TARDIA ("lag").
+    # O pulso fica armado durante a primeira parte do downswing e só começa a
+    # soltar em f_release*t_down; depois solta com aceleração constante e chega
+    # também a zero em u = t_down. Isto é o "lag" de que falam os treinadores, e
+    # é o que distingue um swing eficiente de um "casting" (soltar cedo): com o
+    # taco dobrado a inércia é baixa, logo o braço acelera barato, e a energia
+    # é entregue à cabeça do taco no fim, quando o braço de alavanca é longo.
+    t_rel = p.get("f_release", 0.55) * t_down
+    if u < t_rel:
+        q[1], v[1], a[1] = q_top[1], 0.0, 0.0
+    else:
+        Tw = t_down - t_rel
+        tw = min((u - t_rel) / Tw, 1.35)
+        q[1] = q_top[1] * (1.0 - tw**2)
+        v[1] = -q_top[1] * 2.0 * tw / Tw
+        a[1] = -q_top[1] * 2.0 / Tw**2
     if u / t_down >= 1.35:                           # pose final estática
         v[:] = 0.0
         a[:] = 0.0
@@ -153,10 +172,10 @@ def load(path=MODEL):
 
 def _indices(m):
     """Índices das 2 juntas atuadas em qpos, qvel e ctrl."""
-    jt, js = m.joint("torso"), m.joint("shoulder")
+    jt, js = m.joint("shoulder"), m.joint("wrist")
     qadr = np.array([jt.qposadr[0], js.qposadr[0]])
     vadr = np.array([jt.dofadr[0], js.dofadr[0]])
-    uadr = np.array([m.actuator("torso_motor").id, m.actuator("shoulder_motor").id])
+    uadr = np.array([m.actuator("shoulder_motor").id, m.actuator("wrist_motor").id])
     return qadr, vadr, uadr
 
 
@@ -166,10 +185,10 @@ def run_swing(model, data, params=None, noise=None, seed=None):
 
     params : dict  — sobrepõe DEFAULTS (ver acima).
     noise  : dict  — perturbações, todas opcionais:
-                     {"shoulder_torque_std": X}  ruído gaussiano [N·m] somado
+                     {"wrist_torque_std": X}  ruído gaussiano [N·m] somado
                                                  ao binário do ombro
                                                  ("pulso trémulo" do enunciado)
-                     {"torso_torque_std": X}     idem para o tronco
+                     {"shoulder_torque_std": X}     idem para o tronco
                      {"freq": f}                 largura de banda do ruído [Hz],
                                                  por omissão 10 Hz (tremor
                                                  fisiológico humano: 8-12 Hz)
@@ -208,7 +227,7 @@ def run_swing(model, data, params=None, noise=None, seed=None):
     m, d = model, data
     mujoco.mj_resetData(m, d)
     qadr, vadr, uadr = _indices(m)
-    p["q_range"] = m.jnt_range[[m.joint("torso").id, m.joint("shoulder").id]]
+    p["q_range"] = m.jnt_range[[m.joint("shoulder").id, m.joint("wrist").id]]
     n = m.nv
 
     g_clubhead = m.geom("clubhead").id
@@ -255,8 +274,8 @@ def run_swing(model, data, params=None, noise=None, seed=None):
         if noise:
             if t >= t_next_noise:
                 t_next_noise += 1.0 / noise.get("freq", 10.0)
-                tau_noise[0] = rng.normal(0.0, noise.get("torso_torque_std", 0.0))
-                tau_noise[1] = rng.normal(0.0, noise.get("shoulder_torque_std", 0.0))
+                tau_noise[0] = rng.normal(0.0, noise.get("shoulder_torque_std", 0.0))
+                tau_noise[1] = rng.normal(0.0, noise.get("wrist_torque_std", 0.0))
             tau = tau + tau_noise
 
         # --- saturação: nunca sair do ctrlrange declarado no XML
@@ -277,8 +296,12 @@ def run_swing(model, data, params=None, noise=None, seed=None):
                 touching = True
                 break
 
-        if touching and not hit:
-            # primeiro instante de contacto: mede a cabeça do taco e as juntas
+        if touching and not hit and abs(t - t_impact_ref) < 0.20:
+            # Primeiro contacto, mas só conta se ocorrer perto do instante de
+            # impacto previsto. Sem esta janela, um swing que FALHA a bola
+            # acabava por ser contado como acerto: no follow-through (ou já
+            # parado) o taco encosta na bola em repouso e isso era registado
+            # como impacto a ~0 m/s, poluindo as estatísticas.
             mujoco.mj_jacGeom(m, d, J, None, g_clubhead)
             v_head = float(np.linalg.norm(J @ d.qvel))
             q_impact = np.degrees(d.qpos[qadr].copy())
@@ -343,7 +366,7 @@ def view(params=None):
         p.update(params)
     m, d = load()
     qadr, vadr, uadr = _indices(m)
-    p["q_range"] = m.jnt_range[[m.joint("torso").id, m.joint("shoulder").id]]
+    p["q_range"] = m.jnt_range[[m.joint("shoulder").id, m.joint("wrist").id]]
     M_full = np.zeros((m.nv, m.nv))
     ctrl_lo = m.actuator_ctrlrange[uadr, 0]
     ctrl_hi = m.actuator_ctrlrange[uadr, 1]
@@ -370,17 +393,18 @@ def main():
     ap = argparse.ArgumentParser(description="Swing do golfista V13 (2 dof)")
     ap.add_argument("--view", action="store_true", help="abre o viewer")
     ap.add_argument("--t-down", type=float, help="duração do downswing [s]")
-    ap.add_argument("--q-top-torso", type=float, help="topo do tronco [deg]")
     ap.add_argument("--q-top-shoulder", type=float, help="topo dos braços [deg]")
+    ap.add_argument("--q-top-wrist", type=float, help="armação do pulso [deg]")
+    ap.add_argument("--f-release", type=float, help="fração do downswing p/ soltar o pulso")
     args = ap.parse_args()
 
     params = {}
     if args.t_down is not None:
         params["t_down"] = args.t_down
-    if args.q_top_torso is not None:
-        params["q_top_torso"] = args.q_top_torso
     if args.q_top_shoulder is not None:
         params["q_top_shoulder"] = args.q_top_shoulder
+    if args.q_top_wrist is not None:
+        params["q_top_wrist"] = args.q_top_wrist
 
     if args.view:
         view(params)
@@ -396,14 +420,14 @@ def main():
           f"(smash {r['v_ball']/r['v_head']:.2f})")
     print(f"  lançamento                : {r['launch']:6.1f} deg   "
           f"desvio lateral {r['side']:+.1f} deg")
-    print(f"  juntas no impacto         : torso {r['q_impact'][0]:+.1f} deg, "
-          f"shoulder {r['q_impact'][1]:+.1f} deg   (alvo: 0, 0)")
+    print(f"  juntas no impacto         : braço {r['q_impact'][0]:+.1f} deg, "
+          f"pulso {r['q_impact'][1]:+.1f} deg   (alvo: 0, 0)")
     print(f"  carry (até aterrar)       : {r['carry']:6.1f} m   "
           f"(desvio lateral {r['land_y']:+.2f} m)")
-    print(f"  binário máx usado         : torso {r['tau_max'][0]:.0f} N.m, "
-          f"shoulder {r['tau_max'][1]:.0f} N.m")
-    print(f"  saturação no downswing    : torso {r['sat'][0]*100:.0f} %, "
-          f"shoulder {r['sat'][1]*100:.0f} %")
+    print(f"  binário máx usado         : braço {r['tau_max'][0]:.0f} N.m, "
+          f"pulso {r['tau_max'][1]:.0f} N.m")
+    print(f"  saturação no downswing    : braço {r['sat'][0]*100:.0f} %, "
+          f"pulso {r['sat'][1]*100:.0f} %")
 
 
 if __name__ == "__main__":

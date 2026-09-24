@@ -2,15 +2,15 @@
 Teste de perturbações — Tarefa 2 do enunciado.
 
 O enunciado pede que se considere a existência de perturbações em cada grau de
-liberdade, dando como exemplo "o pulso do jogador a tremer". Neste modelo V13 o
-pulso é rígido, por isso a perturbação equivalente é ruído no binário das juntas
-que existem: aplica-se um ruído gaussiano branco ao binário comandado, em cada
-passo de integração, e compara-se com o swing nominal (sem ruído).
+liberdade, dando como exemplo "o pulso do jogador a tremer". O modelo tem
+exatamente esse dof, por isso o exemplo do enunciado traduz-se diretamente:
+soma-se um ruído gaussiano ao binário comandado da junta escolhida e compara-se
+com o swing nominal (sem ruído).
 
 Uso (a partir de Lab1/):
-    python src/perturbacoes.py              # N=20 swings com ruído no ombro
+    python src/perturbacoes.py              # N=20 swings com ruído no PULSO
     python src/perturbacoes.py --n 50       # mais repetições
-    python src/perturbacoes.py --junta torso
+    python src/perturbacoes.py --junta shoulder   # ruído no braço
     python src/perturbacoes.py --std 8      # desvio padrão do ruído [N·m]
 
 Produz report/dispersao_perturbacao.png e imprime a estatística.
@@ -58,7 +58,7 @@ def estatistica(nome, valores):
 def main():
     ap = argparse.ArgumentParser(description="Perturbações no binário das juntas")
     ap.add_argument("--n", type=int, default=20, help="número de swings")
-    ap.add_argument("--junta", default="shoulder", choices=["shoulder", "torso"])
+    ap.add_argument("--junta", default="wrist", choices=["wrist", "shoulder"])
     ap.add_argument("--std", type=float, default=5.0,
                     help="desvio padrão do ruído no binário [N.m]")
     args = ap.parse_args()

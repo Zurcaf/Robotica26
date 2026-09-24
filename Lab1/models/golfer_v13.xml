@@ -105,9 +105,8 @@
 
     <!-- ===== Tronco: dof 1 ===== -->
     <body name="torso" pos="-0.020 0.800 0.943">
-      <!-- eixo = coluna inclinada 35° para a bola; ± em graus, amplitude de um
-           amador flexível: ~90° de rotação de ombros no backswing -->
-      <joint name="torso" axis="0.000 -0.574 0.819" range="-100 70" damping="2"/>
+      <!-- Sem junta: no modelo de pêndulo duplo o tronco fica RÍGIDO. Os 2 dof
+           são o braço (no peito) e o pulso — ver cabeçalho do ficheiro. -->
       <geom name="waist"  fromto="0 0 0 0.000 -0.126 0.180"  size="0.11" material="shirt" mass="12"/>
       <geom name="chest"  fromto="0.000 -0.126 0.180 0.000 -0.287 0.410" size="0.13" material="shirt" mass="14"/>
       <geom name="neck"   fromto="0.000 -0.287 0.410 0.000 -0.410 0.540" size="0.045" material="skin" mass="1"/>
@@ -115,11 +114,11 @@
       <geom name="head"   type="sphere" pos="0.000 -0.410 0.540" size="0.10" material="skin" mass="5"/>
       <geom name="cap"    type="ellipsoid" pos="0.000 -0.400 0.600" size="0.105 0.105 0.05" material="glove" mass="0.01"/>
 
-      <!-- ===== Braços + taco: dof 2 (um corpo rígido) ===== -->
+      <!-- ===== BRAÇOS: dof 1 — rodam em bloco em torno do centro do peito ===== -->
       <body name="arms" pos="0.010 -0.322 0.350">
         <!-- eixo = normal ao plano de swing, a passar no CENTRO DO PEITO (entre os
              ombros), como o triângulo dos braços num swing real -->
-        <joint name="shoulder" axis="0.000 -0.938 0.347" range="-150 95" damping="0.5"/>
+        <joint name="shoulder" axis="0.000 -0.938 0.347" range="-130 95" damping="0.5"/>
 
         <!-- Os "ombros" pertencem a ESTE corpo (e não ao tronco) para que
              acompanhem os braços. Se ficassem no tronco, os braços descolavam
@@ -136,15 +135,25 @@
         <geom name="forearm_r"  fromto="-0.127 -0.025 -0.377  0.035 -0.096 -0.619" size="0.036" material="skin"  mass="1.3"/>
         <geom name="hand_r" type="sphere" pos="0.035 -0.096 -0.619" size="0.040" material="skin" mass="0.5"/>
 
-        <!-- ===== Taco (ferro 7) ===== -->
-        <geom name="grip"  fromto="0.049 -0.012 -0.461  0.029 -0.133 -0.69" size="0.012" material="grip"  mass="0.05"/>
-        <geom name="shaft" fromto="0.029 -0.133 -0.69  -0.022 -0.442 -1.271"   size="0.006" material="steel" mass="0.11"/>
-        <geom name="hosel" fromto="-0.022 -0.442 -1.271  -0.022 -0.458 -1.275"   size="0.008" material="steel" mass="0.01"/>
-        <!-- cabeça: caixa rodada -32° em Y → a face (+x local) fica com loft de 32°.
-             Única parte do golfista que colide (bits 2: toca na bola, não no chão). -->
-        <geom name="clubhead" class="contact" type="box" pos="-0.022 -0.478 -1.279" euler="0 -32 0"
-              size="0.008 0.036 0.022" material="steel" mass="0.26" contype="2" conaffinity="2"/>
-        <site name="clubface" pos="-0.015 -0.478 -1.275" size="0.005" rgba="1 0 0 1"/>
+
+        <!-- ===== TACO: dof 2 — a junta do PULSO =====
+             Este é o 2.º pêndulo do modelo de Cochran & Stobbs. É ele que gera
+             velocidade: no topo o pulso está armado (taco dobrado para trás,
+             perto do eixo => inércia baixa, barato de acelerar) e liberta-se
+             tarde, transferindo momento angular para uma alavanca longa.
+             Eixo igual ao do ombro: o taco balança no mesmo plano de swing. -->
+        <body name="club" pos="0.039 -0.075 -0.58">
+          <joint name="wrist" axis="0.000 -0.938 0.347" range="-110 30" damping="0.05"/>
+          <!-- ===== Taco (ferro 7) ===== -->
+          <geom name="grip"  fromto="0.01 0.063 0.119  -0.01 -0.058 -0.11" size="0.012" material="grip"  mass="0.05"/>
+          <geom name="shaft" fromto="-0.01 -0.058 -0.11  -0.061 -0.367 -0.691"   size="0.006" material="steel" mass="0.11"/>
+          <geom name="hosel" fromto="-0.061 -0.367 -0.691  -0.061 -0.383 -0.695"   size="0.008" material="steel" mass="0.01"/>
+          <!-- cabeça: caixa rodada -32° em Y → a face (+x local) fica com loft de 32°.
+               Única parte do golfista que colide (bits 2: toca na bola, não no chão). -->
+          <geom name="clubhead" class="contact" type="box" pos="-0.061 -0.403 -0.699" euler="0 -32 0"
+                size="0.008 0.036 0.022" material="steel" mass="0.26" contype="2" conaffinity="2"/>
+          <site name="clubface" pos="-0.054 -0.403 -0.695" size="0.005" rgba="1 0 0 1"/>
+        </body>
       </body>
     </body>
 
@@ -178,8 +187,14 @@
   <actuator>
     <!-- Motores de binário. ctrlrange ~ binários de pico humanos:
          rotação axial do tronco ~150 N·m, ombro ~100 N·m -->
-    <motor name="torso_motor"    joint="torso"    gear="1" ctrlrange="-150 150" ctrllimited="true"/>
-    <motor name="shoulder_motor" joint="shoulder" gear="1" ctrlrange="-100 100" ctrllimited="true"/>
+    <!-- Com o tronco rígido, o motor do ombro representa TODA a cadeia que faz
+         rodar os braços (pernas, ancas, tronco, dorsais) e não só o deltoide —
+         por isso leva os ±150 N·m que antes estavam no tronco.
+         O pulso leva pouco (±40 N·m): num swing real a libertação do pulso é em
+         boa parte PASSIVA, feita pela força centrífuga; o jogador sobretudo
+         resiste a que ela aconteça cedo demais. -->
+    <motor name="shoulder_motor" joint="shoulder" gear="1" ctrlrange="-150 150" ctrllimited="true"/>
+    <motor name="wrist_motor"    joint="wrist"    gear="1" ctrlrange="-40 40"   ctrllimited="true"/>
   </actuator>
 
   <sensor>

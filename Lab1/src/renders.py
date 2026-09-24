@@ -52,7 +52,7 @@ def main():
     p = dict(DEFAULTS)
     m, d = load()
     qadr, vadr, uadr = _indices(m)
-    p["q_range"] = m.jnt_range[[m.joint("torso").id, m.joint("shoulder").id]]
+    p["q_range"] = m.jnt_range[[m.joint("shoulder").id, m.joint("wrist").id]]
     lo, hi = m.actuator_ctrlrange[uadr, 0], m.actuator_ctrlrange[uadr, 1]
     M_full = np.zeros((m.nv, m.nv))
 
