@@ -322,30 +322,43 @@ def run_swing(model, data, params=None, noise=None, seed=None):
 # Viewer
 # ----------------------------------------------------------------------------
 def view(params=None):
-    """Abre o viewer e corre o swing em ciclo (repõe no fim de cada swing)."""
+    """
+    Abre o viewer com o swing a correr em tempo real.
+
+    O controlador é registado como callback do MuJoCo (set_mjcb_control) e o
+    viewer trata do ciclo de simulação. Foi feito assim de propósito: o outro
+    caminho (launch_passive, em que somos nós a chamar mj_step) exige o
+    interpretador `mjpython` em macOS, e esse vem avariado nesta versão. Com o
+    callback + viewer "managed" funciona com o python normal nos três sistemas.
+
+    Teclas: Space = play/pausa · Backspace = repõe e faz novo swing ·
+            Ctrl+L = recarrega o XML.
+    """
     p = dict(DEFAULTS)
     if params:
         p.update(params)
     m, d = load()
     qadr, vadr, uadr = _indices(m)
     p["q_range"] = m.jnt_range[[m.joint("torso").id, m.joint("shoulder").id]]
-    n = m.nv
-    M_full = np.zeros((n, n))
+    M_full = np.zeros((m.nv, m.nv))
     ctrl_lo = m.actuator_ctrlrange[uadr, 0]
     ctrl_hi = m.actuator_ctrlrange[uadr, 1]
 
-    with mujoco.viewer.launch_passive(m, d) as v:
-        while v.is_running():
-            if d.time > p["t_sim"]:
-                mujoco.mj_resetData(m, d)
-            q_ref, v_ref, a_ref = reference(d.time, p)
-            mujoco.mj_fullM(m, d, M_full)
-            M2 = M_full[np.ix_(vadr, vadr)]
-            a_cmd = (a_ref + p["kd"] * (v_ref - d.qvel[vadr])
-                     + p["kp"] * (q_ref - d.qpos[qadr]))
-            d.ctrl[uadr] = np.clip(M2 @ a_cmd + d.qfrc_bias[vadr], ctrl_lo, ctrl_hi)
-            mujoco.mj_step(m, d)
-            v.sync()
+    def controlador(model, data):
+        q_ref, v_ref, a_ref = reference(data.time, p)
+        mujoco.mj_fullM(model, data, M_full)
+        M2 = M_full[np.ix_(vadr, vadr)]
+        a_cmd = (a_ref + p["kd"] * (v_ref - data.qvel[vadr])
+                 + p["kp"] * (q_ref - data.qpos[qadr]))
+        data.ctrl[uadr] = np.clip(M2 @ a_cmd + data.qfrc_bias[vadr],
+                                  ctrl_lo, ctrl_hi)
+
+    mujoco.set_mjcb_control(controlador)
+    try:
+        print("Viewer aberto. Space = play/pausa, Backspace = novo swing.")
+        mujoco.viewer.launch(m, d)
+    finally:
+        mujoco.set_mjcb_control(None)
 
 
 # ----------------------------------------------------------------------------
