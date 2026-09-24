@@ -1,0 +1,377 @@
+"""
+Swing do golfista V13 — 2 dof atuados (tronco + braços/taco).
+
+Uso (a partir de Lab1/):
+    python src/swing.py                 # corre um swing e imprime os resultados
+    python src/swing.py --view          # abre o viewer com o swing a correr
+    python src/swing.py --t-down 0.28   # muda a duração do downswing
+
+IDEIA DO CONTROLO
+-----------------
+O problema central com 2 dof é que a cabeça do taco só passa na bola quando
+AS DUAS juntas estão em q = 0 ao mesmo tempo (é assim que a pose de endereço
+está definida no XML). Se uma junta chega antes da outra, o arco passa ao lado
+ou por cima da bola, e a face chega com a orientação errada — foi o que fez o
+primeiro teste falhar (impacto a torso=+17°, shoulder=-12° => a bola era
+enterrada no chão em vez de levantar voo).
+
+Resolve-se em duas partes:
+
+1) TRAJETÓRIA que cruza zero em simultâneo, por construção.
+   No downswing usa-se, para cada junta i, aceleração angular constante:
+
+       q_i(u) = q_topo_i · (1 - (u/T)^2),    u = tempo desde o topo
+
+   Com o MESMO T nas duas juntas, ambas passam por q = 0 exatamente em
+   u = T (o instante do impacto), e nesse ponto a velocidade é máxima
+   (-2·q_topo_i/T) — que é o que se quer num swing.
+
+   Aceleração constante é também a forma mais eficiente de gastar um motor
+   com binário limitado: o binário fica no máximo durante todo o downswing.
+   Para o mesmo pico de binário, esta parábola dá +27 % de velocidade no
+   impacto face a um perfil em cosseno.
+
+2) CONTROLO POR BINÁRIO CALCULADO (computed torque), para que a trajetória
+   real siga a de referência sem atraso:
+
+       tau = M(q)·[ a_ref + Kd·(v_ref - v) + Kp·(q_ref - q) ] + h(q, v)
+
+   onde M é a matriz de massa e h = qfrc_bias reúne Coriolis/centrífugas e
+   gravidade. É o controlador clássico de manipuladores: a parte M·a_ref + h
+   é o feedforward que "sabe" a dinâmica, e o PD só corrige o erro residual.
+   Os binários são sempre saturados no ctrlrange do XML (±150 / ±100 N·m),
+   por isso o modelo nunca usa força que um humano não conseguisse fazer.
+"""
+
+import argparse
+import numpy as np
+import mujoco
+import mujoco.viewer
+
+MODEL = "models/golfer_v13.xml"
+
+# ----------------------------------------------------------------------------
+# Parâmetros do swing (graus e segundos). Os valores por omissão são os que
+# saíram do varrimento de viabilidade — ver report/simplificacoes.md.
+# ----------------------------------------------------------------------------
+DEFAULTS = dict(
+    q_top_torso=-97.0,      # rotação de ombros no topo do backswing [deg]
+    q_top_shoulder=-135.0,  # ângulo braços+taco no topo [deg]
+    t_back=0.75,            # duração do backswing [s]
+    t_pause=0.05,           # pausa no topo [s]
+    t_down=0.46,            # topo -> impacto [s]
+    t_sim=6.0,              # duração total simulada [s] (até a bola parar)
+    kp=900.0,               # ganhos do PD (rad/s^2 por rad, e por rad/s)
+    kd=60.0,
+)
+# Nota: t_down = 0.46 s é mais lento que o downswing real (0.25-0.30 s). Não é
+# escolha estética: com os binários declarados no XML (±150/±100 N·m) um
+# downswing mais rápido satura o motor do ombro, a trajetória deixa de ser
+# seguida e o taco passa ao lado da bola. Ver report/simplificacoes.md.
+
+
+# ----------------------------------------------------------------------------
+# Trajetória de referência
+# ----------------------------------------------------------------------------
+def _min_jerk(tau):
+    """Perfil de jerk mínimo s(tau) em [0,1] e as suas derivadas (tau = t/T)."""
+    tau = np.clip(tau, 0.0, 1.0)
+    s = 10 * tau**3 - 15 * tau**4 + 6 * tau**5
+    ds = 30 * tau**2 - 60 * tau**3 + 30 * tau**4
+    dds = 60 * tau - 180 * tau**2 + 120 * tau**3
+    return s, ds, dds
+
+
+def reference(t, p):
+    """
+    Posição, velocidade e aceleração de referência das 2 juntas no instante t.
+
+    Fases:
+      [0, t_back)                   backswing, jerk mínimo de 0 até q_topo
+      [t_back, t_back+t_pause)      pausa no topo
+      [.., +t_down)                 downswing em cosseno -> q = 0 no impacto
+      [.., +t_down)                 follow-through (o cosseno continua sozinho)
+      depois                        mantém a pose final
+
+    Devolve (q_ref, v_ref, a_ref), cada um com 2 elementos [torso, shoulder].
+    """
+    q_top = np.radians([p["q_top_torso"], p["q_top_shoulder"]])
+    t_back, t_pause, t_down = p["t_back"], p["t_pause"], p["t_down"]
+    t_start_down = t_back + t_pause
+
+    if t < t_back:                                   # --- backswing
+        s, ds, dds = _min_jerk(t / t_back)
+        return q_top * s, q_top * ds / t_back, q_top * dds / t_back**2
+
+    if t < t_start_down:                             # --- pausa no topo
+        return q_top.copy(), np.zeros(2), np.zeros(2)
+
+    # --- downswing + follow-through: aceleração angular CONSTANTE
+    #     q_i(u) = q_topo_i * (1 - (u/T)^2)
+    # As duas juntas usam o MESMO T, logo ambas cruzam q = 0 exatamente em
+    # u = T (impacto), com velocidade máxima -2*q_topo_i/T.
+    #
+    # Porquê parábola e não cosseno: com aceleração constante o binário está no
+    # máximo durante TODO o downswing, que é o uso mais eficiente de um motor
+    # com limite de binário. Para o mesmo pico de aceleração, a parábola dá
+    # 2.0*|q_topo|/T de velocidade no impacto contra 1.57*|q_topo|/T do cosseno
+    # (+27 %). Com o cosseno, o pico de binário cai todo no início do
+    # downswing, onde a velocidade ainda é zero — desperdício.
+    u = t - t_start_down
+    tau = min(u / t_down, 1.6)                       # 1.6 = fim do follow-through
+    q = q_top * (1.0 - tau**2)
+    v = -q_top * 2.0 * tau / t_down
+    a = -q_top * 2.0 * np.ones(2) / t_down**2
+    if u / t_down >= 1.6:                            # pose final estática
+        v[:] = 0.0
+        a[:] = 0.0
+    # A referência nunca pode sair dos limites das juntas declarados no XML,
+    # senão o follow-through manda o motor contra o batente e o controlador
+    # passa o resto do swing a lutar contra a restrição.
+    rng = p.get("q_range")
+    if rng is not None:
+        lo, hi = rng[:, 0] + np.radians(3.0), rng[:, 1] - np.radians(3.0)
+        q_c = np.clip(q, lo, hi)
+        v = np.where(q_c == q, v, 0.0)
+        a = np.where(q_c == q, a, 0.0)
+        return q_c, v, a
+    return q, v, a
+
+
+# ----------------------------------------------------------------------------
+# Simulação
+# ----------------------------------------------------------------------------
+def load(path=MODEL):
+    """Carrega o modelo e devolve (model, data)."""
+    model = mujoco.MjModel.from_xml_path(path)
+    return model, mujoco.MjData(model)
+
+
+def _indices(m):
+    """Índices das 2 juntas atuadas em qpos, qvel e ctrl."""
+    jt, js = m.joint("torso"), m.joint("shoulder")
+    qadr = np.array([jt.qposadr[0], js.qposadr[0]])
+    vadr = np.array([jt.dofadr[0], js.dofadr[0]])
+    uadr = np.array([m.actuator("torso_motor").id, m.actuator("shoulder_motor").id])
+    return qadr, vadr, uadr
+
+
+def run_swing(model, data, params=None, noise=None, seed=None):
+    """
+    Corre um swing completo e devolve as métricas do impacto.
+
+    params : dict  — sobrepõe DEFAULTS (ver acima).
+    noise  : dict  — perturbações, todas opcionais:
+                     {"shoulder_torque_std": X}  ruído gaussiano [N·m] somado
+                                                 ao binário do ombro em cada passo
+                                                 ("pulso trémulo" do enunciado)
+                     {"torso_torque_std": X}     idem para o tronco
+    seed   : int   — semente do gerador, para repetibilidade.
+
+    Devolve dict com:
+      v_head    velocidade da cabeça do taco no instante do impacto [m/s]
+      v_ball    velocidade de lançamento da bola [m/s]
+      launch    ângulo de lançamento acima da horizontal [deg]
+      side      desvio lateral do lançamento [deg] (+ = para a direita do alvo)
+      q_impact  ângulos das juntas no impacto [deg] — devem ser ~(0, 0)
+      ball_pos  posição final da bola [m] (x = direção do alvo)
+      carry     distância de voo até à 1.ª aterragem [m] — métrica principal
+      land_y    desvio lateral no ponto de aterragem [m]
+      dist      distância total em x (voo + rolamento) [m]; ver nota no código
+      rolling   True se a bola ainda se movia no fim da simulação
+      hit       True se houve contacto taco-bola
+      tau_max   binário máximo usado em cada junta [N·m]
+      sat       fração do downswing em que cada motor esteve saturado
+    """
+    p = dict(DEFAULTS)
+    if params:
+        p.update(params)
+    noise = noise or {}
+    rng = np.random.default_rng(seed)
+
+    m, d = model, data
+    mujoco.mj_resetData(m, d)
+    qadr, vadr, uadr = _indices(m)
+    p["q_range"] = m.jnt_range[[m.joint("torso").id, m.joint("shoulder").id]]
+    n = m.nv
+
+    g_clubhead = m.geom("clubhead").id
+    g_ball = m.geom("ball_geom").id
+    g_floor = m.geom("floor").id
+    b_ball = m.body("ball").id
+
+    ctrl_lo = m.actuator_ctrlrange[uadr, 0]
+    ctrl_hi = m.actuator_ctrlrange[uadr, 1]
+
+    kp, kd = p["kp"], p["kd"]
+    t_impact_ref = p["t_back"] + p["t_pause"] + p["t_down"]
+
+    M_full = np.zeros((n, n))
+    J = np.zeros((3, n))
+
+    hit = False
+    launch_done = False
+    carry = np.nan
+    land_y = np.nan
+    v_head = v_ball = launch = side = np.nan
+    q_impact = np.array([np.nan, np.nan])
+    tau_max = np.zeros(2)
+    n_sat = np.zeros(2)
+    n_down = 0
+
+    nsteps = int(p["t_sim"] / m.opt.timestep)
+    for _ in range(nsteps):
+        t = d.time
+        q_ref, v_ref, a_ref = reference(t, p)
+        q = d.qpos[qadr]
+        v = d.qvel[vadr]
+
+        # --- binário calculado: tau = M*(a_ref + Kd*ev + Kp*eq) + h
+        mujoco.mj_fullM(m, d, M_full)
+        M2 = M_full[np.ix_(vadr, vadr)]
+        h2 = d.qfrc_bias[vadr]
+        a_cmd = a_ref + kd * (v_ref - v) + kp * (q_ref - q)
+        tau = M2 @ a_cmd + h2
+
+        # --- perturbações (Tarefa 2)
+        if noise.get("torso_torque_std"):
+            tau[0] += rng.normal(0.0, noise["torso_torque_std"])
+        if noise.get("shoulder_torque_std"):
+            tau[1] += rng.normal(0.0, noise["shoulder_torque_std"])
+
+        # --- saturação: nunca sair do ctrlrange declarado no XML
+        tau_sat = np.clip(tau, ctrl_lo, ctrl_hi)
+        if p["t_back"] <= t <= t_impact_ref:
+            n_down += 1
+            n_sat += np.abs(tau - tau_sat) > 1e-9
+        tau_max = np.maximum(tau_max, np.abs(tau_sat))
+        d.ctrl[uadr] = tau_sat
+
+        mujoco.mj_step(m, d)
+
+        # --- contacto taco-bola neste passo?
+        touching = False
+        for i in range(d.ncon):
+            c = d.contact[i]
+            if {c.geom1, c.geom2} == {g_clubhead, g_ball}:
+                touching = True
+                break
+
+        if touching and not hit:
+            # primeiro instante de contacto: mede a cabeça do taco e as juntas
+            mujoco.mj_jacGeom(m, d, J, None, g_clubhead)
+            v_head = float(np.linalg.norm(J @ d.qvel))
+            q_impact = np.degrees(d.qpos[qadr].copy())
+            hit = True
+
+        # O lançamento só pode ser medido ENQUANTO a bola está em contacto com
+        # a face (e no passo seguinte). Depois disso a gravidade acelera-a na
+        # descida e a velocidade volta a subir — medir o máximo ao longo de
+        # todo o voo dava a velocidade de aterragem, com ângulo negativo.
+        if hit and not launch_done:
+            if touching:
+                vb = d.cvel[b_ball][3:].copy()
+                s = float(np.linalg.norm(vb))
+                if not (v_ball >= s):      # cobre o caso v_ball = nan
+                    v_ball = s
+                    launch = float(np.degrees(np.arctan2(vb[2], np.hypot(vb[0], vb[1]))))
+                    side = float(np.degrees(np.arctan2(-vb[1], vb[0])))
+            else:
+                launch_done = True         # a bola largou a face: congela
+
+        # --- primeira aterragem: define o CARRY (métrica padrão no golfe).
+        # A distância total (voo + rolamento) não é de confiar neste modelo:
+        # o relvado é um plano rígido, sem deformação nem efeito do backspin,
+        # por isso a bola rola muito mais do que rolaria num fairway real.
+        if launch_done and np.isnan(carry):
+            for i in range(d.ncon):
+                c = d.contact[i]
+                if {c.geom1, c.geom2} == {g_ball, g_floor}:
+                    carry = float(d.body("ball").xpos[0])
+                    land_y = float(d.body("ball").xpos[1])
+                    break
+
+    ball_pos = d.body("ball").xpos.copy()
+    return dict(
+        v_head=v_head, v_ball=v_ball, launch=launch, side=side,
+        q_impact=q_impact, ball_pos=ball_pos, dist=float(ball_pos[0]),
+        carry=carry, land_y=land_y,
+        rolling=bool(np.linalg.norm(d.cvel[b_ball][3:]) > 0.05),
+        hit=hit, tau_max=tau_max,
+        sat=n_sat / max(n_down, 1),
+    )
+
+
+# ----------------------------------------------------------------------------
+# Viewer
+# ----------------------------------------------------------------------------
+def view(params=None):
+    """Abre o viewer e corre o swing em ciclo (repõe no fim de cada swing)."""
+    p = dict(DEFAULTS)
+    if params:
+        p.update(params)
+    m, d = load()
+    qadr, vadr, uadr = _indices(m)
+    p["q_range"] = m.jnt_range[[m.joint("torso").id, m.joint("shoulder").id]]
+    n = m.nv
+    M_full = np.zeros((n, n))
+    ctrl_lo = m.actuator_ctrlrange[uadr, 0]
+    ctrl_hi = m.actuator_ctrlrange[uadr, 1]
+
+    with mujoco.viewer.launch_passive(m, d) as v:
+        while v.is_running():
+            if d.time > p["t_sim"]:
+                mujoco.mj_resetData(m, d)
+            q_ref, v_ref, a_ref = reference(d.time, p)
+            mujoco.mj_fullM(m, d, M_full)
+            M2 = M_full[np.ix_(vadr, vadr)]
+            a_cmd = (a_ref + p["kd"] * (v_ref - d.qvel[vadr])
+                     + p["kp"] * (q_ref - d.qpos[qadr]))
+            d.ctrl[uadr] = np.clip(M2 @ a_cmd + d.qfrc_bias[vadr], ctrl_lo, ctrl_hi)
+            mujoco.mj_step(m, d)
+            v.sync()
+
+
+# ----------------------------------------------------------------------------
+def main():
+    ap = argparse.ArgumentParser(description="Swing do golfista V13 (2 dof)")
+    ap.add_argument("--view", action="store_true", help="abre o viewer")
+    ap.add_argument("--t-down", type=float, help="duração do downswing [s]")
+    ap.add_argument("--q-top-torso", type=float, help="topo do tronco [deg]")
+    ap.add_argument("--q-top-shoulder", type=float, help="topo dos braços [deg]")
+    args = ap.parse_args()
+
+    params = {}
+    if args.t_down is not None:
+        params["t_down"] = args.t_down
+    if args.q_top_torso is not None:
+        params["q_top_torso"] = args.q_top_torso
+    if args.q_top_shoulder is not None:
+        params["q_top_shoulder"] = args.q_top_shoulder
+
+    if args.view:
+        view(params)
+        return
+
+    m, d = load()
+    r = run_swing(m, d, params)
+    if not r["hit"]:
+        print("FALHOU: o taco não tocou na bola.")
+        return
+    print(f"  cabeça do taco no impacto : {r['v_head']:6.1f} m/s")
+    print(f"  bola                      : {r['v_ball']:6.1f} m/s  "
+          f"(smash {r['v_ball']/r['v_head']:.2f})")
+    print(f"  lançamento                : {r['launch']:6.1f} deg   "
+          f"desvio lateral {r['side']:+.1f} deg")
+    print(f"  juntas no impacto         : torso {r['q_impact'][0]:+.1f} deg, "
+          f"shoulder {r['q_impact'][1]:+.1f} deg   (alvo: 0, 0)")
+    print(f"  carry (até aterrar)       : {r['carry']:6.1f} m   "
+          f"(desvio lateral {r['land_y']:+.2f} m)")
+    print(f"  binário máx usado         : torso {r['tau_max'][0]:.0f} N.m, "
+          f"shoulder {r['tau_max'][1]:.0f} N.m")
+    print(f"  saturação no downswing    : torso {r['sat'][0]*100:.0f} %, "
+          f"shoulder {r['sat'][1]*100:.0f} %")
+
+
+if __name__ == "__main__":
+    main()
