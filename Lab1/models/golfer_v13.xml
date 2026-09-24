@@ -1,46 +1,57 @@
 <!--
-  Golfista V13 — 2 dof (tronco + braços/taco), versão "boneco".
-  Branch: feature/boneco-golfista
+  Golfista V13 — 2 dof atuados: BRAÇO + PULSO (pêndulo duplo).
 
   IDEIA
   Corpo inspirado no humanoid de cápsulas do MuJoCo (model/humanoid/humanoid.xml,
-  Apache 2.0), mas com proporções de um adulto de ~1.78 m e posto na POSTURA DE
-  ENDEREÇO de um golfista destro com um ferro 7. Tudo o que não é dof está
-  "congelado" nessa pose (corpos rígidos, sem junta). Só há 2 juntas atuadas:
+  Apache 2.0), com proporções de um adulto de ~1.78 m / 82 kg, posto na POSTURA
+  DE ENDEREÇO de um golfista destro com um ferro 7. Tudo o que não é dof está
+  "congelado" nessa pose (corpos rígidos, sem junta).
 
-    torso    — rotação do tronco em torno da COLUNA INCLINADA (35° para a frente).
-               Separa ombros de ancas (o "X-factor" do golf): as pernas/pélvis
-               ficam fixas ao chão, só o tronco roda.
-    shoulder — braços + taco rodam como um bloco rígido em torno do ombro
-               esquerdo, num eixo PERPENDICULAR AO PLANO DE SWING (plano que
-               contém a linha do alvo e a reta ombro esquerdo→bola, ~69° com o
-               chão). Não é um hinge horizontal: o swing real é inclinado.
+  Os 2 dof são os do modelo clássico do swing, o pêndulo duplo de Cochran &
+  Stobbs (Search for the Perfect Swing, 1968):
+
+    shoulder — os braços rodam em bloco em torno do CENTRO DO PEITO, num eixo
+               perpendicular ao plano de swing (plano que contém a linha do alvo
+               e a reta peito→bola). 1.º pêndulo.
+    wrist    — o taco roda em torno do punho, no mesmo plano. 2.º pêndulo. É o
+               que gera velocidade: armado no topo (taco perto do eixo => inércia
+               baixa) e solto tarde, entregando a energia a uma alavanca longa.
+
+  Porquê estes dois e não tronco + braços (a 1.ª versão deste ficheiro): esses
+  dois tinham correlação 0.905 na matriz de massa — eixos a 35° um do outro, a
+  rodar o mesmo taco sempre esticado. Eram quase o mesmo movimento, e nenhum
+  mudava o raio. Com braço + pulso a correlação cai para 0.57 e a velocidade da
+  cabeça passa de 25.7 para 37.2 m/s.
 
   Convenção de sinais: q = 0 na pose de endereço (cabeça do taco atrás da bola).
-  q < 0 = backswing (afasta do alvo), q > 0 = downswing / follow-through.
+  q < 0 = backswing (braço para trás / pulso a armar), q > 0 = follow-through.
 
   REFERENCIAIS
     world  — origem na bola (no chão), X = direção do alvo, Z para cima.
              O golfista está do lado +Y, a olhar para -Y (para a bola).
-    torso  — origem no centro da anca, eixo de rotação = direção da coluna.
-    arms   — origem no ombro esquerdo, eixo = normal ao plano de swing.
+    torso  — origem no centro da anca. SEM junta: rígido.
+    arms   — origem no centro do peito (entre os ombros); eixo = normal ao plano
+             de swing.
+    club   — origem no punho (ponto médio das duas mãos); mesmo eixo.
+  Os corpos não têm rotação própria: em q = 0 os eixos de todos coincidem com os
+  do mundo, o que torna as coordenadas dos geoms diretamente legíveis.
 
   GEOMETRIA DO TACO (ferro 7, valores típicos)
-    comprimento ~0.94 m · lie 62° (haste vs chão) · loft 32° (face vs vertical)
+    comprimento ~0.94 m · lie 62° (haste vs chão) · face a 32° da vertical
     haste inclinada 5° para o alvo (mãos ligeiramente à frente da bola)
     massa total ~0.43 kg, dos quais 0.26 kg na cabeça
 
-  SIMPLIFICAÇÕES (ir para o relatório)
-    - pernas, ancas, pulsos e cotovelos rígidos na pose de endereço;
-    - braços + taco = um único corpo rígido: não há "quebra" do pulso (isso é o
-      2.º pêndulo do modelo de Cochran & Stobbs → V17);
-    - os braços rodam em bloco em torno do centro do peito; como são rígidos,
-      os ombros deslizam alguns cm face ao tronco no meio do swing (visual);
+  SIMPLIFICAÇÕES
+  Lista completa, com o impacto de cada uma no realismo, em
+  report/simplificacoes.md. As principais:
+    - pernas, ancas, tronco e cotovelos rígidos na pose de endereço;
+    - os dois braços são UM corpo rígido (não há ombros articulados);
     - corpo sem contactos (só visual); só a cabeça do taco bate na bola;
-    - a sola da cabeça pode entrar uns mm no chão (não colide com ele —
-      os tacos reais também tiram "divot" nos ferros).
+    - a sola da cabeça pode entrar uns mm no chão (não colide com ele — os
+      ferros reais também tiram "divot");
+    - sem aerodinâmica: a bola faz uma parábola.
   Massas: tabelas antropométricas aproximadas (braço ~5 % de 80 kg).
-  Gerado a partir de build.py (cálculo da pose); números em metros.
+  Números em metros, ângulos em graus.
 -->
 <mujoco model="golfer_v13">
   <compiler angle="degree"/>

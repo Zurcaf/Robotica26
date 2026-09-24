@@ -1,5 +1,5 @@
 """
-Swing do golfista V13 — 2 dof atuados (tronco + braços/taco).
+Swing do golfista V13 — 2 dof atuados: braço + pulso (pêndulo duplo).
 
 Uso (a partir de Lab1/):
     python src/swing.py                 # corre um swing e imprime os resultados
@@ -12,8 +12,8 @@ O problema central com 2 dof é que a cabeça do taco só passa na bola quando
 AS DUAS juntas estão em q = 0 ao mesmo tempo (é assim que a pose de endereço
 está definida no XML). Se uma junta chega antes da outra, o arco passa ao lado
 ou por cima da bola, e a face chega com a orientação errada — foi o que fez o
-primeiro teste falhar (impacto a torso=+17°, shoulder=-12° => a bola era
-enterrada no chão em vez de levantar voo).
+primeiro teste falhar (na 1.ª versão do modelo, o impacto dava-se a +17°/-12°
+nas duas juntas => a bola era enterrada no chão em vez de levantar voo).
 
 Resolve-se em duas partes:
 
@@ -89,11 +89,12 @@ def reference(t, p):
     Fases:
       [0, t_back)                   backswing, jerk mínimo de 0 até q_topo
       [t_back, t_back+t_pause)      pausa no topo
-      [.., +t_down)                 downswing em cosseno -> q = 0 no impacto
-      [.., +t_down)                 follow-through (o cosseno continua sozinho)
+      [.., +t_down)                 downswing -> q = 0 no impacto (braço em
+                                    parábola; pulso armado e depois a soltar)
+      [.., +0.35*t_down)            follow-through
       depois                        mantém a pose final
 
-    Devolve (q_ref, v_ref, a_ref), cada um com 2 elementos [torso, shoulder].
+    Devolve (q_ref, v_ref, a_ref), cada um com 2 elementos [braço, pulso].
     """
     q_top = np.radians([p["q_top_shoulder"], p["q_top_wrist"]])
     t_back, t_pause, t_down = p["t_back"], p["t_pause"], p["t_down"]
@@ -201,7 +202,7 @@ def run_swing(model, data, params=None, noise=None, seed=None):
                  NOTA IMPORTANTE: o ruído é mantido constante durante 1/freq
                  segundos (amostragem com retenção de ordem zero) e NÃO
                  re-amostrado a cada passo de integração. Ruído branco por passo
-                 seria fisicamente errado aqui: com dt = 5e-5 s há ~9200 passos
+                 seria fisicamente errado aqui: com dt = 5e-5 s há ~6000 passos
                  num downswing, as amostras independentes cancelavam-se e o
                  efeito media-se a quase zero (o desvio do carry dava 0.03 m).
                  Pior: o resultado dependia do passo de integração escolhido,
@@ -215,6 +216,9 @@ def run_swing(model, data, params=None, noise=None, seed=None):
       side      desvio lateral do lançamento [deg] (+ = para a direita do alvo)
       q_impact  ângulos das juntas no impacto [deg] — devem ser ~(0, 0)
       ball_pos  posição final da bola [m] (x = direção do alvo)
+      attack    ângulo de ataque da cabeça no impacto [deg] (<0 = a descer)
+      loft_dyn  loft dinâmico: inclinação da face no impacto [deg]
+      spin_rpm  rotação da bola ao sair da face [rpm]
       carry     distância de voo até à 1.ª aterragem [m] — métrica principal
       land_y    desvio lateral no ponto de aterragem [m]
       dist      distância total em x (voo + rolamento) [m]; ver nota no código
@@ -255,6 +259,7 @@ def run_swing(model, data, params=None, noise=None, seed=None):
     launch_done = False
     carry = np.nan
     land_y = np.nan
+    attack = loft_dyn = spin_rpm = np.nan
     v_head = v_ball = launch = side = np.nan
     q_impact = np.array([np.nan, np.nan])
     tau_max = np.zeros(2)
@@ -308,8 +313,14 @@ def run_swing(model, data, params=None, noise=None, seed=None):
             # parado) o taco encosta na bola em repouso e isso era registado
             # como impacto a ~0 m/s, poluindo as estatísticas.
             mujoco.mj_jacGeom(m, d, J, None, g_clubhead)
-            v_head = float(np.linalg.norm(J @ d.qvel))
+            vh = J @ d.qvel
+            v_head = float(np.linalg.norm(vh))
             q_impact = np.degrees(d.qpos[qadr].copy())
+            # ângulo de ataque: inclinação da trajetória da cabeça (<0 = a descer)
+            attack = float(np.degrees(np.arctan2(vh[2], np.hypot(vh[0], vh[1]))))
+            # loft dinâmico: inclinação da normal da face (eixo x local do geom)
+            n_face = d.geom_xmat[g_clubhead].reshape(3, 3)[:, 0]
+            loft_dyn = float(np.degrees(np.arcsin(np.clip(n_face[2], -1, 1))))
             hit = True
 
         # O lançamento só pode ser medido ENQUANTO a bola está em contacto com
@@ -326,6 +337,8 @@ def run_swing(model, data, params=None, noise=None, seed=None):
                     side = float(np.degrees(np.arctan2(-vb[1], vb[0])))
             else:
                 launch_done = True         # a bola largou a face: congela
+                w = d.cvel[b_ball][:3]     # velocidade angular [rad/s]
+                spin_rpm = float(np.linalg.norm(w) * 60.0 / (2.0 * np.pi))
 
         # --- primeira aterragem: define o CARRY (métrica padrão no golfe).
         # A distância total (voo + rolamento) não é de confiar neste modelo:
@@ -344,6 +357,7 @@ def run_swing(model, data, params=None, noise=None, seed=None):
         v_head=v_head, v_ball=v_ball, launch=launch, side=side,
         q_impact=q_impact, ball_pos=ball_pos, dist=float(ball_pos[0]),
         carry=carry, land_y=land_y,
+        attack=attack, loft_dyn=loft_dyn, spin_rpm=spin_rpm,
         rolling=bool(np.linalg.norm(d.cvel[b_ball][3:]) > 0.05),
         hit=hit, tau_max=tau_max,
         sat=n_sat / max(n_down, 1),
@@ -427,6 +441,8 @@ def main():
           f"(smash {r['v_ball']/r['v_head']:.2f})")
     print(f"  lançamento                : {r['launch']:6.1f} deg   "
           f"desvio lateral {r['side']:+.1f} deg")
+    print(f"  ataque / loft dinâmico    : {r['attack']:+6.1f} / {r['loft_dyn']:.1f} deg   "
+          f"spin {r['spin_rpm']:.0f} rpm")
     print(f"  juntas no impacto         : braço {r['q_impact'][0]:+.1f} deg, "
           f"pulso {r['q_impact'][1]:+.1f} deg   (alvo: 0, 0)")
     if np.isnan(r["carry"]):
