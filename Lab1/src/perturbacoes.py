@@ -59,7 +59,7 @@ def main():
     ap = argparse.ArgumentParser(description="Perturbações no binário das juntas")
     ap.add_argument("--n", type=int, default=20, help="número de swings")
     ap.add_argument("--junta", default="wrist", choices=["wrist", "shoulder"])
-    ap.add_argument("--std", type=float, default=5.0,
+    ap.add_argument("--std", type=float, default=10.0,
                     help="desvio padrão do ruído no binário [N.m]")
     args = ap.parse_args()
 

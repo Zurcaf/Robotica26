@@ -57,11 +57,11 @@ MODEL = "models/golfer_v13.xml"
 DEFAULTS = dict(
     q_top_shoulder=-125.0,  # ângulo dos braços no topo do backswing [deg]
     q_top_wrist=-95.0,      # armação do pulso no topo [deg] (real: ~90)
-    f_release=0.30,         # fração do downswing em que o pulso começa a soltar
+    f_release=0.65,         # fração do downswing em que o pulso começa a soltar
     t_back=0.75,            # duração do backswing [s]
     t_pause=0.05,           # pausa no topo [s]
     t_down=0.30,            # topo -> impacto [s]  (real: 0.25-0.30 s)
-    t_sim=6.0,              # duração total simulada [s] (até a bola parar)
+    t_sim=9.0,              # duração total simulada [s] (tem de dar para a bola aterrar)
     kp=900.0,               # ganhos do PD (rad/s^2 por rad, e por rad/s)
     kd=60.0,
 )
@@ -136,6 +136,11 @@ def reference(t, p):
     # é o que distingue um swing eficiente de um "casting" (soltar cedo): com o
     # taco dobrado a inércia é baixa, logo o braço acelera barato, e a energia
     # é entregue à cabeça do taco no fim, quando o braço de alavanca é longo.
+    #
+    # O efeito é grande e mede-se: mantendo tudo o resto igual,
+    #   f_release = 0.10 -> 26.8 m/s     0.30 -> 29.4 m/s     0.65 -> 37.2 m/s
+    # Soltar tarde vale +39 % de velocidade da cabeça do taco. Acima de ~0.70 o
+    # pulso já não tem tempo de chegar a zero e a batida sai má.
     t_rel = p.get("f_release", 0.55) * t_down
     if u < t_rel:
         q[1], v[1], a[1] = q_top[1], 0.0, 0.0
@@ -405,6 +410,8 @@ def main():
         params["q_top_shoulder"] = args.q_top_shoulder
     if args.q_top_wrist is not None:
         params["q_top_wrist"] = args.q_top_wrist
+    if args.f_release is not None:
+        params["f_release"] = args.f_release
 
     if args.view:
         view(params)
@@ -422,12 +429,22 @@ def main():
           f"desvio lateral {r['side']:+.1f} deg")
     print(f"  juntas no impacto         : braço {r['q_impact'][0]:+.1f} deg, "
           f"pulso {r['q_impact'][1]:+.1f} deg   (alvo: 0, 0)")
-    print(f"  carry (até aterrar)       : {r['carry']:6.1f} m   "
-          f"(desvio lateral {r['land_y']:+.2f} m)")
+    if np.isnan(r["carry"]):
+        print("  carry (até aterrar)       :    -    "
+              "(a bola não aterrou dentro de t_sim)")
+    else:
+        print(f"  carry (até aterrar)       : {r['carry']:6.1f} m   "
+              f"(desvio lateral {r['land_y']:+.2f} m)")
     print(f"  binário máx usado         : braço {r['tau_max'][0]:.0f} N.m, "
           f"pulso {r['tau_max'][1]:.0f} N.m")
     print(f"  saturação no downswing    : braço {r['sat'][0]*100:.0f} %, "
           f"pulso {r['sat'][1]*100:.0f} %")
+    # o taco só passa na bola se as duas juntas chegarem a zero juntas; se o
+    # impacto se der longe de (0,0) a batida é má, por muito boa que a
+    # velocidade pareça
+    if np.abs(r["q_impact"]).max() > 3.0:
+        print("  AVISO: impacto longe de (0,0) — batida má. Provavelmente os "
+              "motores saturaram e a trajetória deixou de ser seguida.")
 
 
 if __name__ == "__main__":
