@@ -1,0 +1,184 @@
+<!--
+  Golfista V13 — 2 dof (tronco + braços/taco), versão "boneco".
+  Branch: feature/boneco-golfista
+
+  IDEIA
+  Corpo inspirado no humanoid de cápsulas do MuJoCo (model/humanoid/humanoid.xml,
+  Apache 2.0), mas com proporções de um adulto de ~1.78 m e posto na POSTURA DE
+  ENDEREÇO de um golfista destro com um ferro 7. Tudo o que não é dof está
+  "congelado" nessa pose (corpos rígidos, sem junta). Só há 2 juntas atuadas:
+
+    torso    — rotação do tronco em torno da COLUNA INCLINADA (35° para a frente).
+               Separa ombros de ancas (o "X-factor" do golf): as pernas/pélvis
+               ficam fixas ao chão, só o tronco roda.
+    shoulder — braços + taco rodam como um bloco rígido em torno do ombro
+               esquerdo, num eixo PERPENDICULAR AO PLANO DE SWING (plano que
+               contém a linha do alvo e a reta ombro esquerdo→bola, ~69° com o
+               chão). Não é um hinge horizontal: o swing real é inclinado.
+
+  Convenção de sinais: q = 0 na pose de endereço (cabeça do taco atrás da bola).
+  q < 0 = backswing (afasta do alvo), q > 0 = downswing / follow-through.
+
+  REFERENCIAIS
+    world  — origem na bola (no chão), X = direção do alvo, Z para cima.
+             O golfista está do lado +Y, a olhar para -Y (para a bola).
+    torso  — origem no centro da anca, eixo de rotação = direção da coluna.
+    arms   — origem no ombro esquerdo, eixo = normal ao plano de swing.
+
+  GEOMETRIA DO TACO (ferro 7, valores típicos)
+    comprimento ~0.94 m · lie 62° (haste vs chão) · loft 32° (face vs vertical)
+    haste inclinada 5° para o alvo (mãos ligeiramente à frente da bola)
+    massa total ~0.43 kg, dos quais 0.26 kg na cabeça
+
+  SIMPLIFICAÇÕES (ir para o relatório)
+    - pernas, ancas, pulsos e cotovelos rígidos na pose de endereço;
+    - braços + taco = um único corpo rígido: não há "quebra" do pulso (isso é o
+      2.º pêndulo do modelo de Cochran & Stobbs → V17);
+    - o braço direito também é rígido; como o eixo passa no ombro ESQUERDO,
+      o ombro direito afasta-se ligeiramente do tronco durante o swing (visual);
+    - corpo sem contactos (só visual); só a cabeça do taco bate na bola;
+    - a sola da cabeça pode entrar uns mm no chão (não colide com ele —
+      os tacos reais também tiram "divot" nos ferros).
+  Massas: tabelas antropométricas aproximadas (braço ~5 % de 80 kg).
+  Gerado a partir de build.py (cálculo da pose); números em metros.
+-->
+<mujoco model="golfer_v13">
+  <compiler angle="degree"/>
+  <!-- timestep pequeno: no impacto a cabeça anda >20 m/s; com dt=5e-4 percorria
+       10 mm por passo (metade do raio da bola) e o contacto ficava mal resolvido.
+       5e-5 s foi escolhido por estudo de convergência: acima disto a velocidade
+       da bola e o ângulo de lançamento ainda dependem do passo (ver
+       report/simplificacoes.md). -->
+  <option gravity="0 0 -9.81" timestep="0.00005"/>
+
+  <visual>
+    <global azimuth="-60" elevation="-15" offwidth="1280" offheight="960"/>
+  </visual>
+  <statistic center="0 0.4 0.8" extent="1.8"/>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1=".55 .75 .95" rgb2=".95 .97 1" width="32" height="512"/>
+    <texture name="grass" type="2d" builtin="checker" width="512" height="512" rgb1=".30 .55 .25" rgb2=".33 .60 .28"/>
+    <material name="grass" texture="grass" texrepeat="8 8" texuniform="true"/>
+    <material name="skin"  rgba="0.85 0.65 0.50 1"/>
+    <material name="shirt" rgba="0.15 0.35 0.65 1"/>
+    <material name="pants" rgba="0.20 0.20 0.22 1"/>
+    <material name="glove" rgba="0.97 0.97 0.97 1"/>
+    <material name="steel" rgba="0.75 0.75 0.78 1" specular="0.8" shininess="0.8"/>
+    <material name="grip"  rgba="0.10 0.10 0.10 1"/>
+  </asset>
+
+  <default>
+    <!-- Por defeito: geoms só visuais (contype/conaffinity = 0) -->
+    <geom type="capsule" contype="0" conaffinity="0" condim="3"/>
+    <joint type="hinge" limited="true" armature="0.01"/>
+    <default class="contact">
+      <!-- Só marca os geoms que participam em contactos. Os parâmetros do
+           impacto taco-bola NÃO ficam aqui: ver <contact><pair> no fim do
+           ficheiro. Se a elasticidade fosse posta no geom da bola, ela era
+           herdada TAMBÉM pelo contacto bola-chão e a bola saltava do relvado
+           como uma bola de borracha (dava ângulos de lançamento de 44°). -->
+      <geom solimp="0.95 0.99 0.001"/>
+    </default>
+  </default>
+
+  <worldbody>
+    <light pos="0 -1 4" dir="0 0.2 -1" diffuse=".8 .8 .8"/>
+    <light pos="-3 3 3" dir="1 -1 -1" diffuse=".3 .3 .3"/>
+    <!-- chão: colide com a bola (bits 1) mas não com a cabeça do taco -->
+    <geom name="floor" type="plane" size="30 30 0.1" material="grass"
+          contype="1" conaffinity="1" friction="0.8 0.005 0.002"/>
+
+    <camera name="face_on"       pos="0.2 -3.6 0.95" xyaxes="1 0 0 0 0.06 1"/>
+    <camera name="down_the_line" pos="-3.2 0.45 1.2" xyaxes="0 -1 0 0.12 0 1"/>
+
+    <!-- ===== Pernas + pélvis: fixas ao mundo (sem junta), joelhos fletidos ===== -->
+    <body name="lower_body">
+      <geom name="pelvis"  fromto="0.090 0.800 0.943 -0.130 0.800 0.943" size="0.09" material="pants" mass="12"/>
+      <geom name="thigh_l" fromto="0.080 0.800 0.943 0.141 0.729 0.512" size="0.07"  material="pants" mass="9"/>
+      <geom name="shin_l"  fromto="0.141 0.729 0.512 0.200 0.660 0.090" size="0.05"  material="pants" mass="4"/>
+      <geom name="foot_l"  type="box" pos="0.200 0.600 0.030" size="0.05 0.12 0.03" material="grip" mass="1"/>
+      <geom name="thigh_r" fromto="-0.120 0.800 0.943 -0.171 0.729 0.511" size="0.07"  material="pants" mass="9"/>
+      <geom name="shin_r"  fromto="-0.171 0.729 0.511 -0.220 0.660 0.090" size="0.05"  material="pants" mass="4"/>
+      <geom name="foot_r"  type="box" pos="-0.220 0.600 0.030" size="0.05 0.12 0.03" material="grip" mass="1"/>
+    </body>
+
+    <!-- ===== Tronco: dof 1 ===== -->
+    <body name="torso" pos="-0.020 0.800 0.943">
+      <!-- eixo = coluna inclinada 35° para a bola; ± em graus, amplitude de um
+           amador flexível: ~90° de rotação de ombros no backswing -->
+      <joint name="torso" axis="0.000 -0.574 0.819" range="-100 70" damping="2"/>
+      <geom name="waist"  fromto="0 0 0 0.000 -0.126 0.180"  size="0.11" material="shirt" mass="12"/>
+      <geom name="chest"  fromto="0.000 -0.126 0.180 0.000 -0.287 0.410" size="0.13" material="shirt" mass="14"/>
+      <geom name="shoulders" fromto="0.180 -0.287 0.410 -0.160 -0.357 0.290" size="0.06" material="shirt" mass="2"/>
+      <geom name="neck"   fromto="0.000 -0.287 0.410 0.000 -0.410 0.540" size="0.045" material="skin" mass="1"/>
+      <!-- cabeça inclinada para baixo, a "olhar" para a bola -->
+      <geom name="head"   type="sphere" pos="0.000 -0.410 0.540" size="0.10" material="skin" mass="5"/>
+      <geom name="cap"    type="ellipsoid" pos="0.000 -0.400 0.600" size="0.105 0.105 0.05" material="glove" mass="0.01"/>
+
+      <!-- ===== Braços + taco: dof 2 (um corpo rígido) ===== -->
+      <body name="arms" pos="0.180 -0.287 0.410">
+        <!-- eixo = normal ao plano de swing (~69° com o chão), a passar no ombro esquerdo -->
+        <joint name="shoulder" axis="0.000 -0.933 0.360" range="-160 170" damping="0.5"/>
+
+        <!-- braço esquerdo (da frente) ESTICADO -->
+        <geom name="upperarm_l" fromto="0 0 0 -0.068 -0.047 -0.319"        size="0.045" material="shirt" mass="2.2"/>
+        <geom name="forearm_l"  fromto="-0.068 -0.047 -0.319 -0.128 -0.089 -0.600" size="0.036" material="skin"  mass="1.3"/>
+        <geom name="hand_l" type="sphere" pos="-0.128 -0.089 -0.600" size="0.042" material="glove" mass="0.5"/>
+
+        <!-- braço direito (de trás) DOBRADO, cotovelo encostado ao corpo -->
+        <geom name="upperarm_r" fromto="-0.340 -0.070 -0.120 -0.297 -0.060 -0.437" size="0.045" material="shirt" mass="2.2"/>
+        <geom name="forearm_r"  fromto="-0.297 -0.060 -0.437 -0.135 -0.131 -0.679" size="0.036" material="skin"  mass="1.3"/>
+        <geom name="hand_r" type="sphere" pos="-0.135 -0.131 -0.679" size="0.040" material="skin" mass="0.5"/>
+
+        <!-- ===== Taco (ferro 7) ===== -->
+        <geom name="grip"  fromto="-0.121 -0.047 -0.521 -0.141 -0.168 -0.750" size="0.012" material="grip"  mass="0.05"/>
+        <geom name="shaft" fromto="-0.141 -0.168 -0.750 -0.192 -0.477 -1.331"   size="0.006" material="steel" mass="0.11"/>
+        <geom name="hosel" fromto="-0.192 -0.477 -1.331 -0.192 -0.493 -1.335"   size="0.008" material="steel" mass="0.01"/>
+        <!-- cabeça: caixa rodada -32° em Y → a face (+x local) fica com loft de 32°.
+             Única parte do golfista que colide (bits 2: toca na bola, não no chão). -->
+        <geom name="clubhead" class="contact" type="box" pos="-0.192 -0.513 -1.339" euler="0 -32 0"
+              size="0.008 0.036 0.022" material="steel" mass="0.26" contype="2" conaffinity="2"/>
+        <site name="clubface" pos="-0.185 -0.513 -1.335" size="0.005" rgba="1 0 0 1"/>
+      </body>
+    </body>
+
+    <!-- ===== Bola de golfe: 45.9 g, Ø 42.7 mm, à frente da face ===== -->
+    <body name="ball" pos="0 0 0.0213">
+      <freejoint name="ball_free"/>
+      <geom name="ball_geom" class="contact" type="sphere" size="0.0213" mass="0.0459"
+            rgba="1 1 1 1" contype="1" conaffinity="3" friction="0.4 0.005 0.002"/>
+      <!-- 3.º valor = atrito de ROLAMENTO. 0.002 m / R=0.0213 m => coeficiente
+           de resistência ao rolamento ~0.09, típico de relva de fairway. Com o
+           valor inicial (0.0001) a bola rolava indefinidamente. -->
+    </body>
+  </worldbody>
+
+  <!-- ===== Parâmetros do impacto taco-bola (só deste par) =====
+       solref = (constante de tempo, coeficiente de amortecimento)
+         0.0004 s ~ duração real de um impacto de golfe (~0.5 ms);
+         o 2.º valor < 1 deixa o contacto SUB-AMORTECIDO, i.e. elástico — é
+         assim que se modela a restituição. Uma bola de golfe tem COR ~0.78-0.83
+         (0.83 é o limite legal da R&A/USGA). Com amortecimento crítico (valor 1)
+         o choque seria perfeitamente inelástico e o "smash factor"
+         (v_bola/v_taco) dava 0.81, contra os ~1.25 de um ferro 7 real.
+       O valor 0.15 foi calibrado por varrimento para dar smash ~1.20 à
+       velocidade de impacto deste modelo (~23 m/s) — ver
+       report/simplificacoes.md. -->
+  <contact>
+    <pair geom1="clubhead" geom2="ball_geom" condim="3"
+          solref="0.0004 0.15" solimp="0.95 0.99 0.001" friction="0.4 0.4 0.005 0.0001 0.0001"/>
+  </contact>
+
+  <actuator>
+    <!-- Motores de binário. ctrlrange ~ binários de pico humanos:
+         rotação axial do tronco ~150 N·m, ombro ~100 N·m -->
+    <motor name="torso_motor"    joint="torso"    gear="1" ctrlrange="-150 150" ctrllimited="true"/>
+    <motor name="shoulder_motor" joint="shoulder" gear="1" ctrlrange="-100 100" ctrllimited="true"/>
+  </actuator>
+
+  <sensor>
+    <framelinvel name="clubhead_vel" objtype="site" objname="clubface"/>
+    <framepos    name="ball_pos"     objtype="body" objname="ball"/>
+  </sensor>
+</mujoco>
