@@ -60,7 +60,7 @@
        5e-5 s foi escolhido por estudo de convergência: acima disto a velocidade
        da bola e o ângulo de lançamento ainda dependem do passo (ver
        report/simplificacoes.md). -->
-  <option gravity="0 0 -9.81" timestep="0.00005"/>
+  <option gravity="0 0 -9.81" timestep="0.00005" density="1.204" viscosity="1.81e-5"/>
 
   <visual>
     <global azimuth="-60" elevation="-15" offwidth="1280" offheight="960"/>
@@ -172,7 +172,7 @@
     <body name="ball" pos="0 0 0.0213">
       <freejoint name="ball_free"/>
       <geom name="ball_geom" class="contact" type="sphere" size="0.0213" mass="0.0459"
-            rgba="1 1 1 1" contype="1" conaffinity="3" friction="0.4 0.005 0.002"/>
+            rgba="1 1 1 1" contype="1" conaffinity="3" friction="0.4 0.005 0.002" fluidshape="ellipsoid" fluidcoef="0.14 0.25 1.5 1.0 1.0"/>
       <!-- 3.º valor = atrito de ROLAMENTO. 0.002 m / R=0.0213 m => coeficiente
            de resistência ao rolamento ~0.09, típico de relva de fairway. Com o
            valor inicial (0.0001) a bola rolava indefinidamente. -->

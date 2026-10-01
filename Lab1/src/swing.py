@@ -185,7 +185,7 @@ def _indices(m):
     return qadr, vadr, uadr
 
 
-def run_swing(model, data, params=None, noise=None, seed=None):
+def run_swing(model, data, params=None, noise=None, seed=None, guardar_traj=False):
     """
     Corre um swing completo e devolve as métricas do impacto.
 
@@ -221,6 +221,10 @@ def run_swing(model, data, params=None, noise=None, seed=None):
       spin_rpm  rotação da bola ao sair da face [rpm]
       carry     distância de voo até à 1.ª aterragem [m] — métrica principal
       land_y    desvio lateral no ponto de aterragem [m]
+      apogeu    altura máxima da bola durante o voo [m]
+      t_voo     tempo entre o lançamento e a 1.ª aterragem [s]
+      descida   ângulo de descida na aterragem [deg] (+ = a cair)
+      traj      trajetória da bola [t, x, y, z] amostrada a cada 2 ms (se guardar_traj)
       dist      distância total em x (voo + rolamento) [m]; ver nota no código
       rolling   True se a bola ainda se movia no fim da simulação
       hit       True se houve contacto taco-bola
@@ -259,6 +263,12 @@ def run_swing(model, data, params=None, noise=None, seed=None):
     launch_done = False
     carry = np.nan
     land_y = np.nan
+    apogeu = 0.0            # altura máxima atingida durante o voo
+    t_launch = np.nan       # instante em que a bola larga a face
+    t_voo = np.nan          # duração do voo
+    descida = np.nan        # ângulo de descida na aterragem
+    v_ant = np.zeros(3)     # velocidade da bola no passo anterior (p/ o ângulo)
+    traj = []               # [t, x, y, z] amostrado a cada 2 ms
     attack = loft_dyn = spin_rpm = np.nan
     v_head = v_ball = launch = side = np.nan
     q_impact = np.array([np.nan, np.nan])
@@ -337,8 +347,18 @@ def run_swing(model, data, params=None, noise=None, seed=None):
                     side = float(np.degrees(np.arctan2(-vb[1], vb[0])))
             else:
                 launch_done = True         # a bola largou a face: congela
+                t_launch = d.time
                 w = d.cvel[b_ball][:3]     # velocidade angular [rad/s]
                 spin_rpm = float(np.linalg.norm(w) * 60.0 / (2.0 * np.pi))
+
+        # --- durante o voo: apogeu e trajetória (para o gráfico e o CSV)
+        if launch_done and np.isnan(carry):
+            pos = d.body("ball").xpos
+            apogeu = max(apogeu, float(pos[2]))
+            tv = d.time - t_launch                      # tempo desde o lançamento
+            if guardar_traj and (not traj or tv - traj[-1][0] >= 0.002):
+                traj.append([tv, float(pos[0]), float(pos[1]), float(pos[2])])
+            v_ant = d.cvel[b_ball][3:].copy()
 
         # --- primeira aterragem: define o CARRY (métrica padrão no golfe).
         # A distância total (voo + rolamento) não é de confiar neste modelo:
@@ -350,6 +370,10 @@ def run_swing(model, data, params=None, noise=None, seed=None):
                 if {c.geom1, c.geom2} == {g_ball, g_floor}:
                     carry = float(d.body("ball").xpos[0])
                     land_y = float(d.body("ball").xpos[1])
+                    t_voo = float(d.time - t_launch)
+                    # ângulo de descida: inclinação da velocidade mesmo antes de tocar
+                    descida = float(np.degrees(np.arctan2(-v_ant[2],
+                                                          np.hypot(v_ant[0], v_ant[1]))))
                     break
 
     ball_pos = d.body("ball").xpos.copy()
@@ -357,6 +381,8 @@ def run_swing(model, data, params=None, noise=None, seed=None):
         v_head=v_head, v_ball=v_ball, launch=launch, side=side,
         q_impact=q_impact, ball_pos=ball_pos, dist=float(ball_pos[0]),
         carry=carry, land_y=land_y,
+        apogeu=apogeu, t_voo=t_voo, descida=descida,
+        traj=np.array(traj) if traj else np.zeros((0, 4)),
         attack=attack, loft_dyn=loft_dyn, spin_rpm=spin_rpm,
         rolling=bool(np.linalg.norm(d.cvel[b_ball][3:]) > 0.05),
         hit=hit, tau_max=tau_max,
@@ -451,6 +477,9 @@ def main():
     else:
         print(f"  carry (até aterrar)       : {r['carry']:6.1f} m   "
               f"(desvio lateral {r['land_y']:+.2f} m)")
+    print(f"  apogeu / tempo de voo     : {r['apogeu']:6.1f} m / {r['t_voo']:.2f} s")
+    print(f"  ângulo de descida         : {r['descida']:6.1f} deg   "
+          f"(sem ar é igual ao de lançamento)")
     print(f"  binário máx usado         : braço {r['tau_max'][0]:.0f} N.m, "
           f"pulso {r['tau_max'][1]:.0f} N.m")
     print(f"  saturação no downswing    : braço {r['sat'][0]*100:.0f} %, "
