@@ -39,8 +39,11 @@ Resolve-se em duas partes:
    onde M é a matriz de massa e h = qfrc_bias reúne Coriolis/centrífugas e
    gravidade. É o controlador clássico de manipuladores: a parte M·a_ref + h
    é o feedforward que "sabe" a dinâmica, e o PD só corrige o erro residual.
-   Os binários são sempre saturados no ctrlrange do XML (±150 / ±100 N·m),
+   Os binários são sempre saturados no ctrlrange do XML (±150 / ±40 N·m),
    por isso o modelo nunca usa força que um humano não conseguisse fazer.
+   O arrasto do ar NÃO entra em h (o MuJoCo põe-no em qfrc_fluid); com
+   comp_fluid=True o controlador também o compensa — ver
+   src/teste_aerodinamica.py para o efeito (pequeno, porque os motores saturam).
 """
 
 import argparse
@@ -49,6 +52,9 @@ import mujoco
 import mujoco.viewer
 
 MODEL = "models/golfer_v13.xml"
+
+DT_IMPACTO = 5e-6   # passo [s] com a cabeça do taco perto da bola (ver run_swing)
+R_IMPACTO = 0.15    # "perto" = centros a menos de 15 cm
 
 # ----------------------------------------------------------------------------
 # Parâmetros do swing (graus e segundos). Os valores por omissão são os que
@@ -64,6 +70,7 @@ DEFAULTS = dict(
     t_sim=9.0,              # duração total simulada [s] (tem de dar para a bola aterrar)
     kp=900.0,               # ganhos do PD (rad/s^2 por rad, e por rad/s)
     kd=60.0,
+    comp_fluid=False,       # True: o controlador compensa também o arrasto do ar
 )
 # Com o modelo de pêndulo duplo (braço + pulso) o downswing já cabe nos 0.30 s
 # de um swing real sem saturar os motores. No modelo anterior (tronco + braços,
@@ -192,9 +199,9 @@ def run_swing(model, data, params=None, noise=None, seed=None):
     params : dict  — sobrepõe DEFAULTS (ver acima).
     noise  : dict  — perturbações, todas opcionais:
                      {"wrist_torque_std": X}  ruído gaussiano [N·m] somado
-                                                 ao binário do ombro
+                                                 ao binário do pulso
                                                  ("pulso trémulo" do enunciado)
-                     {"shoulder_torque_std": X}     idem para o tronco
+                     {"shoulder_torque_std": X}     idem para o braço
                      {"freq": f}                 largura de banda do ruído [Hz],
                                                  por omissão 10 Hz (tremor
                                                  fisiológico humano: 8-12 Hz)
@@ -226,6 +233,7 @@ def run_swing(model, data, params=None, noise=None, seed=None):
       hit       True se houve contacto taco-bola
       tau_max   binário máximo usado em cada junta [N·m]
       sat       fração do downswing em que cada motor esteve saturado
+      fluid_max binário máximo do ar em cada junta até ao impacto [N·m]
     """
     p = dict(DEFAULTS)
     if params:
@@ -264,11 +272,21 @@ def run_swing(model, data, params=None, noise=None, seed=None):
     q_impact = np.array([np.nan, np.nan])
     tau_max = np.zeros(2)
     n_sat = np.zeros(2)
-    n_down = 0
+    n_down = 0.0
+    fluid_max = np.zeros(2)
 
-    nsteps = int(p["t_sim"] / m.opt.timestep)
-    for _ in range(nsteps):
+    # Passo adaptativo: o do XML no resto do swing e no voo, DT_IMPACTO quando a
+    # cabeça do taco está perto da bola. Com 5e-5 s em todo o lado o contacto não
+    # convergia: com mudanças de 1 ms no downswing a velocidade da bola saltava
+    # 44.7-49.0 m/s, conforme o ponto do passo em que o contacto começava.
+    # Com 5e-6 s perto da bola fica em 46.9-47.3 m/s (~1 %). O passo fino só
+    # dura alguns ms, por isso o custo extra é desprezável.
+    dt_base = m.opt.timestep
+    while d.time < p["t_sim"]:
         t = d.time
+        perto = np.linalg.norm(d.geom_xpos[g_clubhead] - d.geom_xpos[g_ball]) < R_IMPACTO
+        dt = DT_IMPACTO if perto else dt_base
+        m.opt.timestep = dt
         q_ref, v_ref, a_ref = reference(t, p)
         q = d.qpos[qadr]
         v = d.qvel[vadr]
@@ -279,6 +297,8 @@ def run_swing(model, data, params=None, noise=None, seed=None):
         h2 = d.qfrc_bias[vadr]
         a_cmd = a_ref + kd * (v_ref - v) + kp * (q_ref - q)
         tau = M2 @ a_cmd + h2
+        if p["comp_fluid"]:
+            tau = tau - d.qfrc_fluid[vadr]     # arrasto do ar (não está em h)
 
         # --- perturbações (Tarefa 2): ruído com banda limitada
         if noise:
@@ -290,11 +310,22 @@ def run_swing(model, data, params=None, noise=None, seed=None):
 
         # --- saturação: nunca sair do ctrlrange declarado no XML
         tau_sat = np.clip(tau, ctrl_lo, ctrl_hi)
+        if t <= t_impact_ref:
+            fluid_max = np.maximum(fluid_max, np.abs(d.qfrc_fluid[vadr]))
         if p["t_back"] <= t <= t_impact_ref:
-            n_down += 1
-            n_sat += np.abs(tau - tau_sat) > 1e-9
+            n_down += dt
+            n_sat += dt * (np.abs(tau - tau_sat) > 1e-9)
         tau_max = np.maximum(tau_max, np.abs(tau_sat))
         d.ctrl[uadr] = tau_sat
+
+        # Estado ANTES do passo: é nele que o mj_step deteta os contactos. Depois
+        # do passo, d.qvel já inclui parte do impulso do contacto, e ler a
+        # velocidade da cabeça aí dava valores que saltavam 34.9-37.2 m/s com
+        # mudanças de 1 ms no downswing (smash 1.22-1.47, sem sentido físico).
+        if not hit and abs(t - t_impact_ref) < 0.20:
+            mujoco.mj_jacGeom(m, d, J, None, g_clubhead)
+            vh_pre = J @ d.qvel
+            q_pre = d.qpos[qadr].copy()
 
         mujoco.mj_step(m, d)
 
@@ -312,10 +343,9 @@ def run_swing(model, data, params=None, noise=None, seed=None):
             # acabava por ser contado como acerto: no follow-through (ou já
             # parado) o taco encosta na bola em repouso e isso era registado
             # como impacto a ~0 m/s, poluindo as estatísticas.
-            mujoco.mj_jacGeom(m, d, J, None, g_clubhead)
-            vh = J @ d.qvel
+            vh = vh_pre
             v_head = float(np.linalg.norm(vh))
-            q_impact = np.degrees(d.qpos[qadr].copy())
+            q_impact = np.degrees(q_pre)
             # ângulo de ataque: inclinação da trajetória da cabeça (<0 = a descer)
             attack = float(np.degrees(np.arctan2(vh[2], np.hypot(vh[0], vh[1]))))
             # loft dinâmico: inclinação da normal da face (eixo x local do geom)
@@ -327,15 +357,19 @@ def run_swing(model, data, params=None, noise=None, seed=None):
         # a face (e no passo seguinte). Depois disso a gravidade acelera-a na
         # descida e a velocidade volta a subir — medir o máximo ao longo de
         # todo o voo dava a velocidade de aterragem, com ângulo negativo.
+        # O "passo seguinte" conta mesmo: d.cvel e d.contact são calculados no
+        # início do mj_step, antes da integração, por isso a velocidade do passo
+        # em que o contacto acaba ainda é a do último instante de contacto.
+        # Sem esta amostra a medição dependia de onde caía o fim do contacto:
+        # com ar no taco media 37.6 m/s para uma bola que saía a 46.5 m/s.
         if hit and not launch_done:
-            if touching:
-                vb = d.cvel[b_ball][3:].copy()
-                s = float(np.linalg.norm(vb))
-                if not (v_ball >= s):      # cobre o caso v_ball = nan
-                    v_ball = s
-                    launch = float(np.degrees(np.arctan2(vb[2], np.hypot(vb[0], vb[1]))))
-                    side = float(np.degrees(np.arctan2(-vb[1], vb[0])))
-            else:
+            vb = d.cvel[b_ball][3:].copy()
+            s = float(np.linalg.norm(vb))
+            if not (v_ball >= s):          # cobre o caso v_ball = nan
+                v_ball = s
+                launch = float(np.degrees(np.arctan2(vb[2], np.hypot(vb[0], vb[1]))))
+                side = float(np.degrees(np.arctan2(-vb[1], vb[0])))
+            if not touching:
                 launch_done = True         # a bola largou a face: congela
                 w = d.cvel[b_ball][:3]     # velocidade angular [rad/s]
                 spin_rpm = float(np.linalg.norm(w) * 60.0 / (2.0 * np.pi))
@@ -352,6 +386,7 @@ def run_swing(model, data, params=None, noise=None, seed=None):
                     land_y = float(d.body("ball").xpos[1])
                     break
 
+    m.opt.timestep = dt_base
     ball_pos = d.body("ball").xpos.copy()
     return dict(
         v_head=v_head, v_ball=v_ball, launch=launch, side=side,
@@ -360,7 +395,8 @@ def run_swing(model, data, params=None, noise=None, seed=None):
         attack=attack, loft_dyn=loft_dyn, spin_rpm=spin_rpm,
         rolling=bool(np.linalg.norm(d.cvel[b_ball][3:]) > 0.05),
         hit=hit, tau_max=tau_max,
-        sat=n_sat / max(n_down, 1),
+        sat=n_sat / max(n_down, 1e-12),
+        fluid_max=fluid_max,
     )
 
 
