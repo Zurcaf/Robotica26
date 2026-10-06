@@ -1,0 +1,414 @@
+% =============================================================================
+%  Robótica (MEEC, IST) — Lab 1: simulação do swing de golfe em MuJoCo
+%  Compilar com:  latexmk -pdf main.tex   (corre pdflatex + bibtex as vezes
+%  necessárias; no VS Code basta gravar, o LaTeX Workshop faz o resto)
+%  Figuras em Photos/, geradas pelos scripts em ../../src/ (ver README.md):
+%    v17_sequencia_face_on.png, v17_sequencia_down_the_line.png  <- renders.py --strip
+%    v17_sequencia.png                                            <- sequencia.py
+%    v17_dispersao.png                                            <- perturbacoes.py
+%    v17_aerodinamica.png                                         <- teste_aerodinamica.py
+%  Bibliografia: refs.bib (bibtex, estilo IEEEtran)
+% =============================================================================
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[portuguese]{babel}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{amsmath}
+\usepackage{siunitx}
+\usepackage{caption}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage[hidelinks]{hyperref}
+
+\sisetup{output-decimal-marker={,}, per-mode=symbol}
+
+\lstset{basicstyle=\ttfamily\footnotesize, breaklines=true,
+        frame=single, framesep=4pt, backgroundcolor=\color{gray!8},
+        columns=flexible, keepspaces=true}
+
+\title{\textbf{Golfe swing in MuJoCo}\\[2mm]
+       \large Robótica}
+\author{{Afonso Cruz (102815)} \and {Eduardo Batista (99931)} \and {Henrique Póvoa (102109)}}
+\date{Grupo {nº\textbf{1}} \quad --- \quad 9/10/2026}
+
+% \fig{ficheiro}{largura}: inclui a figura se existir; senão deixa um aviso
+% visível, para que a compilação nunca falhe por uma figura ainda não gerada.
+\newcommand{\fig}[2]{\IfFileExists{#1}{\includegraphics[width=#2]{#1}}%
+  {\fbox{\parbox{#2}{\centering\ttfamily\small figura em falta: \detokenize{#1}}}}}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+Simula-se o swing de um jogador de golfe com um ferro~7, tratando o conjunto
+jogador\,+\,taco como um robot articulado. O modelo tem três graus de liberdade
+atuados --- rotação do tronco, elevação do braço esquerdo e pulso --- e um braço
+direito passivo preso ao punho do taco. É controlado por binário calculado sobre
+uma trajetória de polinómios de 5.º grau em que as três juntas cruzam a pose de
+endereço no mesmo instante. O swing atinge \SI{27.4}{\meter\per\second} na
+cabeça do taco e \SI{31.7}{\meter\per\second} na bola (\emph{smash factor}
+1,16), com binários dentro de limites humanos. O movimento é visualmente
+plausível e sem penetrações relevantes, mas fica abaixo da velocidade de um
+amador (30--38\,\si{\meter\per\second}), e o ângulo de lançamento é demasiado
+alto. Ensaios com ruído de binário em cada junta mostram que o pulso é a junta
+mais sensível. Usou-se MuJoCo 3.13 com Python~3.11.
+\end{abstract}
+
+
+% =============================================================================
+\section{Tarefa 1 --- Modelo do jogador e do taco}
+% =============================================================================
+
+O modelo (\texttt{models/golfer\_v13.xml}) representa um adulto de
+\SI{1.78}{\meter} e \SI{82}{\kilo\gram}, destro, na postura de endereço com um
+ferro~7. Pernas e pélvis estão fixas ao mundo; o resto do corpo move-se com os
+graus de liberdade da Tabela~\ref{tab:dof}.
+
+\begin{table}[h]
+\centering
+\caption{Graus de liberdade do modelo.}
+\label{tab:dof}
+\small
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}Xcc@{}}
+\toprule
+Junta & Movimento & Amplitude & Binário máx. \\
+\midrule
+\multicolumn{4}{@{}l}{\emph{Atuadas}} \\
+\texttt{torso}    & rotação do tronco em torno da coluna (inclinada \ang{35}) & \ang{-100} a \ang{95} & \SI{150}{\newton\meter} \\
+\texttt{shoulder} & elevação do braço esquerdo à frente do peito & \ang{-115} a \ang{10} & \SI{100}{\newton\meter} \\
+\texttt{wrist}    & taco em relação ao braço esquerdo, no plano do swing & \ang{-110} a \ang{120} & \SI{40}{\newton\meter} \\
+\midrule
+\multicolumn{4}{@{}l}{\emph{Passivas}} \\
+\texttt{shoulder\_r}, \texttt{elbow\_r} & braço direito (esférica + charneira) & --- & --- \\
+\texttt{neck}     & cabeça, acoplada a $-$\texttt{torso} & --- & --- \\
+\texttt{ball\_free} & bola (6 dof) & --- & --- \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Juntas atuadas}
+
+O modelo tem três juntas com motor:
+
+\begin{description}
+  \item[\texttt{torso}] roda o tronco em torno da coluna. Os dois braços estão
+        presos aos ombros, por isso o tronco leva-os consigo.
+  \item[\texttt{shoulder}] levanta o braço esquerdo, que está sempre esticado.
+        O eixo é aproximadamente a linha dos ombros: o braço sobe pela frente do
+        peito, e é o tronco que o leva para trás, como num corpo humano.
+  \item[\texttt{wrist}] roda o taco em relação ao braço esquerdo.
+\end{description}
+
+O braço esquerdo e o taco formam um pêndulo duplo, o modelo clássico do swing
+proposto por Cochran \& Stobbs~\cite{cochran1968,jorgensen1970}. O pulso arma no topo do backswing
+e só abre perto do impacto.
+
+Numa versão anterior do modelo, os dois braços eram um único corpo rígido a
+rodar em torno do peito. Essa versão era mais rápida, mas os braços atravessavam
+o peito e o pescoço no backswing.
+
+\subsection{Juntas passivas}
+
+O braço direito não tem motores. A mão direita está presa ao punho do taco por
+uma restrição \texttt{connect}, e o braço limita-se a acompanhar o movimento: o
+cotovelo dobra no backswing e estica no impacto. A restrição deixa um grau de
+liberdade livre (o cotovelo pode rodar em torno da reta ombro--mão), que é fixado
+por uma mola fraca.
+
+A cabeça está ligada ao tronco por uma restrição entre juntas que a faz rodar o
+mesmo ângulo em sentido contrário. Assim fica parada, a olhar para a bola.
+
+\subsection{Referenciais e convenção de sinais}
+
+O referencial do mundo tem origem na bola, com $x$ na direção do alvo e $z$ para
+cima. O jogador está do lado $+y$. Na pose de endereço todas as juntas estão em
+$q=0$ e os eixos de todos os corpos coincidem com os do mundo.
+
+A convenção de sinais é:
+
+\begin{itemize}
+  \item \textbf{tronco e pulso:} $q<0$ no backswing, $q>0$ no follow-through;
+  \item \textbf{ombro:} $q<0$ com o braço levantado, tanto no backswing como no
+        follow-through.
+\end{itemize}
+
+Daqui resulta a condição que domina todo o controlo: a cabeça do taco só passa
+na bola quando as três juntas estão em $q=0$ ao mesmo tempo.
+
+\subsection{Parâmetros físicos}
+
+As massas seguem tabelas antropométricas aproximadas. As inércias são calculadas
+pelo MuJoCo a partir da forma e da massa de cada \texttt{geom}.
+
+\begin{itemize}
+  \item \textbf{Braços:} \SI{4}{\kilo\gram} cada.
+  \item \textbf{Taco:} \SI{0.43}{\kilo\gram}, dos quais \SI{0.26}{\kilo\gram}
+        na cabeça; \emph{loft} de \ang{32}.
+  \item \textbf{Bola:} \SI{45.9}{\gram}, \SI{42.7}{\milli\meter} de diâmetro.
+  \item \textbf{Binários máximos:} valores de pico humanos
+        (Tabela~\ref{tab:dof}).
+  \item \textbf{Atrito nas juntas:} amortecimento viscoso de 2, 0{,}5 e
+        \SI{0.1}{\newton\meter\second} no tronco, ombro e pulso.
+  \item \textbf{Inércia de rotor:} \SI{0.01}{\kilo\gram\meter\squared} em cada
+        junta, para estabilizar a integração.
+\end{itemize}
+
+\subsection{Contacto e passo de integração}
+
+Só a cabeça do taco e a bola colidem. O corpo do jogador é apenas visual, e o
+taco não toca no chão, o que evita ter de modelar o \emph{divot}. O impacto é
+definido num par de contacto dedicado:
+
+\begin{lstlisting}[language=XML]
+<pair geom1="clubhead" geom2="ball_geom" condim="3"
+      solref="0.0004 0.15" solimp="0.95 0.99 0.001"
+      friction="0.4 0.4 0.005 0.0001 0.0001"/>
+\end{lstlisting}
+
+Os dois valores de \texttt{solref} têm significado físico:
+
+\begin{itemize}
+  \item \SI{0.4}{\milli\second} é a constante de tempo do contacto, igual à
+        duração real de um impacto de golfe;
+  \item 0,15 é a razão de amortecimento. Sendo muito inferior a 1, o contacto
+        fica sub-amortecido e a bola ressalta na face. É assim que se impõe a
+        restituição.
+\end{itemize}
+
+Estes parâmetros estão no par e não no \texttt{geom} da bola. Se estivessem na
+bola, seriam também usados no contacto com a relva.
+
+O passo de integração é \SI{5e-5}{\second}. É o impacto que o impõe: a
+\SI{27}{\meter\per\second}, a cabeça do taco avança \SI{1.4}{\milli\meter} por
+passo, bem menos do que o raio da bola.
+\begin{table}[h]
+\centering
+\caption{Simplificações e consequências.}
+\label{tab:simpl}
+\begin{tabular}{p{5.0cm}p{9.7cm}}
+\toprule
+Simplificação & Impacto no realismo \\
+\midrule
+Pernas e pélvis rígidas &
+Toda a rotação vem do tronco; não há rotação das ancas ($\sim\ang{45}$ num swing
+real) nem transferência de peso. Limita a velocidade da cabeça do taco. \\
+Cotovelo esquerdo rígido &
+O follow-through é curto: num swing real o braço da frente dobra depois do
+impacto. \\
+Ombro esquerdo com 1 dof &
+Um ombro real tem 3 e a omoplata desliza. \\
+Pulso com 1 dof, sem rotação dos antebraços &
+A face do taco não abre nem fecha, logo o modelo não reproduz \emph{slice} nem
+\emph{hook}. \\
+Corpo sem contactos &
+Nada impede fisicamente os braços de atravessar o corpo; verificou-se à parte
+(Secção~\ref{sec:nominal}). \\
+Taco rígido, cabeça em caixa &
+Sem flexão da haste nem geometria real da face. \\
+Relva como plano rígido; sem aerodinâmica &
+A bola voa em parábola e o rolamento é exagerado; usa-se o \emph{carry} como
+métrica. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% =============================================================================
+\section{Tarefa 2 --- Controlo e ensaios}
+% =============================================================================
+
+\subsection{Trajetória de referência e controlador}
+
+A referência de cada junta é uma sequência de três polinómios de 5.º grau
+(backswing de \SI{0.80}{\second}, pausa de \SI{0.05}{\second}, downswing de
+\SI{0.30}{\second} e follow-through), com aceleração nula nas extremidades, pelo
+que posição, velocidade e aceleração são contínuas e os binários pedidos não têm
+degraus. O topo é $(\ang{-90}, \ang{-85}, \ang{-95})$ para tronco, ombro e
+pulso. A trajetória imita a sequência de um swing humano:
+
+\begin{itemize}
+  \item \textbf{Backswing:} tronco e braço arrancam juntos; o pulso só começa a
+        armar a \SI{30}{\percent} do backswing.
+  \item \textbf{Downswing:} o tronco arranca primeiro, o braço a
+        \SI{10}{\percent}, e o pulso fica armado até \SI{55}{\percent}
+        (\emph{lag}).
+  \item \textbf{Impacto:} as três juntas chegam a $q=0$ no mesmo instante
+        ($t=\SI{1.15}{\second}$), mas com velocidades diferentes: o braço chega
+        parado (ponto mais baixo do arco das mãos), o tronco ainda a rodar e o
+        pulso no pico de velocidade.
+  \item \textbf{Follow-through:} cada junta trava suavemente até à pose final
+        $(\ang{85}, \ang{-70}, \ang{105})$.
+\end{itemize}
+
+A trajetória é seguida por binário calculado,
+\begin{equation}
+  \boldsymbol\tau = M(q)\left[\ddot q_{\text{ref}}
+      + K_d\left(\dot q_{\text{ref}} - \dot q\right)
+      + K_p\left(q_{\text{ref}} - q\right)\right] + h(q,\dot q),
+  \label{eq:ct}
+\end{equation}
+com $M$ a submatriz de massa das três juntas atuadas (\texttt{mj\_fullM}), $h$
+os termos de Coriolis, centrífugos e de gravidade (\texttt{qfrc\_bias}),
+$K_p = 900$ e $K_d = 60$. O braço direito e a cabeça não entram em $M$; o seu
+efeito é tratado como perturbação e corrigido pelo PD. Os binários são saturados
+nos limites do XML.
+
+\subsection{Ensaio nominal}
+\label{sec:nominal}
+
+\begin{figure}[h]
+\centering
+\fig{Photos/v17_sequencia_face_on.png}{\textwidth}\\[1mm]
+\fig{Photos/v17_sequencia_down_the_line.png}{\textwidth}
+\caption{Fases do swing simulado, câmaras \emph{face-on} (cima) e
+\emph{down-the-line} (baixo).}
+\label{fig:fases}
+\end{figure}
+
+A Figura~\ref{fig:fases} mostra as sete fases do swing. O braço direito dobra no
+topo e estica no impacto sem ser comandado, a cabeça fica parada, e a pose de
+impacto reproduz a de endereço. A penetração máxima medida entre partes móveis e
+o corpo é de \SI{1.7}{\milli\meter} (braço esquerdo contra o peito, perto do
+topo).
+
+\begin{figure}[h]
+\centering
+\fig{Photos/v17_sequencia.png}{0.72\textwidth}
+\caption{Ângulos, velocidades e binários das três juntas atuadas.}
+\label{fig:seq}
+\end{figure}
+
+Na Figura~\ref{fig:seq} o seguimento da referência é quase exato, com as três
+juntas a cruzar zero no impacto. As velocidades mostram o padrão proximal
+$\to$ distal: tronco e braço atingem o pico ($\sim$\num{440} e
+$\sim$\SI{575}{\degree\per\second}) cerca de \SI{0.1}{\second} antes do impacto
+e travam, enquanto o pulso dispara para $\sim$\SI{1360}{\degree\per\second}
+exatamente no impacto. A ordem entre tronco e braço não é a de um swing real
+(o braço atinge o pico ligeiramente antes do tronco). Os binários ficam dentro
+dos limites: tronco e ombro nunca saturam no downswing (picos de 147 e
+\SI{93}{\newton\meter}, o do tronco a travar depois do impacto) e o pulso satura
+em \SI{13}{\percent} do downswing.
+
+\begin{table}[h]
+\centering
+\caption{Swing nominal e valores típicos de um amador com ferro~7.}
+\label{tab:nominal}
+\begin{tabular}{lccc}
+\toprule
+Grandeza & Modelo & Real & \\
+\midrule
+Duração do downswing          & \SI{0.30}{\second} & 0,25--0,30 & ok \\
+Juntas no impacto (tronco, ombro, pulso) & $(\ang{-1.5},\,\ang{+0.1},\,\ang{+2.5})$ & $(0,0,0)$ & ok \\
+\emph{Smash factor}           & 1,16 & 1,25--1,33 & baixo \\
+Velocidade da cabeça do taco  & \SI{27.4}{\meter\per\second} & 30--38 & baixo \\
+Velocidade da bola            & \SI{31.7}{\meter\per\second} & $\sim$45 & baixo \\
+Ângulo de lançamento          & \ang{32.4} & 16--20 & alto \\
+\emph{Carry}                  & \SI{97}{\meter} & 140--150 & baixo \\
+Desvio lateral na aterragem   & \SI{-0.6}{\meter} & --- & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Ensaios com perturbações}
+
+Somou-se ruído gaussiano de $\sigma = \SI{10}{\newton\meter}$ ao binário de uma
+junta de cada vez e repetiu-se o swing $N=20$ vezes por junta. O ruído é mantido
+constante durante \SI{0.1}{\second} (\SI{10}{\hertz}, a banda do tremor
+fisiológico) em vez de reamostrado a cada passo: com ruído branco por passo as
+$\sim$6000 amostras de um downswing cancelam-se e o resultado passa a depender
+do passo de integração.
+
+\begin{table}[h]
+\centering
+\caption{Efeito do ruído de binário ($\sigma=\SI{10}{\newton\meter}$, $N=20$),
+média $\pm$ desvio padrão dos swings válidos.}
+\label{tab:pert}
+\small
+\begin{tabular}{lcccccc}
+\toprule
+Junta & $\sigma/\tau_{\max}$ & Válidos & $v_{\text{cab}}$ [\si{\meter\per\second}] & Lanç. [\si{\degree}] & \emph{Carry} [\si{\meter}] & Lateral [\si{\meter}] \\
+\midrule
+\texttt{torso}    & 6{,}7\,\% & 20/20 & $26{,}2 \pm 0{,}6$ & $35{,}2 \pm 1{,}5$ & $115 \pm 11$ & $-0{,}8 \pm 0{,}2$ \\
+\texttt{shoulder} & 10\,\% & 20/20 & $26{,}7 \pm 0{,}5$ & $34{,}1 \pm 1{,}8$ & $106 \pm 7$  & $+1{,}0 \pm 6{,}9$ \\
+\texttt{wrist}    & 25\,\% & 9/20  & $26{,}3 \pm 0{,}7$ & $35{,}2 \pm 1{,}5$ & $116 \pm 12$ & $-0{,}7 \pm 0{,}4$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\fig{Photos/v17_dispersao.png}{0.62\textwidth}
+\caption{Pontos de aterragem dos swings válidos.}
+\label{fig:dispersao}
+\end{figure}
+
+\textbf{O pulso é a junta mais sensível.} Em 11 dos 20 swings o ruído empurra o
+taco contra a bola ainda no endereço e desloca-a antes do swing: \SI{10}{\newton\meter}
+são \SI{25}{\percent} do binário disponível no pulso e atuam sobre a inércia
+pequena do taco. No tronco e no ombro, com inércias e binários maiores, o mesmo
+ruído nunca causa uma falha.
+
+\textbf{Nos swings válidos o efeito é no alcance, não na direção.} A velocidade
+da cabeça quase não muda ($\pm$\SI{0.6}{\meter\per\second}), mas o \emph{carry}
+varia $\pm$7 a \SI{12}{\meter}. A dispersão lateral é pequena
+($\pm$0,2 a \SI{0.4}{\meter}), com exceção de um swing com ruído no ombro que
+aterrou \SI{31}{\meter} ao lado e que domina o desvio padrão dessa linha (sem
+ele, $-0{,}6 \pm 0{,}2$\,\si{\meter}). A direção ser pouco sensível é uma
+consequência direta do modelo: sem rotação dos antebraços, a face não pode abrir
+nem fechar.
+
+\textbf{O ponto nominal é pouco robusto.} Os swings dividem-se em dois grupos, um
+com lançamento $\sim\ang{32.5}$ e \emph{carry} $\sim$\SI{97}{\meter} (onde está
+o nominal) e outro com $\sim\ang{36}$ e 110--\SI{130}{\meter}, apesar de a
+velocidade da cabeça ser ligeiramente menor. Erros de poucos milímetros no ponto
+de contacto na face mudam bastante o resultado; a causa não foi investigada em
+detalhe.
+
+% =============================================================================
+\section{Tarefa 3 --- Comentário aos resultados}
+\label{sec:comentario}
+% =============================================================================
+
+\textbf{O que correu bem.} O movimento é o de um swing reconhecível
+(Figura~\ref{fig:fases}): tronco a rodar, braço da frente esticado, pulso
+armado no topo e libertado tarde, braço de trás a dobrar e esticar sozinho. A
+trajetória é seguida com binários dentro de limites humanos, sem saltos, e o
+impacto ocorre a menos de \ang{2.5} da pose de endereço nas três juntas. A
+libertação tardia do pulso produz o pico de velocidade no instante do impacto,
+como previsto pelo modelo do pêndulo duplo.
+
+\textbf{O que não correu bem.} A cabeça do taco chega a
+\SI{27.4}{\meter\per\second}, abaixo da gama de um amador. Há duas causas no
+modelo: com as ancas fixas falta a rotação e a transferência de peso que num
+corpo real alimentam o tronco, e a trajetória faz o braço chegar parado ao
+impacto, pelo que só o tronco e o pulso contribuem para a velocidade. A versão
+anterior de 2 dof (V13) atingia \SI{37.2}{\meter\per\second}, mas com os braços
+a atravessar o corpo: trocou-se velocidade por plausibilidade anatómica. O
+\emph{smash factor} de 1,16 também fica abaixo do valor real.
+
+\textbf{Depois do impacto.} O ângulo de lançamento (\ang{32.4}) é praticamente o
+\emph{loft} da cabeça (\ang{32}): a bola sai pela normal da face, quando num
+impacto real o atrito tangencial a faz sair mais baixa (16--\ang{20}) e com
+spin. O contacto mole do MuJoCo, num impacto de \SI{0.4}{\milli\second}, não
+reproduz essa componente tangencial. Sem aerodinâmica, o \emph{carry} é próximo
+do alcance de um projétil no vazio ($v^2\sin 2\theta/g \approx \SI{93}{\meter}$)
+e não é comparável com valores reais, em que o arrasto e a sustentação por spin
+dominam o voo.
+
+\textbf{Trabalho futuro.} Por ordem de efeito esperado: libertar as ancas para
+ganhar velocidade; acrescentar a rotação dos antebraços, sem a qual o ensaio de
+perturbações não consegue mostrar erros de direção; e ativar o modelo de fluido
+do MuJoCo para o voo da bola.
+
+
+
+% =============================================================================
+\bibliographystyle{IEEEtran}
+\bibliography{refs}
+
+\end{document}
