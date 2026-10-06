@@ -203,8 +203,9 @@
        solref = (constante de tempo, coeficiente de amortecimento)
          0.0004 s ~ duração real de um impacto de golfe (~0.5 ms);
          o 2.º valor < 1 deixa o contacto SUB-AMORTECIDO, i.e. elástico — é
-         assim que se modela a restituição. Uma bola de golfe tem COR ~0.78-0.83
-         (0.83 é o limite legal da R&A/USGA). Com amortecimento crítico (valor 1)
+         assim que se modela a restituição. Um impacto taco-bola tem COR ~0.78-0.83
+         (0.83 é o limite legal da R&A/USGA para a FACE DO TACO; a bola tem um
+         limite de velocidade inicial). Com amortecimento crítico (valor 1)
          o choque seria perfeitamente inelástico e o "smash factor"
          (v_bola/v_taco) dava 0.81, contra os ~1.25 de um ferro 7 real.
        O valor 0.15 foi calibrado por varrimento para dar smash ~1.20 à

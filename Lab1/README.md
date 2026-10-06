@@ -43,12 +43,17 @@ uma batida má — não a uses.
 Resultado esperado:
 
 ```
-  cabeça do taco no impacto :   37.2 m/s     (real, amador c/ ferro 7: 30-38)
-  bola                      :   45.6 m/s  (smash 1.22)
-  lançamento                :   31.7 deg
-  juntas no impacto         : braço +0.8 deg, pulso -1.1 deg   (alvo: 0, 0)
-  carry (até aterrar)       :  189.2 m
+  cabeça do taco no impacto :   38.8 m/s     (real, ferro 7: 34-41; amador 30-38)
+  bola                      :   47.2 m/s  (smash 1.22)
+  lançamento                :   31.3 deg
+  juntas no impacto         : braço +1.1 deg, pulso -1.8 deg   (alvo: 0, 0)
+  carry (até aterrar)       :  151.3 m
+  apogeu / tempo de voo     :   38.9 m / 6.85 s
 ```
+
+Demora ~7 s por swing. O passo de integração é 5e-5 s, mas desce para 5e-6 s
+enquanto a cabeça do taco está perto da bola: sem isso o contacto não convergia
+e a velocidade da bola variava ±5 % com mudanças de 1 ms no downswing.
 
 ### Perturbações (Tarefa 2)
 
@@ -64,9 +69,29 @@ O ruído é mantido durante 1/10 s (banda do tremor fisiológico, 8-12 Hz) em ve
 de ser re-amostrado a cada passo — ruído branco por passo cancelava-se e o
 resultado dependia do passo de integração.
 
-**O pulso é o dof sensível**: com σ = 10 N·m, o ruído no pulso dá ~6 m de
-dispersão lateral e o no braço ~0.2 m. Um pulso trémulo manda a bola para o lado
-e às vezes faz uma batida falhada (bola "topada", lançamento negativo).
+**O pulso é o dof sensível**: com σ = 10 N·m, o ruído no pulso dá 3.3 ± 6.1 m
+de desvio lateral (15/20 bolas a <2 m do alvo, 4 a 10–17 m, 1 "topada") e o no
+braço 0.06 ± 0.29 m. Um pulso trémulo abre a face e manda a bola para o lado.
+Demora ~3 min por junta.
+
+### Aerodinâmica
+
+```bash
+python src/teste_aerodinamica.py          # Cd/CL efetivos da bola + ar no braço/taco
+python src/trajetoria.py --perfeita       # bola lançada com as condições de um ferro 7
+python src/trajetoria.py --tag com_ar     # 10 swings com ruído, voos em CSV + gráfico
+```
+
+O ar está ligado para **todo** o modelo (`density`/`viscosity` no `<option>`),
+com `fluidshape="ellipsoid"` em todas as geoms. O `teste_aerodinamica.py` mede
+o que o MuJoCo aplica de facto à bola (Cd 0.28, CL 0.20, rotação a decair
+3.5 %/s), compara três modelos de ar no braço e no taco e grava
+`report/aerodinamica.png`. Resultado: o ar tira 1.3 % à velocidade do taco e o
+carry passa de 201 m (vácuo) para 151 m. O modelo de ar por omissão do MuJoCo
+(sem `fluidshape`) exagerava o arrasto no taco 6×; ver `report/simplificacoes.md` §4.1.
+
+O `trajetoria.py` grava `report/trajetoria_*.csv`, `report/metricas_voo.csv` e
+`report/trajetoria.png`.
 
 ### Imagens e vídeo
 
@@ -123,6 +148,8 @@ models/   golfer_v13.xml   modelo do jogador + taco (comentado)
           01_pendulum_ball.xml  pêndulo a bater na bola
 src/      swing.py         modelo de controlo + run_swing()
           perturbacoes.py  Tarefa 2: ruído nas juntas + gráfico
+          teste_aerodinamica.py  validação do modelo de ar (bola, braço, taco)
+          trajetoria.py    voos em CSV e comparação com um ferro 7
           renders.py       imagens das fases do swing
           video.py         vídeo em câmara lenta
           run_pendulum*.py validação da física
@@ -138,7 +165,7 @@ report/   imagens, gráficos e relatório
 - **dof 2 — pulso:** o taco roda em torno do punho. Motor ±40 N·m. No topo está
   armado ~95° e só solta a 65 % do downswing ("lag") — é isto que gera
   velocidade, porque com o taco dobrado a inércia é baixa. Soltar a 10 % dá
-  26.8 m/s; a 65 % dá 37.2 m/s (+39 %).
+  29.6 m/s; a 65 % dá 38.8 m/s (+31 %).
 - Tudo o resto (pernas, ancas, tronco, cotovelos) é **rígido** na pose de
   endereço.
 
@@ -148,6 +175,7 @@ constante e o **mesmo T nas duas juntas**, o que as faz cruzar q = 0 em
 simultâneo — é a condição para a cabeça do taco passar na bola.
 
 Lista completa de simplificações e do seu impacto: `report/simplificacoes.md`.
+Bibliografia verificada, com a utilidade de cada entrada: `report/bibliografia.md`.
 
 ## Versões
 
@@ -155,5 +183,6 @@ Lista completa de simplificações e do seu impacto: `report/simplificacoes.md`.
 |-------|----------|
 | `pendulo-base` | pêndulo simples + pêndulo a bater na bola, validados |
 | v13   | golfista 2 dof (braço + pulso) + testes de perturbação + relatório |
+| v13-ar | + aerodinâmica (bola, braço e taco), medição do impacto corrigida, trajetórias |
 | v17   | + ombros articulados, parâmetros antropométricos, bateria de testes por dof |
 | v20   | + STL, análise de sensibilidade |
