@@ -32,7 +32,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from swing import load, run_swing
+import argparse
+from swing import load, run_swing, config, MODEL
 
 OUT = os.path.join("report", "aerodinamica.png")
 RHO = 1.204          # densidade do ar [kg/m3], a mesma do XML
@@ -141,17 +142,24 @@ def estimativa_mao(m, v_head):
 
 # ----------------------------------------------------------------------------
 def main():
-    m, d = load()
+    ap = argparse.ArgumentParser(description="Validação do modelo de ar")
+    ap.add_argument("--modelo", default=MODEL)
+    args = ap.parse_args()
+    m, d = load(args.modelo)
+    cfg = config(m)
+    lab = cfg["labels"]
+    iw = cfg["joints"].index("wrist")
     ref_fluid = m.geom_fluid.copy()
 
     # ---- 2+3: swing completo nos três modelos, com e sem compensação
     print("\n2) AR NO BRAÇO E NO TACO — swing completo (no vácuo a bola também não tem ar;"
           "\n   nos outros dois a bola tem sempre os coeficientes do XML)\n")
+    juntas = ", ".join(lab)
     print(f"  {'modelo':<15}{'controlador':<14}{'v_taco':>7}{'v_bola':>7}"
-          f"{'q impacto [deg]':>18}{'carry':>8}"
-          f"{'binário ar máx':>22}{'saturação':>14}")
-    print(f"  {'':<15}{'':<14}{'[m/s]':>7}{'[m/s]':>7}{'(braço, pulso)':>18}{'[m]':>8}"
-          f"{'braço / pulso [N.m]':>22}{'braço / pulso':>14}")
+          f"{'q impacto [deg]':>22}{'carry':>8}"
+          f"{'binário ar máx [N.m]':>26}{'saturação':>20}")
+    print(f"  {'':<15}{'':<14}{'[m/s]':>7}{'[m/s]':>7}{'(' + juntas + ')':>22}{'[m]':>8}"
+          f"{'(' + juntas + ')':>26}{'(' + juntas + ')':>20}")
     res = {}
     for modelo in ["vácuo", "caixa inércia", "elipsoide"]:
         for comp in [False, True]:
@@ -163,9 +171,9 @@ def main():
             fm, sat = r["fluid_max"], r["sat"] * 100
             print(f"  {modelo:<15}{'compensa ar' if comp else 'normal':<14}"
                   f"{r['v_head']:7.1f}{r['v_ball']:7.1f}"
-                  f"{'(%+.1f, %+.1f)' % tuple(r['q_impact']):>18}{r['carry']:8.1f}"
-                  f"{'%5.1f / %4.1f' % tuple(fm):>22}"
-                  f"{'%3.0f %% / %3.0f %%' % tuple(sat):>14}")
+                  f"{'(' + ', '.join(f'{q:+.1f}' for q in r['q_impact']) + ')':>22}{r['carry']:8.1f}"
+                  f"{' / '.join(f'{x:.1f}' for x in fm):>26}"
+                  f"{' / '.join(f'{x:.0f} %' for x in sat):>20}")
     configura(m, "elipsoide", ref_fluid)            # repõe o modelo do XML
 
     nom = res[("elipsoide", False)]
@@ -174,8 +182,8 @@ def main():
           f" v = {res[('vácuo', False)]['v_head']:.1f} m/s):")
     print(f"    força na cabeça {F_head:.1f} N; binário cabeça + haste no punho "
           f"~ {T_mao:.1f} N.m")
-    print(f"    elipsoide: {res[('elipsoide', False)]['fluid_max'][1]:.1f} N.m   "
-          f"caixa de inércia: {res[('caixa inércia', False)]['fluid_max'][1]:.1f} N.m")
+    print(f"    elipsoide: {res[('elipsoide', False)]['fluid_max'][iw]:.1f} N.m   "
+          f"caixa de inércia: {res[('caixa inércia', False)]['fluid_max'][iw]:.1f} N.m")
 
     # ---- 1: a bola, nas condições de lançamento do swing nominal
     cd, cl, decai, S = coeficientes_efetivos(m, nom["v_ball"], nom["spin_rpm"])

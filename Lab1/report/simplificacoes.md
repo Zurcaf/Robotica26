@@ -1,5 +1,11 @@
 # Simplificações e impacto no realismo — Golfista V13
 
+> **Nota:** este documento analisa o modelo de 2 dof (V13, `models/golfer_v13.xml`).
+> O modelo entregue é o V17 (3 dof + braço direito passivo), descrito no
+> relatório `ROB_LAB1_Report/main.tex`; os números do V17 estão lá. Mantém-se
+> este ficheiro porque é a origem das gamas de referência (TrackMan) e das
+> correções numéricas (contacto, medição, aerodinâmica) que o V17 herda.
+
 Tarefa 1 do enunciado: *"List any simplifications/assumptions made and their
 potential impact in the realism of the simulation."*
 
