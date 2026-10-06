@@ -28,6 +28,11 @@
 
 \sisetup{output-decimal-marker={,}, per-mode=symbol}
 
+% floats grandes podem ocupar quase toda uma página sem a deixar só com o float
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\textfraction}{0.07}
+\renewcommand{\floatpagefraction}{0.8}
+
 \lstset{basicstyle=\ttfamily\footnotesize, breaklines=true,
         frame=single, framesep=4pt, backgroundcolor=\color{gray!8},
         columns=flexible, keepspaces=true}
@@ -170,12 +175,46 @@ A convenção de sinais é:
 \end{itemize}
 
 Daqui resulta a condição que domina todo o controlo: a cabeça do taco só passa
-na bola quando as três juntas estão em $q=0$ ao mesmo tempo.
+na bola quando as três juntas estão em $q=0$ ao mesmo tempo. A
+Figura~\ref{fig:frames} mostra a origem e os eixos de cada corpo na pose de
+endereço (todos paralelos aos do mundo).
+
+\begin{figure}[H]
+\centering
+\fig{Photos/v17_referenciais.png}{0.95\textwidth}
+\caption{Referenciais dos corpos na pose de endereço ($q=0$): vermelho $x$,
+verde $y$, azul $z$. Nesta pose todos coincidem em orientação com o referencial
+do mundo, cuja origem está na bola.}
+\label{fig:frames}
+\end{figure}
 
 \subsection{Parâmetros físicos}
 
 As massas seguem tabelas antropométricas aproximadas. As inércias são calculadas
-pelo MuJoCo a partir da forma e da massa de cada \texttt{geom}.
+pelo MuJoCo a partir da forma e da massa de cada \texttt{geom}
+(Tabela~\ref{tab:inercias}). Todas as formas são primitivas (cápsulas, esferas,
+uma caixa para a cabeça do taco); não se usam ficheiros STL.
+
+\begin{table}[H]
+\centering
+\caption{Massa e momentos principais de inércia (no centro de massa) de cada
+corpo móvel, tal como o MuJoCo os calcula a partir da geometria.}
+\label{tab:inercias}
+\small
+\begin{tabular}{lcccc}
+\toprule
+Corpo & Massa [\si{\kilo\gram}] & $I_1$ & $I_2$ & $I_3$ [\si{\kilo\gram\meter\squared}] \\
+\midrule
+\texttt{torso} (tronco + ombros)     & 28,0 & 1,020 & 0,995 & 0,217 \\
+\texttt{head}                        & 6,0  & 0,032 & 0,032 & 0,021 \\
+\texttt{arm\_l} (braço esq. + mão)   & 4,0  & 0,172 & 0,172 & 0,003 \\
+\texttt{club}                        & 0,43 & 0,037 & 0,037 & 0,0001 \\
+\texttt{upperarm\_r}                 & 2,2  & 0,028 & 0,028 & 0,002 \\
+\texttt{forearm\_r} (+ mão)          & 1,8  & 0,022 & 0,022 & 0,001 \\
+\texttt{ball}                        & 0,046 & \multicolumn{3}{c}{$8{,}3\times10^{-6}$} \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{itemize}
   \item \textbf{Braços:} \SI{4}{\kilo\gram} cada (2,2 + 1,3 + 0,5).
@@ -239,8 +278,9 @@ amostra-se também no passo em que o contacto acaba.
 
 A Tabela~\ref{tab:simpl} lista as simplificações do modelo e o efeito de cada
 uma no realismo da simulação.
+\suppressfloats[t]
 
-\begin{table}[H]
+\begin{table}[htbp]
 \centering
 \caption{Simplificações e consequências.}
 \label{tab:simpl}
@@ -356,6 +396,12 @@ de um ferro~7 (Tabela~\ref{tab:nominal}); (v) a sequência cinemática das junta
 (Secção~\ref{sec:pert}); (vii) o mesmo swing com três modelos de ar no corpo;
 (viii) a ``tacada perfeita'': a bola lançada no mesmo modelo com as condições
 publicadas de um ferro~7, para separar o que é do impacto do que é do voo.
+Os testes correm em Python (\texttt{src/}, instruções no \texttt{README.md});
+o XML abre-se também na \emph{Simulate App} / viewer do MuJoCo, onde os
+\emph{sliders} do painel \emph{Joint} permitem mover cada grau de liberdade à
+mão e o painel \emph{Sensor} mostra ao vivo ângulos, velocidades e binários
+das juntas e a velocidade da cabeça do taco (\texttt{python src/swing.py
+--view} corre o controlador dentro do viewer).
 
 \subsection{Ensaio nominal}
 \label{sec:nominal}
@@ -641,6 +687,11 @@ liberdade que incline a haste no impacto, para baixar o \emph{loft} dinâmico;
 a rotação dos antebraços, sem a qual o ensaio de perturbações não consegue
 mostrar erros de direção por abertura da face; e um Magnus com saturação em
 $S$, calculado em Python e aplicado como força externa.
+
+% =============================================================================
+\section*{Contribuição dos membros}
+\textbf{[A PREENCHER PELO GRUPO]} --- Afonso Cruz: \ldots; Eduardo Batista:
+\ldots; Henrique Póvoa: \ldots
 
 % =============================================================================
 \bibliographystyle{IEEEtran}
