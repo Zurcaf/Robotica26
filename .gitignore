@@ -105,3 +105,6 @@ Lab1/report/*.gif
 *.xdv
 *.bcf
 *.run.xml
+
+# ===== Poses soltas do V17 (regeneram-se com src/renders.py; só as tiras em Photos/ vão para o git) =====
+Lab1/report/v17_[0-9]_*.png

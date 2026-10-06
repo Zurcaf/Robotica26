@@ -391,7 +391,8 @@ def run_swing(model, data, params=None, noise=None, seed=None,
       loft_dyn  loft dinâmico: inclinação da face no impacto [deg]
       spin_rpm  rotação da bola ao sair da face [rpm]
       carry     distância de voo até à 1.ª aterragem [m] — métrica principal
-      land_y    desvio lateral no ponto de aterragem [m]
+      land_y    desvio lateral no ponto de aterragem [m] (+ = lado do jogador
+                = esquerda do alvo para um destro; side e land_y têm sinais opostos)
       apogeu    altura máxima da bola durante o voo [m]
       t_voo     tempo entre o lançamento e a 1.ª aterragem [s]
       descida   ângulo de descida na aterragem [deg] (+ = a cair)

@@ -282,7 +282,7 @@ limite é cortado — por isso σ = 3 N·m quase não se nota e o teste usa 10 N
   inércia do braço é alta e o PD corrige o erro de posição antes do impacto.
 - **Pulso:** a distribuição é **bimodal**, e a média ± desvio padrão descreve-a
   mal. 15 das 20 bolas caem a menos de 2 m do nominal; 4 vão 10–17 m para a
-  direita (a face chega aberta, lançamento 35–40°); 1 é "topada" (lançamento
+  esquerda, lado do jogador (lançamento 35–40°); 1 é "topada" (lançamento
   2°, 4 m de carry). O que o pulso controla é a **orientação da face** no
   impacto, e essa é a variável a que o resultado é mais sensível.
 - **Nota numérica importante:** na versão anterior do modelo o ruído no braço
