@@ -49,7 +49,8 @@
     - corpo sem contactos (só visual); só a cabeça do taco bate na bola;
     - a sola da cabeça pode entrar uns mm no chão (não colide com ele — os
       ferros reais também tiram "divot");
-    - sem aerodinâmica: a bola faz uma parábola.
+    - aerodinâmica simplificada: arrasto + Magnus na bola com coeficientes
+      constantes; arrasto no braço e no taco por elipsoides equivalentes.
   Massas: tabelas antropométricas aproximadas (braço ~5 % de 80 kg).
   Números em metros, ângulos em graus.
 -->
@@ -60,6 +61,11 @@
        5e-5 s foi escolhido por estudo de convergência: acima disto a velocidade
        da bola e o ângulo de lançamento ainda dependem do passo (ver
        report/simplificacoes.md). -->
+  <!-- Ar a 20 °C ao nível do mar: densidade 1.204 kg/m3, viscosidade 1.81e-5 Pa.s.
+       ATENÇÃO: isto liga o ar para TODOS os corpos. Os que não declaram
+       fluidshape usam o modelo de "caixa de inércia" do MuJoCo, que dá binários
+       de arrasto ~5x exagerados no braço e no taco (33 / 19 N.m contra 6.5 / 3 N.m).
+       Por isso o <default> abaixo põe fluidshape="ellipsoid" em todas as geoms. -->
   <option gravity="0 0 -9.81" timestep="0.00005" density="1.204" viscosity="1.81e-5"/>
 
   <visual>
@@ -80,8 +86,11 @@
   </asset>
 
   <default>
-    <!-- Por defeito: geoms só visuais (contype/conaffinity = 0) -->
-    <geom type="capsule" contype="0" conaffinity="0" condim="3"/>
+    <!-- Por defeito: geoms só visuais (contype/conaffinity = 0).
+         fluidshape="ellipsoid": o arrasto de cada geom é calculado a partir da
+         sua forma (elipsoide equivalente), com os coeficientes por omissão do
+         MuJoCo. Ver o comentário no <option> e src/teste_aerodinamica.py. -->
+    <geom type="capsule" contype="0" conaffinity="0" condim="3" fluidshape="ellipsoid"/>
     <joint type="hinge" limited="true" armature="0.01"/>
     <default class="contact">
       <!-- Só marca os geoms que participam em contactos. Os parâmetros do
@@ -172,8 +181,19 @@
     <body name="ball" pos="0 0 0.0213">
       <freejoint name="ball_free"/>
       <geom name="ball_geom" class="contact" type="sphere" size="0.0213" mass="0.0459"
-            rgba="1 1 1 1" contype="1" conaffinity="3" friction="0.4 0.005 0.002" fluidshape="ellipsoid" fluidcoef="0.14 0.25 1.5 1.0 1.0"/>
-      <!-- 3.º valor = atrito de ROLAMENTO. 0.002 m / R=0.0213 m => coeficiente
+            rgba="1 1 1 1" contype="1" conaffinity="3" friction="0.4 0.005 0.002"
+            fluidshape="ellipsoid" fluidcoef="0.14 0.25 0.1 1.0 1.0"/>
+      <!-- Aerodinâmica da bola. fluidcoef = [arrasto rombo, arrasto esguio,
+           arrasto angular, Kutta, Magnus]. O MuJoCo NÃO usa o fator 1/2 da
+           definição clássica F = 1/2 rho Cd A v^2, por isso os valores efetivos
+           (medidos em voo livre por src/teste_aerodinamica.py) são:
+             0.14 -> Cd = 0.28  (literatura: ~0.22-0.30 a Re ~1.3e5)
+             Magnus 1.0 -> CL = 0.20 com S = r.w/v = 0.15  (literatura: ~0.15-0.25)
+             angular 0.1 -> a rotação decai ~3 %/s (o valor por omissão, 1.5,
+             tirava 34 %/s e o Magnus desaparecia a meio do voo).
+           Atenção: Magnus = 0 NÃO desliga a sustentação, inverte-a (o MuJoCo
+           tem um termo base de massa virtual); sustentação nula é Magnus = 0.5. -->
+      <!-- 3.º valor do friction = atrito de ROLAMENTO. 0.002 m / R=0.0213 m => coeficiente
            de resistência ao rolamento ~0.09, típico de relva de fairway. Com o
            valor inicial (0.0001) a bola rolava indefinidamente. -->
     </body>
@@ -183,8 +203,9 @@
        solref = (constante de tempo, coeficiente de amortecimento)
          0.0004 s ~ duração real de um impacto de golfe (~0.5 ms);
          o 2.º valor < 1 deixa o contacto SUB-AMORTECIDO, i.e. elástico — é
-         assim que se modela a restituição. Uma bola de golfe tem COR ~0.78-0.83
-         (0.83 é o limite legal da R&A/USGA). Com amortecimento crítico (valor 1)
+         assim que se modela a restituição. Um impacto taco-bola tem COR ~0.78-0.83
+         (0.83 é o limite legal da R&A/USGA para a FACE DO TACO; a bola tem um
+         limite de velocidade inicial). Com amortecimento crítico (valor 1)
          o choque seria perfeitamente inelástico e o "smash factor"
          (v_bola/v_taco) dava 0.81, contra os ~1.25 de um ferro 7 real.
        O valor 0.15 foi calibrado por varrimento para dar smash ~1.20 à

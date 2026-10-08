@@ -20,18 +20,15 @@ import subprocess
 import numpy as np
 import mujoco
 
-from swing import load, reference, _indices, DEFAULTS
+from swing import load, _prep, controlo, t_impacto, MODEL
 
 OUTDIR = "report"
 FPS = 30          # fotogramas por segundo do ficheiro de vídeo
 
 
-def simula_frames(p, camera, largura, altura, lento, t_fim):
+def simula_frames(m, d, p, camera, largura, altura, lento, t_fim):
     """Corre o swing e devolve a lista de fotogramas em câmara lenta."""
-    m, d = load()
-    qadr, vadr, uadr = _indices(m)
-    p["q_range"] = m.jnt_range[[m.joint("shoulder").id, m.joint("wrist").id]]
-    lo, hi = m.actuator_ctrlrange[uadr, 0], m.actuator_ctrlrange[uadr, 1]
+    _, cfg, qadr, vadr, uadr = _prep(m, p)
     M_full = np.zeros((m.nv, m.nv))
     renderer = mujoco.Renderer(m, altura, largura)
     cam_id = m.camera(camera).id
@@ -49,12 +46,7 @@ def simula_frames(p, camera, largura, altura, lento, t_fim):
             frames.append(renderer.render().copy())
             proximo += dt_frame
 
-        q_ref, v_ref, a_ref = reference(d.time, p)
-        mujoco.mj_fullM(m, d, M_full)
-        M2 = M_full[np.ix_(vadr, vadr)]
-        a_cmd = (a_ref + p["kd"] * (v_ref - d.qvel[vadr])
-                 + p["kp"] * (q_ref - d.qpos[qadr]))
-        d.ctrl[uadr] = np.clip(M2 @ a_cmd + d.qfrc_bias[vadr], lo, hi)
+        d.ctrl[uadr] = controlo(m, d, p, qadr, vadr, uadr, M_full)
         mujoco.mj_step(m, d)
     return frames
 
@@ -90,14 +82,16 @@ def main():
     ap.add_argument("--largura", type=int, default=960)
     ap.add_argument("--altura", type=int, default=720)
     ap.add_argument("--gif", action="store_true", help="GIF em vez de MP4")
+    ap.add_argument("--modelo", default=MODEL)
     args = ap.parse_args()
 
-    p = dict(DEFAULTS)
+    m, d = load(args.modelo)
+    p, _, _, _, _ = _prep(m)
     # até um pouco depois do follow-through (não vale a pena filmar o voo todo)
-    t_fim = p["t_back"] + p["t_pause"] + 1.5 * p["t_down"] + 0.35
+    t_fim = t_impacto(p) + 0.6
 
     print(f"a simular e a renderizar a {args.lento:g}x mais lento...")
-    frames = simula_frames(p, args.camera, args.largura, args.altura,
+    frames = simula_frames(m, d, p, args.camera, args.largura, args.altura,
                            args.lento, t_fim)
     os.makedirs(OUTDIR, exist_ok=True)
 

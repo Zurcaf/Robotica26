@@ -98,8 +98,8 @@ PERFIS = {
 def tacada_perfeita(tag="perfeita", modelo=MODEL, perfil="lpga"):
     """Lança a bola no modelo com as condições de um batimento perfeito.
 
-    O golfista fica congelado na pose de endereço (as suas 2 juntas levam
-    posição e velocidade zero a cada passo), por isso só a bola se move.
+    O golfista fica congelado na pose de endereço (todas as juntas antes da
+    bola levam qpos0 e velocidade zero a cada passo), por isso só a bola se move.
     """
     import mujoco
 
@@ -107,7 +107,9 @@ def tacada_perfeita(tag="perfeita", modelo=MODEL, perfil="lpga"):
     m, d = load(modelo)
     b_ball = m.body("ball").id
     g_ball, g_floor = m.geom("ball_geom").id, m.geom("floor").id
-    adr = m.jnt_dofadr[m.joint("ball_free").id]     # 1.os 3 dofs lineares, 3 angulares
+    jb = m.joint("ball_free").id
+    adr = m.jnt_dofadr[jb]                          # 1.os 3 dofs lineares, 3 angulares
+    qb = m.jnt_qposadr[jb]
 
     ang = np.radians(p["lancamento"])
     d.qvel[adr:adr + 3] = p["v_bola"] * np.array([np.cos(ang), 0.0, np.sin(ang)])
@@ -117,8 +119,8 @@ def tacada_perfeita(tag="perfeita", modelo=MODEL, perfil="lpga"):
     t0, apogeu, traj, v_ant = d.time, 0.0, [], np.zeros(3)
     carry = t_voo = descida = np.nan
     while d.time - t0 < 20.0:
-        d.qpos[:2] = 0.0                            # congela o golfista
-        d.qvel[:2] = 0.0
+        d.qpos[:qb] = m.qpos0[:qb]                  # congela o golfista (seguro
+        d.qvel[:adr] = 0.0                          # com a rótula do braço direito)
         mujoco.mj_step(m, d)
 
         pos = d.body("ball").xpos
@@ -314,7 +316,7 @@ def main():
     ap.add_argument("--modelo", default=MODEL, help="XML a usar")
     ap.add_argument("--n", type=int, default=10,
                     help="número de swings do lote (1 = sem numeração na etiqueta)")
-    ap.add_argument("--junta", default="wrist", choices=["wrist", "shoulder"],
+    ap.add_argument("--junta", default="wrist",
                     help="junta onde entra o ruído")
     ap.add_argument("--std", type=float, default=10.0,
                     help="desvio padrão do ruído no binário [N.m]; 0 = sem ruído")

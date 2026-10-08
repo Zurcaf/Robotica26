@@ -22,7 +22,7 @@ $RECYCLE.BIN/
 .directory
 
 # ===== Editores / IDEs =====
-.vscode/
+.vscode/*
 !.vscode/settings.json
 !.vscode/extensions.json
 .idea/
@@ -86,3 +86,25 @@ notas/
 # ===== Videos gerados (regenera-se com src/video.py) =====
 Lab1/report/*.mp4
 Lab1/report/*.gif
+
+# ===== LaTeX (ficheiros auxiliares; main.pdf fica no git de propósito) =====
+*.aux
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.synctex(busy)
+*.out
+*.toc
+*.lof
+*.lot
+*.nav
+*.snm
+*.vrb
+*.xdv
+*.bcf
+*.run.xml
+
+# ===== Poses soltas do V17 (regeneram-se com src/renders.py; só as tiras em Photos/ vão para o git) =====
+Lab1/report/v17_[0-9]_*.png

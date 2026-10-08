@@ -1,0 +1,245 @@
+<!--
+  Golfista V17 — 3 dof atuados: TRONCO + OMBRO ESQUERDO + PULSO, braço direito
+  passivo. Construído sobre o V13 (golfer_v13.xml): mesmo corpo, mesmo taco,
+  mesma bola, mesmo contacto e mesmo ar. O que muda é a árvore cinemática.
+
+  IDEIA
+  O V13 era o pêndulo duplo de Cochran & Stobbs (braços em bloco + pulso):
+  rápido (38.8 m/s) mas com os dois braços rígidos a atravessarem o peito no
+  backswing. O V17 separa o que no corpo é separado:
+
+    torso    — rotação do tronco em torno da COLUNA (eixo inclinado 35° da
+               vertical, a passar pela anca). É a fonte de energia: num swing
+               real vem das pernas e das ancas, aqui está tudo neste motor.
+    shoulder — elevação do braço ESQUERDO (o da frente, sempre esticado) à frente
+               do peito. O eixo é a LINHA DOS OMBROS: o braço sobe pela frente e
+               é o tronco que o leva para trás, como num corpo humano.
+    wrist    — o taco em relação ao braço esquerdo, no plano de swing. Armado no
+               topo e solto tarde ("lag"): é o que gera velocidade.
+
+    shoulder_r + elbow_r — braço DIREITO passivo: rótula no ombro e charneira no
+               cotovelo, sem motores. A mão direita está presa ao punho do taco
+               por uma restrição <connect>, e o braço limita-se a acompanhar:
+               dobra no backswing, estica no impacto. Uma mola fraca na rótula
+               fixa o grau de liberdade que sobra (rodar o cotovelo em torno da
+               reta ombro-mão).
+    neck     — a cabeça está ligada ao tronco por uma restrição que a faz rodar
+               o mesmo ângulo em sentido contrário: fica parada, a olhar para a
+               bola.
+
+  PORQUÊ O EIXO DO OMBRO É A LINHA DOS OMBROS
+  A mão direita está presa ao punho. Se o eixo do ombro esquerdo passa pelos DOIS
+  ombros, a distância mão-esquerda -> ombro-direito não muda com `shoulder` nem
+  com `torso` (ambos rodam os dois pontos em bloco), e o braço direito só tem de
+  absorver o movimento do pulso (±6 cm). Com qualquer outro eixo, no topo do
+  backswing o punho afastava-se mais do que o braço direito alcança (0.62 m) e
+  a restrição, que é mole, puxava o taco.
+
+  CONVENÇÃO: q = 0 em TODAS as juntas é a pose de endereço. Como no V13, nenhum
+  corpo tem rotação própria (só `pos`): em q = 0 os eixos de todos coincidem com
+  os do mundo e as coordenadas dos geoms são as do V13 trocadas de pai. Por isso
+  a cabeça do taco só passa na bola quando as três juntas estão em q = 0 ao
+  mesmo tempo — é a condição que o controlador tem de garantir.
+    tronco e pulso: q < 0 backswing, q > 0 follow-through.
+    ombro:          q < 0 braço levantado (no backswing E no follow-through).
+
+  REFERENCIAIS
+    world  — origem na bola (no chão), X = direção do alvo, Z para cima.
+             O golfista está do lado +Y, a olhar para -Y.
+    torso  — origem no centro da anca; roda em torno da coluna.
+    head   — origem no topo do peito (ponto SOBRE o eixo da coluna, para que
+             neck = -torso deixe a cabeça exatamente parada).
+    arm_l  — origem no ombro esquerdo; eixo = linha dos ombros.
+    club   — origem no punho (mão esquerda); eixo = normal ao plano de swing.
+    upperarm_r / forearm_r — origem no ombro direito / no cotovelo.
+
+  FOLGA NO ENDEREÇO: a bola está 6 mm à frente da origem (face a ~8 mm da bola,
+  em vez de 1.7 mm no V13). Com a mão direita presa ao punho por uma restrição
+  mole, o taco mexe-se ligeiramente ao assentar; sem folga encostava na bola
+  antes de o swing começar.
+
+  GEOMETRIA DO TACO (ferro 7): comprimento ~0.94 m, lie 62°, face a 32°,
+  massa 0.43 kg (0.26 na cabeça). Massas do corpo: tabelas antropométricas
+  aproximadas (cada braço 4 kg). Metros e graus.
+
+  SIMPLIFICAÇÕES: lista completa em report/ROB_LAB1_Report/main.tex (Tarefa 1).
+-->
+<mujoco model="golfer_v17">
+  <compiler angle="degree"/>
+  <!-- timestep: 5e-5 s no geral; o run_swing() desce para 5e-6 s enquanto a
+       cabeça do taco está perto da bola (o contacto não converge a 5e-5). -->
+  <!-- Ar a 20 °C: density/viscosity ligam o ar para TODOS os corpos. Os que não
+       declaram fluidshape usam a "caixa de inércia" do MuJoCo, que exagera ~6x
+       o arrasto no taco; por isso o <default> põe fluidshape="ellipsoid" em
+       todas as geoms. Ver src/teste_aerodinamica.py. -->
+  <option gravity="0 0 -9.81" timestep="0.00005" density="1.204" viscosity="1.81e-5"/>
+
+  <visual>
+    <global azimuth="-60" elevation="-15" offwidth="1280" offheight="960"/>
+  </visual>
+  <statistic center="0 0.4 0.8" extent="1.8"/>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1=".55 .75 .95" rgb2=".95 .97 1" width="32" height="512"/>
+    <texture name="grass" type="2d" builtin="checker" width="512" height="512" rgb1=".30 .55 .25" rgb2=".33 .60 .28"/>
+    <material name="grass" texture="grass" texrepeat="8 8" texuniform="true"/>
+    <material name="skin"  rgba="0.85 0.65 0.50 1"/>
+    <material name="shirt" rgba="0.15 0.35 0.65 1"/>
+    <material name="pants" rgba="0.20 0.20 0.22 1"/>
+    <material name="glove" rgba="0.97 0.97 0.97 1"/>
+    <material name="steel" rgba="0.75 0.75 0.78 1" specular="0.8" shininess="0.8"/>
+    <material name="grip"  rgba="0.10 0.10 0.10 1"/>
+  </asset>
+
+  <default>
+    <!-- Por defeito: geoms só visuais (contype/conaffinity = 0), com arrasto do
+         ar calculado a partir da sua forma (elipsoide equivalente). -->
+    <geom type="capsule" contype="0" conaffinity="0" condim="3" fluidshape="ellipsoid"/>
+    <joint type="hinge" limited="true" armature="0.01"/>
+    <default class="contact">
+      <!-- Só marca os geoms que participam em contactos. Os parâmetros do
+           impacto taco-bola ficam no <contact><pair> no fim do ficheiro. -->
+      <geom solimp="0.95 0.99 0.001"/>
+    </default>
+  </default>
+
+  <worldbody>
+    <light pos="0 -1 4" dir="0 0.2 -1" diffuse=".8 .8 .8"/>
+    <light pos="-3 3 3" dir="1 -1 -1" diffuse=".3 .3 .3"/>
+    <!-- chão: colide com a bola (bits 1) mas não com a cabeça do taco -->
+    <geom name="floor" type="plane" size="30 30 0.1" material="grass"
+          contype="1" conaffinity="1" friction="0.8 0.005 0.002"/>
+
+    <camera name="face_on"       pos="0.2 -3.6 0.95" xyaxes="1 0 0 0 0.06 1"/>
+    <camera name="down_the_line" pos="-3.2 0.45 1.2" xyaxes="0 -1 0 0.12 0 1"/>
+
+    <!-- ===== Pernas + pélvis: fixas ao mundo (sem junta), joelhos fletidos ===== -->
+    <body name="lower_body">
+      <geom name="pelvis"  fromto="0.090 0.800 0.943 -0.130 0.800 0.943" size="0.09" material="pants" mass="12"/>
+      <geom name="thigh_l" fromto="0.080 0.800 0.943 0.141 0.729 0.512" size="0.07"  material="pants" mass="9"/>
+      <geom name="shin_l"  fromto="0.141 0.729 0.512 0.200 0.660 0.090" size="0.05"  material="pants" mass="4"/>
+      <geom name="foot_l"  type="box" pos="0.200 0.600 0.030" size="0.05 0.12 0.03" material="grip" mass="1"/>
+      <geom name="thigh_r" fromto="-0.120 0.800 0.943 -0.171 0.729 0.511" size="0.07"  material="pants" mass="9"/>
+      <geom name="shin_r"  fromto="-0.171 0.729 0.511 -0.220 0.660 0.090" size="0.05"  material="pants" mass="4"/>
+      <geom name="foot_r"  type="box" pos="-0.220 0.600 0.030" size="0.05 0.12 0.03" material="grip" mass="1"/>
+    </body>
+
+    <!-- ===== TRONCO: dof 1 — roda em torno da coluna ===== -->
+    <body name="torso" pos="-0.020 0.800 0.943">
+      <!-- eixo = direção da coluna (cintura -> topo do peito), 35° da vertical.
+           Amortecimento 2 N.m.s: o tronco é o segmento mais pesado e lento. -->
+      <joint name="torso" axis="0 -0.5735 0.8192" range="-100 95" damping="2"/>
+      <geom name="waist"  fromto="0 0 0 0.000 -0.126 0.180"  size="0.11" material="shirt" mass="12"/>
+      <geom name="chest"  fromto="0.000 -0.126 0.180 0.000 -0.287 0.410" size="0.13" material="shirt" mass="14"/>
+      <!-- linha dos ombros: agora rígida com o tronco (no V13 rodava com os braços) -->
+      <geom name="shoulders" fromto="0.180 -0.287 0.410  -0.160 -0.357 0.290" size="0.06" material="shirt" mass="2"/>
+
+      <!-- ===== CABEÇA: junta passiva, acoplada a -torso (ver <equality>) ===== -->
+      <body name="head" pos="0 -0.287 0.410">
+        <joint name="neck" axis="0 -0.5735 0.8192" range="-100 100" damping="0.1"/>
+        <geom name="neck" fromto="0 0 0  0 -0.123 0.130" size="0.045" material="skin" mass="1"/>
+        <!-- cabeça inclinada para baixo, a "olhar" para a bola -->
+        <geom name="head" type="sphere" pos="0 -0.123 0.130" size="0.10" material="skin" mass="5"/>
+        <geom name="cap"  type="ellipsoid" pos="0 -0.113 0.190" size="0.105 0.105 0.05" material="glove" mass="0.01"/>
+      </body>
+
+      <!-- ===== BRAÇO ESQUERDO: dof 2 — elevação à frente do peito ===== -->
+      <body name="arm_l" pos="0.180 -0.287 0.410">
+        <!-- eixo = linha dos ombros (ombro esq. - ombro dir., normalizado) -->
+        <joint name="shoulder" axis="0.9257 0.1906 0.3267" range="-115 10" damping="0.5"/>
+        <geom name="upperarm_l" fromto="0 0 0  -0.068 -0.047 -0.319" size="0.045" material="shirt" mass="2.2"/>
+        <geom name="forearm_l"  fromto="-0.068 -0.047 -0.319  -0.128 -0.089 -0.600" size="0.036" material="skin" mass="1.3"/>
+        <geom name="hand_l" type="sphere" pos="-0.128 -0.089 -0.600" size="0.042" material="glove" mass="0.5"/>
+
+        <!-- ===== TACO: dof 3 — a junta do PULSO ===== -->
+        <body name="club" pos="-0.131 -0.110 -0.640">
+          <!-- eixo = normal ao plano de swing (igual ao V13) -->
+          <joint name="wrist" axis="0.000 -0.938 0.347" range="-110 120" damping="0.1"/>
+          <!-- Taco (ferro 7): geometria copiada do V13 -->
+          <geom name="grip"  fromto="0.01 0.063 0.119  -0.01 -0.058 -0.11" size="0.012" material="grip"  mass="0.05"/>
+          <geom name="shaft" fromto="-0.01 -0.058 -0.11  -0.061 -0.367 -0.691"   size="0.006" material="steel" mass="0.11"/>
+          <geom name="hosel" fromto="-0.061 -0.367 -0.691  -0.061 -0.383 -0.695"   size="0.008" material="steel" mass="0.01"/>
+          <!-- cabeça: caixa rodada -32° em Y -> a face (+x local) fica com loft de 32°.
+               Única parte do golfista que colide (bits 2: toca na bola, não no chão). -->
+          <geom name="clubhead" class="contact" type="box" pos="-0.061 -0.403 -0.699" euler="0 -32 0"
+                size="0.008 0.036 0.022" material="steel" mass="0.26" contype="2" conaffinity="2"/>
+          <site name="clubface" pos="-0.054 -0.403 -0.695" size="0.005" rgba="1 0 0 1"/>
+        </body>
+      </body>
+
+      <!-- ===== BRAÇO DIREITO: passivo (rótula + charneira), mão presa ao punho ===== -->
+      <body name="upperarm_r" pos="-0.160 -0.357 0.290">
+        <!-- stiffness = a "mola fraca" que fixa a rotação do cotovelo em torno da
+             reta ombro-mão (o dof que a restrição <connect> deixa livre) -->
+        <joint name="shoulder_r" type="ball" limited="false" damping="0.5" stiffness="3"/>
+        <geom name="upperarm_r" fromto="0 0 0  0.043 0.010 -0.317" size="0.045" material="shirt" mass="2.2"/>
+        <body name="forearm_r" pos="0.043 0.010 -0.317">
+          <!-- eixo = normal ao plano braço/antebraço no endereço; q > 0 dobra.
+               No endereço o cotovelo já está dobrado ~30°, por isso o limite de
+               extensão (braço esticado) é -30. -->
+          <joint name="elbow_r" axis="-0.5175 -0.8501 -0.097" range="-30 115" damping="0.5"/>
+          <geom name="forearm_r" fromto="0 0 0  0.162 -0.071 -0.242" size="0.036" material="skin" mass="1.3"/>
+          <geom name="hand_r" type="sphere" pos="0.162 -0.071 -0.242" size="0.040" material="skin" mass="0.5"/>
+        </body>
+      </body>
+    </body>
+
+    <!-- ===== Bola de golfe: 45.9 g, Ø 42.7 mm, 6 mm à frente da face ===== -->
+    <body name="ball" pos="0.006 0 0.0213">
+      <freejoint name="ball_free"/>
+      <geom name="ball_geom" class="contact" type="sphere" size="0.0213" mass="0.0459"
+            rgba="1 1 1 1" contype="1" conaffinity="3" friction="0.4 0.005 0.002"
+            fluidshape="ellipsoid" fluidcoef="0.14 0.25 0.1 1.0 1.0"/>
+      <!-- Aerodinâmica da bola (igual ao V13): o MuJoCo não usa o fator 1/2,
+           logo 0.14 -> Cd efetivo 0.28; Magnus 1.0 -> CL 0.20 a S = 0.15;
+           angular 0.1 -> rotação a decair ~3.5 %/s. Medido em voo livre por
+           src/teste_aerodinamica.py. Magnus = 0.5 é sustentação nula (não 0). -->
+      <!-- 3.º valor do friction = atrito de ROLAMENTO (~0.09, relva de fairway). -->
+    </body>
+  </worldbody>
+
+  <equality>
+    <!-- mão direita presa ao punho do taco (ponto da mão, no referencial do
+         antebraço direito; o ponto correspondente no taco é calculado na pose
+         de endereço, logo a restrição está satisfeita em q = 0) -->
+    <connect name="hand_r_grip" body1="forearm_r" body2="club" anchor="0.162 -0.071 -0.242"/>
+    <!-- cabeça parada: neck = -torso -->
+    <joint name="head_still" joint1="neck" joint2="torso" polycoef="0 -1 0 0 0"/>
+  </equality>
+
+  <!-- ===== Parâmetros do impacto taco-bola (só deste par) =====
+       solref = (constante de tempo ~ duração do impacto, amortecimento < 1 =
+       contacto sub-amortecido = restituição). 0.15 calibrado para smash ~1.2.
+       0.83 é o limite legal de COR da FACE DO TACO (R&A/USGA). -->
+  <contact>
+    <pair geom1="clubhead" geom2="ball_geom" condim="3"
+          solref="0.0004 0.15" solimp="0.95 0.99 0.001" friction="0.4 0.4 0.005 0.0001 0.0001"/>
+  </contact>
+
+  <actuator>
+    <!-- Binários de pico: o do tronco representa toda a cadeia pernas + ancas +
+         tronco (150 N.m); o ombro isolado produz 60-85 N.m em abdução/adução
+         (Harbo et al. 2012), aqui ±100 por ser o braço todo; o pulso ±40 está
+         na ordem do binário que as mãos aplicam de facto ao taco (~31 N.m,
+         Nesbit 2005) — a libertação é em boa parte passiva (centrífuga). -->
+    <motor name="torso_motor"    joint="torso"    gear="1" ctrlrange="-150 150" ctrllimited="true"/>
+    <motor name="shoulder_motor" joint="shoulder" gear="1" ctrlrange="-100 100" ctrllimited="true"/>
+    <motor name="wrist_motor"    joint="wrist"    gear="1" ctrlrange="-40 40"   ctrllimited="true"/>
+  </actuator>
+
+  <!-- Sensores: gráficos ao vivo no painel "Sensor" do viewer (Option -> Sensor). -->
+  <sensor>
+    <framelinvel name="clubhead_vel" objtype="site" objname="clubface"/>
+    <framepos    name="ball_pos"     objtype="body" objname="ball"/>
+    <framelinvel name="ball_vel"     objtype="body" objname="ball"/>
+    <jointpos    name="q_tronco"     joint="torso"/>
+    <jointpos    name="q_ombro"      joint="shoulder"/>
+    <jointpos    name="q_pulso"      joint="wrist"/>
+    <jointvel    name="w_tronco"     joint="torso"/>
+    <jointvel    name="w_ombro"      joint="shoulder"/>
+    <jointvel    name="w_pulso"      joint="wrist"/>
+    <actuatorfrc name="tau_tronco"   actuator="torso_motor"/>
+    <actuatorfrc name="tau_ombro"    actuator="shoulder_motor"/>
+    <actuatorfrc name="tau_pulso"    actuator="wrist_motor"/>
+  </sensor>
+</mujoco>
