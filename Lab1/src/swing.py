@@ -104,7 +104,8 @@ DEFAULTS_V17 = dict(
     t_ft_rest=0.30,                 # follow-through de uma junta que chega parada [s]
     t_back=0.80,
     t_pause=0.05,
-    t_down=0.30,
+    t_down=0.26,                    # real: 0.26-0.39 s. Abaixo disto os motores já não
+                                    # chegam (saturam 20-25 % do downswing a 0.26 s)
     t_sim=9.0,
     kp=900.0,
     kd=60.0,

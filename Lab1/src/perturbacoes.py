@@ -140,11 +140,12 @@ def grafico(juntas, labels, taus, std, dados, caminhos):
         ax.axvline(0.0, color="grey", lw=0.8, ls="--", zorder=1)
         ax.set_title(f"{label}  (σ = {std:g} N·m = {100*std/tau:.0f} % de τ$_{{\\max}}$)",
                      fontsize=10)
-        ax.set_xlabel("desvio lateral na aterragem [m]  (+ = esquerda, lado do jogador)")
         ax.grid(alpha=0.3, zorder=0)
         for s in ("top", "right"):
             ax.spines[s].set_visible(False)
     axes[0].set_ylabel("carry [m]")
+    # um só rótulo para os três painéis: repetido, sobrepunha-se entre painéis
+    fig.supxlabel("desvio lateral na aterragem [m]  (+ = esquerda, lado do jogador)", fontsize=10)
     axes[0].legend(frameon=False, fontsize=9)
     fig.tight_layout()
     for c in caminhos:

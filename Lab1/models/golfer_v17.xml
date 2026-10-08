@@ -72,7 +72,10 @@
        declaram fluidshape usam a "caixa de inércia" do MuJoCo, que exagera ~6x
        o arrasto no taco; por isso o <default> põe fluidshape="ellipsoid" em
        todas as geoms. Ver src/teste_aerodinamica.py. -->
-  <option gravity="0 0 -9.81" timestep="0.00005" density="1.204" viscosity="1.81e-5"/>
+  <!-- cone="elliptic": cone de atrito exato em vez da pirâmide que o aproxima.
+       É o que faz o solreffriction do impacto ter efeito (com a pirâmide é ignorado). -->
+  <option gravity="0 0 -9.81" timestep="0.00005" density="1.204" viscosity="1.81e-5"
+          cone="elliptic"/>
 
   <visual>
     <global azimuth="-60" elevation="-15" offwidth="1280" offheight="960"/>
@@ -106,9 +109,17 @@
   <worldbody>
     <light pos="0 -1 4" dir="0 0.2 -1" diffuse=".8 .8 .8"/>
     <light pos="-3 3 3" dir="1 -1 -1" diffuse=".3 .3 .3"/>
-    <!-- chão: colide com a bola (bits 1) mas não com a cabeça do taco -->
+    <!-- chão: colide com a bola (bits 1) mas não com a cabeça do taco.
+         RELVA MOLE (o mesmo solref/solimp está na bola, porque o MuJoCo faz a média
+         dos dois geoms): solimp = 0.1 -> o chão só trava 10 % de uma pancada súbita;
+         solref = 2 ms -> segura o peso da bola parada (afunda < 0.1 mm). Com o chão
+         rígido por omissão (impedância ~0.95), no impacto o chão empurrava a bola
+         5.9 m/s face acima e anulava o atrito da face: a bola saía pela normal da
+         face, com o lançamento igual ao loft. Na aterragem a bola entra ~9 mm, como
+         a marca que deixa num relvado; o carry mede-se no primeiro toque. -->
     <geom name="floor" type="plane" size="30 30 0.1" material="grass"
-          contype="1" conaffinity="1" friction="0.8 0.005 0.002"/>
+          contype="1" conaffinity="1" friction="0.8 0.005 0.002"
+          solref="0.002 1" solimp="0.1 0.1 0.001"/>
 
     <camera name="face_on"       pos="0.2 -3.6 0.95" xyaxes="1 0 0 0 0.06 1"/>
     <camera name="down_the_line" pos="-3.2 0.45 1.2" xyaxes="0 -1 0 0.12 0 1"/>
@@ -187,13 +198,20 @@
     <!-- ===== Bola de golfe: 45.9 g, Ø 42.7 mm, 6 mm à frente da face ===== -->
     <body name="ball" pos="0.006 0 0.0213">
       <freejoint name="ball_free"/>
+      <!-- solref/solimp: os mesmos do chão (relva mole, ver o comentário do floor).
+           Não afetam o contacto taco-bola, que tem os seus no <pair>. -->
       <geom name="ball_geom" class="contact" type="sphere" size="0.0213" mass="0.0459"
             rgba="1 1 1 1" contype="1" conaffinity="3" friction="0.4 0.005 0.002"
-            fluidshape="ellipsoid" fluidcoef="0.14 0.25 0.1 1.0 1.0"/>
-      <!-- Aerodinâmica da bola (igual ao V13): o MuJoCo não usa o fator 1/2,
-           logo 0.14 -> Cd efetivo 0.28; Magnus 1.0 -> CL 0.20 a S = 0.15;
-           angular 0.1 -> rotação a decair ~3.5 %/s. Medido em voo livre por
-           src/teste_aerodinamica.py. Magnus = 0.5 é sustentação nula (não 0). -->
+            solref="0.002 1" solimp="0.1 0.1 0.001"
+            fluidshape="ellipsoid" fluidcoef="0.22 0.25 0.1 1.0 0.9"/>
+      <!-- Aerodinâmica da bola. O Magnus do MuJoCo é LINEAR na rotação (numa bola
+           real satura), por isso arrasto (0.22) e Magnus (0.9) foram calibrados
+           perto do ponto onde se usam, S = wR/v ~ 0.3 (o do swing e o de um ferro 7
+           real): ajustados à tacada média LPGA e validados na PGA
+           (src/trajetoria.py --perfeita). Medidos em voo livre por
+           src/teste_aerodinamica.py: Cd efetivo 0.44 (acima da literatura, ~0.31:
+           absorve o que o Magnus linear não tem), CL 0.30 a S = 0.28 (Smits & Smith:
+           0.33). O MuJoCo não usa o fator 1/2. Magnus = 0.5 é sustentação nula. -->
       <!-- 3.º valor do friction = atrito de ROLAMENTO (~0.09, relva de fairway). -->
     </body>
   </worldbody>
@@ -212,8 +230,13 @@
        contacto sub-amortecido = restituição). 0.15 calibrado para smash ~1.2.
        0.83 é o limite legal de COR da FACE DO TACO (R&A/USGA). -->
   <contact>
+    <!-- solreffriction: o atrito tem a sua própria constante de tempo, 0.1 ms com
+         amortecimento crítico. Herdando a do contacto (0.4 ms, 0.15) era mais lento
+         do que o próprio impacto (~0.2 ms): só atuava em pleno nos primeiros 50 us e
+         a bola nunca chegava a rolar pela face. Precisa de cone="elliptic". -->
     <pair geom1="clubhead" geom2="ball_geom" condim="3"
-          solref="0.0004 0.15" solimp="0.95 0.99 0.001" friction="0.4 0.4 0.005 0.0001 0.0001"/>
+          solref="0.0004 0.15" solimp="0.95 0.99 0.001" friction="0.4 0.4 0.005 0.0001 0.0001"
+          solreffriction="0.0001 1"/>
   </contact>
 
   <actuator>
