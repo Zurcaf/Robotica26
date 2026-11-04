@@ -23,13 +23,17 @@ um portátil de cada vez).
 
 Precisa de **Python ≥ 3.10**.
 
+A `.venv` não vai para o git (só funciona no PC onde foi criada). Recria-se
+com um comando, com as versões exatas fixadas em `requirements.txt`:
+
 ```bash
 cd Lab2
-python -m venv .venv
-source .venv/bin/activate      # Mac/Linux
-.venv\Scripts\activate         # Windows
-pip install -r requirements.txt
+powershell -ExecutionPolicy Bypass -File setup.ps1   # Windows
+bash setup.sh                                         # Mac/Linux
 ```
+
+Depois: `.venv\Scripts\activate` (Windows) ou `source .venv/bin/activate`
+(Mac/Linux).
 
 IP do robô: em [src/config.py](src/config.py) (`ROBOT_IP`) ou pela variável de
 ambiente `LITE6_IP`. O portátil tem de estar na mesma sub-rede (ex.:

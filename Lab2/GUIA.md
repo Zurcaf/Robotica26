@@ -122,7 +122,7 @@ Sem ativar a venv, no Windows também dá para correr diretamente:
 
 ## 4. Convenções usadas em todo o código
 
-São as **mesmas do SDK do xArm**, de propósito, para que nada precise de
+São as **mesmas do SDK [Software Development Kit] do xArm**, de propósito, para que nada precise de
 conversão entre o nosso código e o robô:
 
 | Grandeza | Unidade / convenção |
@@ -136,7 +136,7 @@ conversão entre o nosso código e o robô:
 O SDK é criado com `is_radian=False`, por isso tudo o que entra e sai do robô
 está em graus.
 
-Detalhe: o SDK quer ângulos em `(-180, 180]`. A trajetória, internamente, usa
+Detalhe: o SDK  quer ângulos em `(-180, 180]`. A trajetória, internamente, usa
 ângulos "desembrulhados" (o roll pode ir até 255°, ver gráfico) para os
 gráficos serem contínuos; a função `wrap180()` de `robot.py` volta a pô-los no
 intervalo certo antes de os enviar.
