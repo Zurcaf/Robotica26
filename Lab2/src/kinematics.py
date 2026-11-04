@@ -12,10 +12,15 @@ D-H MODIFICADO (Craig): o referencial i está na junta i, e
 
     {i-1}T{i} = Rx(alpha_{i-1}) · Tx(a_{i-1}) · Rz(theta_i) · Tz(d_i)
 
-com theta_i = q_i + offset_i. A tabela DH abaixo segue a documentação da
-UFactory para o Lite 6 (CONFIRMAR) — é essa a convenção que o controlador usa,
-por isso a pose devolvida aqui deve bater com arm.get_position() /
-arm.get_forward_kinematics() no robô real.
+com theta_i = q_i + offset_i. A tabela DH abaixo é a do documento oficial
+"Kinematic and Dynamic Parameters of UFACTORY Lite 6", tabela (1) D-H
+modificado (../ufactory-lite-6-Kinematic-and-Dynamic-Parameters.pdf, pág. 1).
+É essa a convenção que o controlador usa, por isso a pose devolvida aqui deve
+bater com arm.get_position() / arm.get_forward_kinematics() no robô real.
+
+VALIDAÇÃO (--validar): o mesmo documento dá a tabela (2) em D-H CLÁSSICO, com
+outros referenciais. fk_standard() implementa-a à parte; as duas FK têm de dar
+a mesma pose para qualquer q (diferença ~1e-13 mm = arredondamento).
 
 Orientação em roll/pitch/yaw como no SDK do xArm:
     R = Rz(yaw) · Ry(pitch) · Rx(roll)
@@ -30,6 +35,7 @@ import numpy as np
 
 from config import JOINT_LIMITS
 
+# D-H modificado — tabela (1) do PDF oficial
 #                offset[deg]  d[mm]   alpha[deg]  a[mm]
 DH = np.array([
     [  0.0,      243.3,     0.0,       0.0],   # J1
@@ -38,6 +44,17 @@ DH = np.array([
     [  0.0,      227.6,    90.0,      87.0],   # J4
     [  0.0,        0.0,    90.0,       0.0],   # J5
     [  0.0,       61.5,   -90.0,       0.0],   # J6
+])
+
+# D-H clássico — tabela (2) do PDF oficial, só para validação
+#                    offset[deg]  d[mm]   alpha[deg]  a[mm]
+DH_STANDARD = np.array([
+    [  0.0,      243.3,   -90.0,       0.0],   # J1
+    [-90.0,        0.0,   180.0,     200.0],   # J2
+    [-90.0,        0.0,    90.0,      87.0],   # J3
+    [  0.0,      227.6,    90.0,       0.0],   # J4
+    [  0.0,        0.0,   -90.0,       0.0],   # J5
+    [  0.0,       61.5,     0.0,       0.0],   # J6
 ])
 
 
@@ -62,6 +79,34 @@ def fk(q_deg, all_frames=False):
         T = T @ link_transform(np.radians(alpha), a, q[i] + np.radians(off), d)
         frames.append(T)
     return frames if all_frames else T
+
+
+def fk_standard(q_deg):
+    """FK pela tabela D-H clássica: {i-1}T{i} = Rz(theta)·Tz(d)·Tx(a)·Rx(alpha)."""
+    q = np.radians(np.asarray(q_deg, dtype=float))
+    T = np.eye(4)
+    for i, (off, d, alpha, a) in enumerate(DH_STANDARD):
+        th, al = q[i] + np.radians(off), np.radians(alpha)
+        ct, st, ca, sa = np.cos(th), np.sin(th), np.cos(al), np.sin(al)
+        T = T @ np.array([
+            [ct, -st * ca,  st * sa, a * ct],
+            [st,  ct * ca, -ct * sa, a * st],
+            [0.0,      sa,       ca, d],
+            [0.0,     0.0,      0.0, 1.0],
+        ])
+    return T
+
+
+def validate(n=10000, seed=0):
+    """Compara fk() (DH modificado) com fk_standard() (DH clássico) em n q aleatórios."""
+    rng = np.random.default_rng(seed)
+    worst_p = worst_R = 0.0
+    for _ in range(n):
+        q = rng.uniform(-180.0, 180.0, 6)
+        A, B = fk(q), fk_standard(q)
+        worst_p = max(worst_p, np.abs(A[:3, 3] - B[:3, 3]).max())
+        worst_R = max(worst_R, np.abs(A[:3, :3] - B[:3, :3]).max())
+    return worst_p, worst_R
 
 
 def rpy_from_R(R):
@@ -143,7 +188,16 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--q", type=float, nargs=6, default=[0.0] * 6, help="ângulos das juntas [graus]")
     ap.add_argument("--frames", action="store_true", help="imprime todos os referenciais")
+    ap.add_argument("--validar", action="store_true", help="compara com a tabela D-H clássica do PDF oficial")
     args = ap.parse_args()
+
+    if args.validar:
+        wp, wr = validate()
+        print(f"DH modificado vs DH clássico (PDF oficial), 10000 q aleatórios:")
+        print(f"  maior diferença de posição : {wp:.2e} mm")
+        print(f"  maior diferença de rotação : {wr:.2e}")
+        print("  => OK, as duas tabelas dão a mesma FK" if wp < 1e-6 and wr < 1e-9 else "  => DIFERENTES — rever a tabela")
+        return
 
     np.set_printoptions(precision=3, suppress=True)
     pose = fk_pose(args.q)

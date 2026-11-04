@@ -48,6 +48,7 @@ Todos os comandos a partir da pasta `Lab2/`.
 ```bash
 python src/kinematics.py                      # FK com q = 0 -> (87, 0, 154.2) mm, roll 180
 python src/kinematics.py --q 0 30 60 0 30 0   # FK para outro q
+python src/kinematics.py --validar            # DH modificado vs DH clássico do PDF oficial
 python src/trajectory.py --plot               # gera o swing, verifica viabilidade, gráficos em report/
 python src/trajectory.py --t-down 3 --raio 180
 ```
@@ -80,8 +81,8 @@ trajetórias que falhem a verificação e pede confirmação antes de mexer.
 
 ```
 lab2.ipynb  notebook com tudo (teoria + código + resultados); GUIA.md explica em texto
-src/      config.py       IP, limites do fabricante, mesa/base (CONFIRMAR valores)
-          kinematics.py   Tarefa 1: DH modificado, fk(), rpy, IK numérica (só p/ verificação)
+src/      config.py       IP, limites do fabricante, mesa/base (CONFIRMAR limites)
+          kinematics.py   Tarefa 1: DH do PDF oficial, fk(), validação, rpy, IK numérica
           trajectory.py   Tarefa 2: swing (arco + "pulso"), viabilidade, gráficos
           robot.py        ligação ao robô (SDK xArm)
           run_robot.py    Tarefa 3
@@ -108,6 +109,8 @@ scripts_curso/  scripts de exemplo da página da cadeira
 
 ## A confirmar no laboratório
 
-- Tabela DH e limites em `config.py` (datasheet/manual do Lite 6).
+- Limites e velocidades em `config.py` (datasheet/manual do Lite 6). A tabela
+  DH já está confirmada com o PDF oficial
+  (`ufactory-lite-6-Kinematic-and-Dynamic-Parameters.pdf`).
 - IP do robô e se a garra/ferramenta tem offset de TCP (se sim, somar à FK).
 - Altura da mesa e posição da bola.

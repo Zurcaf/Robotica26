@@ -159,9 +159,10 @@ poder citar a fonte e para só haver um sítio a corrigir.
 | `TABLE_Z`, `TABLE_CLEARANCE` | 0 mm, 30 mm | a garra tem de ficar ≥ 30 mm acima da mesa |
 | `BASE_RADIUS` | 80 mm | cilindro à volta do eixo de J1 onde a garra não pode entrar |
 
-**Atenção:** os valores do fabricante foram escritos de memória e estão
-marcados `CONFIRMAR`. Antes de entregar, confirmar na datasheet/manual
-oficial e corrigir aqui — tudo o resto se ajusta sozinho.
+**Atenção:** os limites e velocidades acima foram escritos de memória e estão
+marcados `CONFIRMAR` — o PDF de parâmetros cinemáticos não os traz. Antes de
+entregar, confirmar na datasheet/manual oficial e corrigir aqui — tudo o resto
+se ajusta sozinho. (A tabela DH, essa, já está confirmada: secção 6.3.)
 
 Porquê a margem de 80 %: os limites do fabricante são máximos absolutos; uma
 trajetória que os toque exatamente pode disparar erros de proteção do
@@ -223,6 +224,12 @@ a Tarefa 4 vai comparar.
 
 ### 6.3 A tabela DH usada
 
+**Fonte:** documento oficial *"Kinematic and Dynamic Parameters of UFACTORY
+Lite 6"*, tabela (1) D-H modificado — está na pasta como
+`ufactory-lite-6-Kinematic-and-Dynamic-Parameters.pdf` (pág. 1). A tabela foi
+inicialmente escrita de memória e depois conferida com este PDF: é **igual
+número a número**. Não foi afinada a partir de nenhuma medição.
+
 | Junta | offset θ | d [mm] | α_{i-1} | a_{i-1} [mm] |
 |---|---|---|---|---|
 | J1 | 0° | 243.3 | 0° | 0 |
@@ -251,9 +258,27 @@ python src/kinematics.py
 
 Bate com a pose de zero conhecida do Lite 6: x = 87 (o desvio do antebraço),
 z = 243.3 + 200 − 227.6 − 61.5 = 154.2 mm (o braço sobe 200 e o antebraço e
-o pulso descem), garra virada para baixo (roll 180°). É um bom indício de
-que a tabela está certa — a validação definitiva é na Tarefa 4, comparando
-com `arm.get_forward_kinematics()` do controlador.
+o pulso descem), garra virada para baixo (roll 180°).
+
+Este teste é **fraco**: só confirma algumas somas de comprimentos. Um sinal
+trocado num α ou num offset podia passar aqui e falhar noutras posições.
+
+**Validação forte — duas convenções, a mesma FK.** O PDF oficial dá também a
+tabela (2) em D-H **clássico** (pág. 2), com outros referenciais e outra
+fórmula por elo (`Rz(θ)·Tz(d)·Tx(a)·Rx(α)`). Está implementada à parte em
+`fk_standard()`. Se a tabela e a implementação estiverem certas, as duas têm de
+dar a mesma pose para **qualquer** q:
+
+```bash
+python src/kinematics.py --validar
+# DH modificado vs DH clássico (PDF oficial), 10000 q aleatórios:
+#   maior diferença de posição : 2.27e-13 mm
+#   maior diferença de rotação : 3.33e-16
+#   => OK, as duas tabelas dão a mesma FK
+```
+
+Diferenças de 10⁻¹³ mm são só arredondamento do computador. A prova final é
+na Tarefa 4, comparando com `arm.get_forward_kinematics()` do controlador.
 
 Outros comandos:
 
@@ -633,16 +658,18 @@ resultado da Tarefa 4** — o resultado real só sai no laboratório.
 | `run_robot.py --go` (pontos / servo) | ❌ **não testado — precisa do robô** |
 | `ik_compare.py` análise e gráfico | ✅ com dados simulados |
 | `ik_compare.py` a falar com o robô | ❌ **não testado — precisa do robô** |
-| Tabela DH e limites confirmados na documentação oficial | ❌ **por confirmar** |
-| Commit no git | ❌ nada commitado |
+| Tabela DH igual à do PDF oficial + FK igual à da tabela D-H clássica (`--validar`) | ✅ |
+| Limites e velocidades das juntas confirmados na datasheet | ❌ **por confirmar** |
+| Commit no git | ✅ branch `Henrique` |
 
 ---
 
 ## 13. Checklist para o dia do laboratório
 
 Antes de ir:
-- [ ] Confirmar tabela DH e limites na documentação oficial do Lite 6; corrigir
-      `config.py` / `kinematics.py` se for preciso e voltar a correr
+- [x] Tabela DH confirmada com o PDF oficial (`python src/kinematics.py --validar`).
+- [ ] Confirmar limites e velocidades na datasheet do Lite 6; corrigir
+      `config.py` se for preciso e voltar a correr
       `python src/trajectory.py --plot`.
 - [ ] Levar o portátil com a `.venv` pronta (ou instalar antes de chegar).
 - [ ] Copiar para `scripts_curso/` os exemplos da página da cadeira.
@@ -705,8 +732,8 @@ nomes.
 
 ## 16. Limitações conhecidas e ideias de melhoria
 
-- **Valores do fabricante não confirmados** (tabela DH, limites, velocidades,
-  IP). É a primeira coisa a fazer.
+- **Valores do fabricante por confirmar** (limites, velocidades, IP). A tabela
+  DH já está confirmada com o PDF oficial.
 - **A bola é um ponto.** A garra passa exatamente na posição da bola;
   não há modelo do tamanho da bola nem da garra. Se houver uma bola física,
   pôr a posição da bola uns mm ao lado/acima, ou definir um offset de
