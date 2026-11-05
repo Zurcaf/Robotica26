@@ -56,10 +56,11 @@ python src/trajectory.py --t-down 3 --raio 180
 Resultado atual com os `DEFAULTS`:
 
 ```
-  597 pontos, 5.96 s, IK numérica convergiu
-  vel. TCP        : max    245.4 mm/s   (limite c/ margem 400.0)  OK
-  vel. juntas     : max    123.0 deg/s  (limite c/ margem 144.0)  OK
-  alcance         : max    298.6 mm     (limite c/ margem 352.0)  OK
+  592 pontos, 5.91 s, IK numérica convergiu
+  vel. TCP        : max    220.9 mm/s   (limite c/ margem 400.0)  OK
+  vel. juntas     : max    111.9 deg/s  (limite c/ margem 144.0)  OK
+  alcance         : max    320.6 mm     (limite c/ margem 352.0)  OK
+  limites juntas  : menor folga 7.8 deg (J5, mínimo 5)  OK
   ...
   => trajetória VIÁVEL
 ```
@@ -103,6 +104,10 @@ scripts_curso/  scripts de exemplo da página da cadeira
 - **Perfis:** backswing quíntico; downswing com aceleração constante
   (`phi = phi_top·(1-(u/T)²)`, velocidade máxima na bola, como no Lab 1);
   follow-through com desaceleração constante até parar.
+- **Pinça:** UFACTORY Gripper for Lite 6, TCP a 83.6 mm do flange (URDF
+  oficial). A **ponta da pinça** é a cabeça do taco e passa na bola em
+  (190, 0, 80). Os scripts leem o `tcp_offset` do controlador e convertem as
+  poses — não alteram a configuração do robô. `--garra 0` = sem pinça.
 - **Singularidade:** com a garra a pique na bola (`rpy = 180, 0, 0`) o J5 passa
   por 0 e J4/J6 disparam (~1900 °/s). Por isso a garra está inclinada 45°
   (`rpy_enderecio`). A velocidade de J6 é o que limita `t_down`.
@@ -112,5 +117,6 @@ scripts_curso/  scripts de exemplo da página da cadeira
 - Limites e velocidades em `config.py` (datasheet/manual do Lite 6). A tabela
   DH já está confirmada com o PDF oficial
   (`ufactory-lite-6-Kinematic-and-Dynamic-Parameters.pdf`).
-- IP do robô e se a garra/ferramenta tem offset de TCP (se sim, somar à FK).
-- Altura da mesa e posição da bola.
+- IP do robô e se a pinça montada é a Gripper Lite (o `tcp_offset` do
+  controlador é lido automaticamente).
+- Mesa ao nível da base e espaço livre à volta da bola (190, 0, 80).

@@ -17,6 +17,13 @@ de cabeça do taco:
                 plano; psi é o "lag" do pulso, armado no topo e solto tarde
                 (f_release), como no Lab 1.
 
+PINÇA
+-----
+A "cabeça do taco" é a PONTA DA PINÇA (TCP), não o flange: traj["pos"] é a
+ponta, que passa exatamente na bola. O flange fica `garra` mm atrás, ao longo
+do z da ferramenta (traj["pos_flange"]) — é o flange que a IK resolve e é a
+ponta + o flange que se verificam contra a mesa e a base.
+
 Fases (iguais ao Lab 1):
   1. backswing   phi: 0 -> phi_top (quíntico, parte e chega parado)
   2. downswing   phi: phi_top -> 0 com aceleração constante,
@@ -32,17 +39,21 @@ import os
 import numpy as np
 
 import config as C
-from kinematics import R_from_rpy, fk, ik_numeric, rpy_from_R
+from kinematics import R_from_rpy, fk, ik_numeric, pose_from_T, rpy_from_R, tool_transform
+from robot import pose_sdk
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPORT = os.path.join(HERE, "..", "report")
 
 DEFAULTS = dict(
-    bola=(250.0, 0.0, 80.0),     # mm, posição fixa da bola (referencial da base)
+    # bola a 190 mm (e não 250): com a pinça o flange fica ~60 mm mais longe da
+    # base e a 250 mm o topo do swing saía do alcance.
+    bola=(190.0, 0.0, 80.0),     # mm, posição fixa da bola (referencial da base)
     direcao=(0.0, 1.0, 0.0),     # direção do alvo (horizontal)
     raio=150.0,                  # mm, raio do arco ("comprimento do braço+taco")
-    phi_top=-100.0,              # graus, ângulo no topo do backswing
-    phi_end=80.0,                # graus, ângulo final do follow-through
+    # topo/fim limitados por J5 (limite 124 deg): com -100/80 e pinça, J5 chegava a 124
+    phi_top=-90.0,               # graus, ângulo no topo do backswing
+    phi_end=70.0,                # graus, ângulo final do follow-through
     psi_top=30.0,                # graus, "pulso armado" no topo
     f_release=0.6,               # fração do downswing em que o pulso solta
     t_back=2.0,                  # s, duração do backswing
@@ -50,6 +61,7 @@ DEFAULTS = dict(
     # orientação da garra na bola: para baixo, inclinada 45 deg. A pique
     # (180, 0, 0) põe J5 = 0 => singularidade do pulso, J4/J6 a ~1900 deg/s.
     rpy_enderecio=(180.0, 45.0, 0.0),
+    garra=C.GRIPPER_TCP_Z,       # mm, flange -> ponta da pinça (0 = sem pinça)
     dt=0.01,                     # s, período de amostragem (100 Hz)
 )
 
@@ -98,8 +110,9 @@ def swing_angles(p):
 
 def swing_trajectory(p=None):
     """
-    Trajetória da garra no espaço cartesiano.
-    Devolve dict com t [s], pos (N,3) [mm], rpy (N,3) [graus], R (N,3,3), phi, psi.
+    Trajetória da ponta da pinça no espaço cartesiano.
+    Devolve dict com t [s], pos (N,3) [mm] da ponta, pos_flange (N,3) [mm],
+    rpy (N,3) [graus], R (N,3,3), phi, psi.
     """
     p = {**DEFAULTS, **(p or {})}
     t, phi, psi = swing_angles(p)
@@ -115,15 +128,33 @@ def swing_trajectory(p=None):
     # sinal: com phi < 0 (backswing) a garra roda "para trás", como o taco
     R = np.array([axis_rotation(-n, ph + ps) @ R0 for ph, ps in zip(phi, psi)])
     rpy = np.array([rpy_from_R(Ri) for Ri in R])
-    return dict(t=t, pos=pos, R=R, rpy=np.unwrap(rpy, period=360.0, axis=0),
-                phi=phi, psi=psi, params=p)
+    pos_flange = pos - p["garra"] * R[:, :, 2]   # recua ao longo do z da ferramenta
+    return dict(t=t, pos=pos, pos_flange=pos_flange, R=R,
+                rpy=np.unwrap(rpy, period=360.0, axis=0), phi=phi, psi=psi, params=p)
+
+
+def command_poses(traj, T_ctrl=None):
+    """
+    Poses [x, y, z, roll, pitch, yaw] a enviar ao controlador, para o TCP que ele
+    estiver a usar (T_ctrl = robot.controller_tcp(arm); None = flange, sem offset).
+    T_ponta = T_flange·T_garra  =>  T_enviar = T_ponta·T_garra⁻¹·T_ctrl.
+    """
+    T_ctrl = np.eye(4) if T_ctrl is None else T_ctrl
+    M = np.linalg.inv(tool_transform(traj["params"]["garra"])) @ T_ctrl
+    out = []
+    for pos, R in zip(traj["pos"], traj["R"]):
+        T = np.eye(4)
+        T[:3, :3], T[:3, 3] = R, pos
+        P = pose_from_T(T @ M)
+        out.append(pose_sdk(P[:3], P[3:]))
+    return out
 
 
 def joint_trajectory(traj, q0=None):
-    """IK numérica ponto a ponto (semente = ponto anterior => continuidade)."""
+    """IK numérica do FLANGE ponto a ponto (semente = ponto anterior => continuidade)."""
     q = np.zeros(6) if q0 is None else np.asarray(q0, float)
     qs, ok = [], True
-    for pos, R in zip(traj["pos"], traj["R"]):
+    for pos, R in zip(traj["pos_flange"], traj["R"]):
         T = np.eye(4)
         T[:3, :3], T[:3, 3] = R, pos
         q, conv = ik_numeric(T, q)
@@ -133,16 +164,21 @@ def joint_trajectory(traj, q0=None):
 
 
 def check_feasibility(traj, qs, verbose=True):
-    """Verifica (i) velocidades, (ii) alcance, (iii) limites das juntas + colisões."""
-    t, pos = traj["t"], traj["pos"]
+    """
+    Verifica (i) velocidades, (ii) alcance, (iii) limites das juntas + colisões.
+    Mesa e base: verifica a ponta da pinça, o flange e todas as juntas de J2 em diante.
+    """
+    t, pos, flange = traj["t"], traj["pos"], traj["pos_flange"]
     sf = C.SAFETY_FACTOR
     v_tcp = np.linalg.norm(np.gradient(pos, t, axis=0), axis=1)
     qd = np.gradient(qs, t, axis=0)
     ombro = fk(np.zeros(6), all_frames=True)[2][:3, 3]     # origem de {2}
-    alcance = np.linalg.norm(pos - ombro, axis=1)
+    alcance = np.linalg.norm(flange - ombro, axis=1)       # o alcance é do flange
     lo = np.array([l for l, _ in C.JOINT_LIMITS])
     hi = np.array([h for _, h in C.JOINT_LIMITS])
-    r_xy = np.linalg.norm(pos[:, :2], axis=1)
+    z_juntas = min(min(T[2, 3] for T in fk(q, all_frames=True)[2:]) for q in qs)
+    z_min = min(pos[:, 2].min(), flange[:, 2].min(), z_juntas)
+    r_xy = min(np.linalg.norm(pos[:, :2], axis=1).min(), np.linalg.norm(flange[:, :2], axis=1).min())
 
     checks = {
         "vel. TCP": (v_tcp.max(), sf * C.TCP_SPEED_MAX, "mm/s"),
@@ -150,16 +186,21 @@ def check_feasibility(traj, qs, verbose=True):
         "alcance": (alcance.max(), sf * C.REACH, "mm"),
     }
     res = {k: v[0] <= v[1] for k, v in checks.items()}
-    res["limites juntas"] = bool(np.all((qs >= lo) & (qs <= hi)))
-    res["acima da mesa"] = bool(pos[:, 2].min() >= C.TABLE_Z + C.TABLE_CLEARANCE)
-    res["fora da base"] = bool(r_xy.min() >= C.BASE_RADIUS)
+    m = C.JOINT_LIMIT_MARGIN
+    res["limites juntas"] = bool(np.all((qs >= lo + m) & (qs <= hi - m)))
+    folga = np.minimum(qs - lo, hi - qs).min(axis=0)       # folga mínima de cada junta
+    res["acima da mesa"] = bool(z_min >= C.TABLE_Z + C.TABLE_CLEARANCE)
+    res["fora da base"] = bool(r_xy >= C.BASE_RADIUS)
 
     if verbose:
         for k, (val, lim, un) in checks.items():
             print(f"  {k:<16}: max {val:8.1f} {un:<6} (limite c/ margem {lim:.1f})  {'OK' if res[k] else 'FALHA'}")
-        print(f"  {'limites juntas':<16}: {'OK' if res['limites juntas'] else 'FALHA'}")
-        print(f"  {'acima da mesa':<16}: z min {pos[:, 2].min():.1f} mm  {'OK' if res['acima da mesa'] else 'FALHA'}")
-        print(f"  {'fora da base':<16}: r min {r_xy.min():.1f} mm  {'OK' if res['fora da base'] else 'FALHA'}")
+        j = folga.argmin()
+        print(f"  {'limites juntas':<16}: menor folga {folga[j]:.1f} deg (J{j + 1}, mínimo {m:.0f})  "
+              f"{'OK' if res['limites juntas'] else 'FALHA'}")
+        print(f"  {'acima da mesa':<16}: z min {z_min:.1f} mm (ponta {pos[:, 2].min():.1f}, flange "
+              f"{flange[:, 2].min():.1f}, juntas {z_juntas:.1f})  {'OK' if res['acima da mesa'] else 'FALHA'}")
+        print(f"  {'fora da base':<16}: r min {r_xy:.1f} mm  {'OK' if res['fora da base'] else 'FALHA'}")
     return all(res.values()), dict(v_tcp=v_tcp, qd=qd, alcance=alcance)
 
 
@@ -198,7 +239,10 @@ def plot(traj, qs, extra):
 
     fig = plt.figure(figsize=(7, 7))
     a3 = fig.add_subplot(projection="3d")
-    a3.plot(*pos.T, label="garra")
+    a3.plot(*pos.T, label="ponta da pinça")
+    a3.plot(*traj["pos_flange"].T, "--", label="flange")
+    for k in range(0, len(pos), 25):             # a pinça, de 1/4 em 1/4 s
+        a3.plot(*np.array([traj["pos_flange"][k], pos[k]]).T, color="gray", lw=0.8)
     a3.scatter(*traj["params"]["bola"], color="k", s=40, label="bola")
     th = np.linspace(0, 2 * np.pi, 40)
     for z in (0.0, 243.3):
@@ -215,10 +259,11 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--t-down", type=float, default=DEFAULTS["t_down"])
     ap.add_argument("--raio", type=float, default=DEFAULTS["raio"])
+    ap.add_argument("--garra", type=float, default=DEFAULTS["garra"], help="mm, flange -> ponta (0 = sem pinça)")
     ap.add_argument("--plot", action="store_true")
     args = ap.parse_args()
 
-    traj = swing_trajectory(dict(t_down=args.t_down, raio=args.raio))
+    traj = swing_trajectory(dict(t_down=args.t_down, raio=args.raio, garra=args.garra))
     qs, conv = joint_trajectory(traj)
     print(f"  {len(traj['t'])} pontos, {traj['t'][-1]:.2f} s, IK numérica {'convergiu' if conv else 'NÃO convergiu em todos os pontos'}")
     ok, extra = check_feasibility(traj, qs)

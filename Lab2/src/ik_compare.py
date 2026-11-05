@@ -12,6 +12,10 @@ Para N pontos espalhados por toda a trajetória da Tarefa 2:
 Também se pede arm.get_forward_kinematics(q_sdk) — se coincidir com a nossa FK,
 a tabela DH da Tarefa 1 fica validada contra o controlador.
 
+As poses referem-se ao TCP que o controlador está a usar (arm.tcp_offset, p.ex.
+a ponta da pinça): a nossa FK compõe-se com esse mesmo offset (fk(q)·T_tcp),
+para comparar o mesmo ponto. O offset fica gravado nas últimas colunas do CSV.
+
 Não mexe o robô (não ativa os motores).
 """
 import argparse
@@ -20,14 +24,15 @@ import os
 import numpy as np
 
 from kinematics import R_from_rpy, fk_pose, orientation_error_deg
-from robot import check, connect, pose_sdk
-from trajectory import swing_trajectory
+from robot import check, connect, controller_tcp
+from trajectory import command_poses, swing_trajectory
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CSV = os.path.join(HERE, "..", "data", "ik_compare.csv")
 REPORT = os.path.join(HERE, "..", "report")
 HEADER = ("t,x,y,z,roll,pitch,yaw,q1,q2,q3,q4,q5,q6,"
-          "x_fk,y_fk,z_fk,roll_fk,pitch_fk,yaw_fk,x_sdk,y_sdk,z_sdk,roll_sdk,pitch_sdk,yaw_sdk")
+          "x_fk,y_fk,z_fk,roll_fk,pitch_fk,yaw_fk,x_sdk,y_sdk,z_sdk,roll_sdk,pitch_sdk,yaw_sdk,"
+          "tcp_x,tcp_y,tcp_z,tcp_roll,tcp_pitch,tcp_yaw")
 
 
 def collect(n, ip):
@@ -36,13 +41,17 @@ def collect(n, ip):
     arm = connect(ip, enable_motion=False)
     rows = []
     try:
+        tcp = list(arm.tcp_offset[:6])
+        T_ctrl = controller_tcp(arm)
+        print(f"  tcp_offset do controlador: {np.round(tcp, 2)}")
+        cmds = command_poses(traj, T_ctrl)
         for k in idx:
-            ref = pose_sdk(traj["pos"][k], traj["rpy"][k])
+            ref = cmds[k]
             code, q = arm.get_inverse_kinematics(ref, input_is_radian=False, return_is_radian=False)
             check(code, f"get_inverse_kinematics (ponto {k})")
             code, sdk = arm.get_forward_kinematics(q, input_is_radian=False, return_is_radian=False)
             check(code, "get_forward_kinematics")
-            rows.append([traj["t"][k], *ref, *q[:6], *fk_pose(q[:6]), *sdk[:6]])
+            rows.append([traj["t"][k], *ref, *q[:6], *fk_pose(q[:6], T_ctrl), *sdk[:6], *tcp])
     finally:
         arm.disconnect()
     os.makedirs(os.path.dirname(CSV), exist_ok=True)

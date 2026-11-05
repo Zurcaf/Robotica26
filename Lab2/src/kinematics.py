@@ -127,10 +127,33 @@ def R_from_rpy(roll, pitch, yaw):
     return Rz @ Ry @ Rx
 
 
-def fk_pose(q_deg):
-    """q [graus] -> [x, y, z, roll, pitch, yaw] em mm / graus (formato do SDK)."""
-    T = fk(q_deg)
+def fk_pose(q_deg, T_tool=None):
+    """
+    q [graus] -> [x, y, z, roll, pitch, yaw] em mm / graus (formato do SDK).
+    Com T_tool (flange -> ferramenta) devolve a pose da ferramenta em vez do flange.
+    """
+    T = fk(q_deg) if T_tool is None else fk(q_deg) @ T_tool
+    return pose_from_T(T)
+
+
+def T_from_pose(pose):
+    """[x, y, z, roll, pitch, yaw] (mm, graus) -> transformação 4x4."""
+    T = np.eye(4)
+    T[:3, :3] = R_from_rpy(*pose[3:6])
+    T[:3, 3] = pose[:3]
+    return T
+
+
+def pose_from_T(T):
+    """Transformação 4x4 -> [x, y, z, roll, pitch, yaw] (mm, graus)."""
     return np.concatenate([T[:3, 3], rpy_from_R(T[:3, :3])])
+
+
+def tool_transform(z_mm):
+    """Ferramenta montada no flange sem rotação, com o TCP a z_mm ao longo de z."""
+    T = np.eye(4)
+    T[2, 3] = z_mm
+    return T
 
 
 def rotvec(R):

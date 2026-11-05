@@ -21,7 +21,7 @@ laboratório.
 5. [config.py — números do fabricante](#5-configpy--números-do-fabricante)
 6. [Tarefa 1 — kinematics.py (cinemática direta)](#6-tarefa-1--kinematicspy-cinemática-direta)
 7. [Tarefa 2 — trajectory.py (o swing)](#7-tarefa-2--trajectorypy-o-swing)
-8. [A singularidade que apareceu (e como se resolveu)](#8-a-singularidade-que-apareceu-e-como-se-resolveu)
+8. [A singularidade que apareceu (e como se resolveu)](#8-a-singularidade-que-apareceu-e-como-se-resolveu) — e [8.1 a pinça](#81-a-pinça-muda-tudo-alcance-e-limite-de-j5)
 9. [robot.py — ligação ao robô](#9-robotpy--ligação-ao-robô)
 10. [Tarefa 3 — run_robot.py (executar no robô)](#10-tarefa-3--run_robotpy-executar-no-robô)
 11. [Tarefa 4 — ik_compare.py (precisão da IK)](#11-tarefa-4--ik_comparepy-precisão-da-ik)
@@ -342,7 +342,8 @@ o que dá velocidade. Aqui a **garra faz de cabeça do taco**:
 |---|---|
 | braço a rodar em torno do ombro | a garra percorre um **arco de raio R** num plano vertical, centrado num "ombro virtual" por cima da bola. Ângulo `phi`, com `phi = 0` na bola |
 | pulso armado / a soltar | a orientação da garra roda `phi + psi` em torno da normal ao plano; `psi` é o "pulso": armado no topo, solto a `f_release` do downswing |
-| bola no chão em (0,0) | bola fixa em `bola = (250, 0, 80)` mm |
+| bola no chão em (0,0) | bola fixa em `bola = (190, 0, 80)` mm |
+| cabeça do taco | **ponta da pinça** (83.6 mm à frente do flange, secção 8.1) |
 
 Posição da garra ao longo do tempo:
 
@@ -352,7 +353,7 @@ p(t)   = centro + R·( sin(phi)·d̂  −  cos(phi)·ẑ )
 ```
 
 - `d̂` = direção do alvo (por omissão +y, horizontal);
-- com `phi = 0` → `p = bola` (impacto); com `phi = −100°` → atrás e acima (topo).
+- com `phi = 0` → `p = bola` (impacto); com `phi = −90°` → atrás e acima (topo).
 
 Orientação:
 
@@ -397,23 +398,24 @@ duração sai das contas: `T_f = 2·phi_end / ω_impacto`.
 
 | Parâmetro | Valor | Significado |
 |---|---|---|
-| `bola` | (250, 0, 80) mm | posição da bola |
+| `bola` | (190, 0, 80) mm | posição da bola — onde passa a **ponta da pinça** (secção 8.1) |
 | `direcao` | (0, 1, 0) | direção do alvo (+y) |
 | `raio` | 150 mm | raio do arco ("braço + taco") |
-| `phi_top` | −100° | topo do backswing |
-| `phi_end` | 80° | fim do follow-through |
+| `phi_top` | −90° | topo do backswing (limitado por J5, secção 8.1) |
+| `phi_end` | 70° | fim do follow-through (idem) |
 | `psi_top` | 30° | quanto o "pulso" arma |
 | `f_release` | 0.6 | o pulso solta aos 60 % do downswing |
 | `t_back` | 2.0 s | duração do backswing |
 | `t_down` | 2.2 s | duração do downswing |
 | `rpy_enderecio` | (180, 45, 0)° | orientação da garra na bola (secção 8) |
+| `garra` | 83.6 mm | flange → ponta da pinça (`config.GRIPPER_TCP_Z`; 0 = sem pinça) |
 | `dt` | 0.01 s | amostragem (100 Hz) |
 
 Contas com estes valores:
-- `ω_impacto = 2 × 1.745 rad / 2.2 s = 1.59 rad/s` → velocidade da garra na
-  bola `= 1.59 × 150 = 238 mm/s`;
-- `T_f = 2 × 1.396 / 1.59 = 1.76 s`;
-- duração total `= 2.0 + 2.2 + 1.76 = 5.96 s` (597 pontos a 100 Hz).
+- `ω_impacto = 2 × 1.571 rad / 2.2 s = 1.43 rad/s` → velocidade da ponta na
+  bola `= 1.43 × 150 = 214 mm/s`;
+- `T_f = 2 × 1.222 / 1.43 = 1.71 s`;
+- duração total `= 2.0 + 2.2 + 1.71 = 5.91 s` (592 pontos a 100 Hz).
 
 ### 7.4 A verificação de viabilidade (`check_feasibility`)
 
@@ -422,12 +424,12 @@ seis:
 
 | Verificação | Como | Exigência do enunciado |
 |---|---|---|
-| velocidade da garra | `|dp/dt|` por diferenças finitas, máximo ≤ 0.8 × 500 mm/s | (i) |
+| velocidade da ponta da pinça | `|dp/dt|` por diferenças finitas, máximo ≤ 0.8 × 500 mm/s | (i) |
 | velocidade das juntas | `|dq/dt|` (q da IK numérica), máximo ≤ 0.8 × 180 °/s | (i) |
-| alcance | distância ao ombro (origem de `{2}`) ≤ 0.8 × 440 mm | (ii) |
-| limites das juntas | todos os q dentro de `JOINT_LIMITS` | (iii) |
-| acima da mesa | z da garra ≥ 30 mm | contacto perigoso |
-| fora da base | distância ao eixo de J1 ≥ 80 mm | contacto perigoso |
+| alcance | distância do **flange** ao ombro (origem de `{2}`) ≤ 0.8 × 440 mm | (ii) |
+| limites das juntas | todos os q a pelo menos **5°** dos limites (`JOINT_LIMIT_MARGIN`) | (iii) |
+| acima da mesa | ponta da pinça, flange **e todas as juntas** com z ≥ 30 mm | contacto perigoso |
+| fora da base | ponta e flange a ≥ 80 mm do eixo de J1 | contacto perigoso |
 
 E ainda: se a IK numérica **não convergir** num ponto, esse ponto é
 considerado inalcançável e a trajetória é marcada como não viável.
@@ -436,27 +438,30 @@ Resultado atual:
 
 ```bash
 python src/trajectory.py --plot
-#   597 pontos, 5.96 s, IK numérica convergiu
-#   vel. TCP        : max    245.4 mm/s   (limite c/ margem 400.0)  OK
-#   vel. juntas     : max    123.0 deg/s  (limite c/ margem 144.0)  OK
-#   alcance         : max    298.6 mm     (limite c/ margem 352.0)  OK
-#   limites juntas  : OK
-#   acima da mesa   : z min 80.0 mm  OK
-#   fora da base    : r min 250.0 mm  OK
+#   592 pontos, 5.91 s, IK numérica convergiu
+#   vel. TCP        : max    220.9 mm/s   (limite c/ margem 400.0)  OK
+#   vel. juntas     : max    111.9 deg/s  (limite c/ margem 144.0)  OK
+#   alcance         : max    320.6 mm     (limite c/ margem 352.0)  OK
+#   limites juntas  : menor folga 7.8 deg (J5, mínimo 5)  OK
+#   acima da mesa   : z min 80.0 mm (ponta 80.0, flange 139.1, juntas 139.1)  OK
+#   fora da base    : r min 190.0 mm  OK
 #   => trajetória VIÁVEL
 ```
 
+Sem pinça: `python src/trajectory.py --garra 0`.
+
 ### 7.5 Os gráficos (em `report/`)
 
-- **`traj_cartesiana.png`** — 3 painéis: x, y, z; roll, pitch, yaw; e |v| da
-  garra com a linha vermelha do limite do fabricante. Lê-se bem o swing: y vai
-  a −150 (backswing), z sobe a ~255 (topo), volta a z = 80 (bola) por volta
-  de t = 4.2 s, onde a velocidade tem o pico do downswing (forma triangular =
-  aceleração constante, depois desaceleração constante).
+- **`traj_cartesiana.png`** — 3 painéis: x, y, z da ponta da pinça; roll,
+  pitch, yaw; e |v| com a linha vermelha do limite do fabricante. Lê-se bem o
+  swing: y vai a −150 (backswing), z sobe a ~230 (topo), volta a z = 80 (bola)
+  por volta de t = 4.2 s, onde a velocidade tem o pico do downswing (forma
+  triangular = aceleração constante, depois desaceleração constante).
 - **`traj_juntas.png`** — os 6 ângulos e as 6 velocidades das juntas, com as
   linhas de ±180 °/s.
-- **`traj_3d.png`** — o caminho da garra em 3D, a bola e dois círculos a marcar
-  o cilindro da base: mostra que o caminho passa longe do robô.
+- **`traj_3d.png`** — o caminho da ponta da pinça e o do flange em 3D, a pinça
+  desenhada de ¼ em ¼ s (traços cinzentos), a bola e dois círculos a marcar o
+  cilindro da base: mostra que tudo passa longe do robô e da mesa.
 
 Estes três gráficos respondem ao "provide clear plots… no dangerous physical
 contact".
@@ -501,9 +506,68 @@ swing. Por isso **aumentou-se `t_down` de 1.5 para 2.2 s**: a velocidade
 escala com 1/T, ou seja 180 × 1.5/2.2 ≈ 123 °/s. Fica dentro.
 
 **Conclusão para o relatório:** neste robô o limite de velocidade do swing não
-vem da velocidade linear da garra (238 mm/s ≪ 500 mm/s), mas da velocidade da
+vem da velocidade linear da garra (~220 mm/s ≪ 500 mm/s), mas da velocidade da
 **junta 6**, e a orientação da garra tem de ser escolhida para evitar a
 singularidade do pulso.
+
+(Esta análise foi feita ainda sem pinça e com a bola em (250, 0, 80); os
+valores atuais estão na secção 7.4.)
+
+### 8.1 A pinça muda tudo: alcance e limite de J5
+
+O robô do laboratório tem a **UFACTORY Gripper for Lite 6** (Gripper Lite,
+LG1000). Medidas usadas (`config.py`):
+
+| Grandeza | Valor | Fonte |
+|---|---|---|
+| flange → TCP (entre as pontas dos dedos) | **83.6 mm** ao longo do z da ferramenta, sem rotação | URDF oficial `xarm_ros2`, `uflite_gripper.urdf.xacro` (`joint_tcp` z = 0.0836 m; pinça montada em `link_eef` = `link6` sem offset) |
+| massa | 290 g | docs.lite6.ufactory.cc, especificações técnicas |
+| curso dos dedos | 16 mm | idem |
+
+**O que muda no código:**
+- A "cabeça do taco" passa a ser a **ponta da pinça**: `traj["pos"]` é a ponta
+  e é ela que passa na bola. O flange fica 83.6 mm atrás, ao longo do eixo da
+  ferramenta (`traj["pos_flange"]`) — e é o flange que a IK resolve.
+- A verificação "acima da mesa" passou a olhar para a ponta, o flange **e todas
+  as juntas**; o alcance é medido no flange.
+
+**O que se descobriu ao meter a pinça** (com a bola em (250, 0, 80), φ de −100°
+a 80°):
+1. **Alcance:** com a garra inclinada 45°, o flange fica ~59 mm mais longe da
+   base e ~59 mm mais alto do que a ponta. No topo do swing o flange chegava a
+   373 mm do ombro (limite c/ margem: 352) e a IK falhava → **bola aproximada
+   para x = 190 mm**.
+2. **Limite de J5:** a J5 começa nos ~61° na bola e cresce com a rotação da
+   garra — chegava ao limite físico (**124°**) no topo e quase lá no fim do
+   follow-through. Reduzir o "pulso" (`psi_top`) não ajudou; o que conta é a
+   rotação total. Testes (bola a 190 mm):
+
+   | inclinação | φ_top | φ_end | J5 máx | junta mais rápida |
+   |---|---|---|---|---|
+   | 45° | −100° | 80° | **124° (no limite)** | — |
+   | 45° | −90° | 80° | 122° | J6 112 °/s |
+   | 45° | −90° | 70° | **116°** | J6 112 °/s |
+   | 45° | −80° | 70° | 112° | J6 99 °/s |
+   | 35° | −90° | 70° | 113° | J6 129 °/s |
+
+   Escolheu-se **45°, −90°, 70°**: mantém a garra longe da singularidade de J5
+   = 0 e deixa J5 com 8° de folga ao limite, sem encolher muito o swing.
+3. Para isto não voltar a passar despercebido, a verificação exige agora pelo
+   menos **5° de folga a todos os limites das juntas** (a IK numérica corta nos
+   limites, por isso uma junta "encostada" escondia o problema).
+
+**E no robô?** O SDK move o TCP que estiver configurado no controlador
+(`arm.tcp_offset`, definido no UFactory Studio) — pode ser o flange (offset 0)
+ou a ponta da pinça (offset 83.6). O código **não altera** essa configuração
+(o robô é partilhado): lê-a e converte as poses com `command_poses()`:
+
+```
+T_ponta  = T_flange · T_garra            (T_garra = translação de 83.6 mm em z)
+T_enviar = T_ponta · T_garra⁻¹ · T_ctrl  (T_ctrl = tcp_offset do controlador)
+```
+
+Testado offline com três offsets diferentes (0, 83.6 mm e um arbitrário): em
+todos a ponta da pinça cai exatamente em (190, 0, 80) no impacto.
 
 ---
 
@@ -572,10 +636,18 @@ python src/run_robot.py --go --ip 192.168.1.xxx # outro IP
 Ensaio já testado (offline):
 
 ```
-  vel. TCP : max 81.8 mm/s ... OK      (3× mais lento)
-  início: [ 250. 0. 80. -180. 45. 0.]   duração: 17.9 s   método: pontos
+  vel. TCP : max 73.6 mm/s ... OK      (3× mais lento)
+  pinça: 83.6 mm   duração: 17.7 s   método: pontos
+  ponta da pinça no início: [190.   0.  80.] mm (= bola)
+  pose a enviar se o controlador NÃO tiver tcp_offset (flange): [ 249.1  0.  139.1 -180.  45.  0. ]
   ENSAIO — nada foi enviado. Usa --go para executar.
 ```
+
+Com `--go`, depois de ligar, o script **lê o `tcp_offset` do controlador**,
+mostra-o, converte todas as poses para esse TCP (secção 8.1) e mostra a
+primeira pose que vai enviar — só depois pede a confirmação `sim`. Se o
+controlador tiver um offset em z diferente de 0 e de 83.6 mm, avisa (pode estar
+outra ferramenta configurada). `--garra 0` = sem pinça.
 
 ### 10.4 Segurança — porque está assim
 
@@ -679,11 +751,11 @@ No laboratório:
        sub-rede (ex.: 192.168.1.100, máscara 255.255.255.0).
 2. [ ] `set LITE6_IP=<ip>` (PowerShell: `$env:LITE6_IP="<ip>"`), ou `--ip`.
 3. [ ] Correr um exemplo do curso para confirmar a ligação.
-4. [ ] Ver se há garra/ferramenta montada e se o controlador tem um offset de
-       ferramenta (TCP offset) configurado. Se sim, a pose que o robô reporta
-       não é a do flange — ter isso em conta na Tarefa 4.
-5. [ ] Medir/decidir a altura da mesa e a posição da bola; ajustar `bola` e
-       `TABLE_Z` e verificar outra vez.
+4. [ ] Confirmar que a pinça montada é a Gripper Lite (83.6 mm já está no
+       código). O `tcp_offset` do controlador é lido e tratado automaticamente
+       (secção 8.1) — só apontar o valor que o script mostra.
+5. [ ] Confirmar que a mesa está ao nível da base do robô (z = 0) e que nada
+       está a menos de 30 cm à volta da bola (190, 0, 80).
 6. [ ] **Tarefa 4 primeiro** (não mexe o robô): `python src/ik_compare.py --n 60`.
        Ver logo se a nossa FK coincide com a do controlador.
 7. [ ] Tarefa 3: `python src/run_robot.py` (ensaio) → `--go --lento 3` →
@@ -702,9 +774,10 @@ de comandos só há dois atalhos (`--t-down`, `--raio`); para os outros, edita
 | Quero… | Mexer em | Efeito / cuidado |
 |---|---|---|
 | swing mais rápido | `t_down` ↓ | velocidades ∝ 1/T; J6 é o primeiro a passar o limite |
-| backswing mais lento (mais realista) | `t_back` ↑ | atualmente o pico do backswing (245 mm/s) é maior que o do impacto (238 mm/s) — num swing real o backswing é mais lento |
+| backswing mais lento (mais realista) | `t_back` ↑ | atualmente o pico do backswing (221 mm/s) é maior que o do impacto (214 mm/s) — num swing real o backswing é mais lento |
 | arco maior | `raio` ↑ | mais velocidade linear para o mesmo ω, mas cuidado com o alcance e com o topo |
-| backswing mais alto | `phi_top` mais negativo | aumenta ω de impacto e o alcance no topo |
+| backswing mais alto | `phi_top` mais negativo | aumenta ω de impacto e o alcance no topo; **J5 encosta ao limite** (secção 8.1) |
+| sem pinça / outra ferramenta | `--garra` (ou `garra` em `DEFAULTS`) | mm do flange à ponta; 0 = sem pinça |
 | "pulso" mais ativo | `psi_top` ↑, `f_release` ↑ | mais rotação da garra → mais carga em J6 |
 | bola noutro sítio | `bola` | confirmar alcance, mesa e base |
 | swing noutra direção | `direcao` | ex.: (1, 0, 0) faz o swing em direção oposta à base — rever a base |
@@ -734,14 +807,12 @@ nomes.
 
 - **Valores do fabricante por confirmar** (limites, velocidades, IP). A tabela
   DH já está confirmada com o PDF oficial.
-- **A bola é um ponto.** A garra passa exatamente na posição da bola;
-  não há modelo do tamanho da bola nem da garra. Se houver uma bola física,
-  pôr a posição da bola uns mm ao lado/acima, ou definir um offset de
-  ferramenta.
-- **Colisões simplificadas:** só se verifica a ponta (flange) contra a mesa e
-  um cilindro à volta da base. Os elos do robô (cotovelo, antebraço) não são
-  verificados. Uma melhoria fácil: usar `fk(q, all_frames=True)` para
-  verificar também a altura de cada junta acima da mesa.
+- **A bola é um ponto.** A ponta da pinça passa exatamente na posição da bola;
+  não há modelo do tamanho da bola nem da largura da pinça. Se houver uma bola
+  física, pôr a posição da bola uns mm ao lado/acima.
+- **Colisões simplificadas:** verifica-se a ponta da pinça, o flange e a altura
+  de todas as juntas contra a mesa, e a ponta/flange contra um cilindro à volta
+  da base. O volume dos elos e da pinça (largura) não é modelado.
 - **Aceleração descontínua** na passagem downswing → follow-through (é o que
   dá o "bico" no gráfico de velocidade). É fiel ao Lab 1, mas pode fazer o
   robô dar um pequeno solavanco; se for um problema, suavizar essa transição.

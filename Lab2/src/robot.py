@@ -23,6 +23,18 @@ def connect(ip=None, enable_motion=True):
     return arm
 
 
+def controller_tcp(arm):
+    """
+    Flange -> TCP que o controlador está a usar (arm.tcp_offset, configurável no
+    UFactory Studio). set_position / get_position / IK / FK do SDK referem-se a
+    este ponto, por isso as poses enviadas têm de ser convertidas para ele.
+    O código lê-o mas NUNCA o altera (o robô é partilhado).
+    """
+    from kinematics import T_from_pose
+
+    return T_from_pose(np.asarray(arm.tcp_offset[:6], dtype=float))
+
+
 def wrap180(a):
     """Ângulos em graus para (-180, 180] — o SDK não aceita valores desembrulhados."""
     return (np.asarray(a) + 180.0) % 360.0 - 180.0

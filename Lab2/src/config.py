@@ -33,6 +33,18 @@ REACH = 440.0               # mm, alcance máximo (do eixo de J2 ao flange)
 # Margem de segurança aplicada aos limites acima nas verificações de
 # viabilidade (Tarefa 2): 0.8 => só se aceitam trajetórias que usem <= 80 %.
 SAFETY_FACTOR = 0.8
+# Folga mínima a cada limite de junta (a IK numérica corta nos limites, por isso
+# uma junta "no limite" é sinal de que a pose está a ser forçada).
+JOINT_LIMIT_MARGIN = 5.0    # graus
+
+# --- Pinça: UFACTORY Gripper for Lite 6 (Gripper Lite, LG1000) ----------------
+# Montada no flange sem desvio nem rotação; o TCP (entre as pontas dos dedos)
+# fica a 83.6 mm ao longo do z da ferramenta. Fonte: URDF oficial xarm_ros2,
+# uflite_gripper.urdf.xacro (joint_tcp z = 0.0836 m, gripper_fix em link_eef =
+# link6 com origem 0). Massa: docs.lite6.ufactory.cc, especificações técnicas.
+# --garra 0 nos scripts = sem pinça.
+GRIPPER_TCP_Z = 83.6        # mm, flange -> pontas dos dedos
+GRIPPER_MASS = 0.29         # kg
 
 # --- Ambiente ------------------------------------------------------------------
 # Plano da mesa (z do referencial da base) e raio "proibido" em torno do eixo
