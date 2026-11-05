@@ -13,7 +13,7 @@ import os
 # --- Ligação -----------------------------------------------------------------
 # IP da caixa de controlo (etiqueta na caixa). Pode ser sobreposto com a
 # variável de ambiente LITE6_IP para não ter de editar o ficheiro.
-ROBOT_IP = os.environ.get("LITE6_IP", "192.168.1.185")
+ROBOT_IP = os.environ.get("LITE6_IP", "192.168.1.158")   # Lite 6 do laboratório
 
 # --- Limites das juntas [graus] (CONFIRMAR) ----------------------------------
 JOINT_LIMITS = [

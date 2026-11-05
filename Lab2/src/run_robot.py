@@ -30,7 +30,8 @@ from trajectory import DEFAULTS, check_feasibility, command_poses, joint_traject
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "..", "data")
-APPROACH_SPEED = 50.0  # mm/s, para ir até ao início da trajetória
+APPROACH_SPEED = 50.0  # mm/s, velocidade do último ponto (fim da trajetória)
+APPROACH_JOINT_SPEED = 20.0  # deg/s, aproximação junta a junta ao início
 
 
 def run_pontos(arm, traj, cmds, every):
@@ -42,26 +43,37 @@ def run_pontos(arm, traj, cmds, every):
     arm.set_position(*cmds[-1], speed=APPROACH_SPEED, wait=True)
 
 
-def run_servo(arm, traj, cmds):
+def run_servo(arm, traj, cmds, nome="run_servo"):
     arm.set_mode(1)
     arm.set_state(0)
     time.sleep(0.5)
     dt = traj["t"][1] - traj["t"][0]
     log = []
     t0 = time.perf_counter()
-    for k, cmd in enumerate(cmds):
-        check(arm.set_servo_cartesian(cmd), "set_servo_cartesian")
-        code, meas = arm.get_position()
-        log.append([time.perf_counter() - t0, *cmd, *meas])
-        while time.perf_counter() - t0 < (k + 1) * dt:
-            pass
-    arm.set_mode(0)
-    arm.set_state(0)
-    os.makedirs(DATA, exist_ok=True)
-    out = os.path.join(DATA, "run_servo.csv")
-    np.savetxt(out, np.array(log), delimiter=",", fmt="%.4f",
-               header="t,x_ref,y_ref,z_ref,roll_ref,pitch_ref,yaw_ref,x,y,z,roll,pitch,yaw")
-    print(f"  pose medida gravada em {os.path.normpath(out)}")
+    try:
+        for k, cmd in enumerate(cmds):
+            code = arm.set_servo_cartesian(cmd)
+            if code != 0:
+                # o código do SDK (1 = "robô em erro") não diz a causa: mostrar a do controlador
+                print(f"  PAROU no ponto {k}/{len(cmds)} (t = {traj['t'][k]:.2f} s de {traj['t'][-1]:.2f} s)")
+                print(f"  código SDK {code} | erro do controlador {arm.error_code} | aviso {arm.warn_code}")
+                print(f"  pose pedida: {np.round(cmd, 1)}")
+                print(f"  juntas atuais: {np.round(arm.get_servo_angle()[1][:6], 1)}")
+                break
+            code, meas = arm.get_position()
+            log.append([time.perf_counter() - t0, *cmd, *meas])
+            while time.perf_counter() - t0 < (k + 1) * dt:
+                pass
+    finally:
+        # grava sempre o que foi recolhido, mesmo que o robô pare a meio
+        if log:
+            os.makedirs(DATA, exist_ok=True)
+            out = os.path.join(DATA, f"{nome}.csv")
+            np.savetxt(out, np.array(log), delimiter=",", fmt="%.4f",
+                       header="t,x_ref,y_ref,z_ref,roll_ref,pitch_ref,yaw_ref,x,y,z,roll,pitch,yaw")
+            print(f"  {len(log)} poses medidas gravadas em {os.path.normpath(out)}")
+        arm.set_mode(0)
+        arm.set_state(0)
 
 
 def main():
@@ -70,11 +82,13 @@ def main():
     ap.add_argument("--metodo", choices=["pontos", "servo"], default="pontos")
     ap.add_argument("--lento", type=float, default=3.0, help="fator de abrandamento (>= 1)")
     ap.add_argument("--garra", type=float, default=DEFAULTS["garra"], help="mm, flange -> ponta (0 = sem pinça)")
+    ap.add_argument("--phi-end", type=float, default=DEFAULTS["phi_end"],
+                    help="graus, fim do follow-through (no lab o C31 aparecia em phi ~69)")
     ap.add_argument("--ip", default=None)
     args = ap.parse_args()
 
     p = {k: DEFAULTS[k] * args.lento for k in ("t_back", "t_down")}
-    traj = swing_trajectory(dict(p, garra=args.garra))
+    traj = swing_trajectory(dict(p, garra=args.garra, phi_end=args.phi_end))
     qs, conv = joint_trajectory(traj)
     ok, _ = check_feasibility(traj, qs)
     if not (ok and conv):
@@ -98,13 +112,17 @@ def main():
             print(f"  AVISO: o controlador usa z = {tcp[2]} mm e o código assume pinça de {args.garra} mm."
                   " A ponta vai passar na bola na mesma, mas confirma qual é a ferramenta montada.")
         print(f"  primeira pose enviada: {np.round(cmds[0], 1)}")
+        print(f"  aproximação junta a junta a {APPROACH_JOINT_SPEED:.0f} deg/s até q = {np.round(qs[0], 1)}")
         if input("  Robô livre e emergência à mão? Escreve 'sim': ").strip().lower() != "sim":
             return
-        check(arm.set_position(*cmds[0], speed=APPROACH_SPEED, wait=True), "set_position (início)")
+        # o robô pode estar em qualquer pose: ir em linha reta no espaço pode passar
+        # por sítios estranhos, por isso a aproximação é no espaço das juntas
+        check(arm.set_servo_angle(angle=list(qs[0]), speed=APPROACH_JOINT_SPEED, wait=True), "set_servo_angle (aproximação)")
+        check(arm.set_position(*cmds[0], speed=10.0, wait=True), "set_position (início)")
         if args.metodo == "pontos":
             run_pontos(arm, traj, cmds, every=10)
         else:
-            run_servo(arm, traj, cmds)
+            run_servo(arm, traj, cmds, nome=f"run_servo_lento{args.lento:g}")
     finally:
         arm.disconnect()
 
