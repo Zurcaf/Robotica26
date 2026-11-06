@@ -78,6 +78,19 @@ python src/ik_compare.py --from-csv               # refaz o gráfico em casa
 **Segurança:** emergência sempre à mão; `run_robot.py` recusa enviar
 trajetórias que falhem a verificação e pede confirmação antes de mexer.
 
+### Swing V2 — pinça = mãos, caneta = taco
+
+Pêndulo duplo com juntas reais: ombro J3 + pulso J5 (J2 = tronco inclinado,
+J1/J4/J6 = 0), enviado junta a junta. Cabeça do taco a ~600 mm/s. Simulação e
+limites em [swing_v2.ipynb](swing_v2.ipynb); explicação no GUIA, secção 18.
+
+```bash
+python src/swing_v2.py --plot                  # verifica + gráficos report/v2_*.png
+python src/run_robot_v2.py                     # ensaio
+python src/run_robot_v2.py --go --lento 3      # pega na caneta + swing
+python src/run_robot_v2.py --soltar            # abre a pinça
+```
+
 ## Estrutura
 
 ```

@@ -25,10 +25,12 @@ JOINT_LIMITS = [
     (-360.0, 360.0),   # J6
 ]
 
-# --- Velocidades máximas (CONFIRMAR) -----------------------------------------
+# --- Velocidades máximas: confirmadas em docs.lite6.ufactory.cc (especificações
+# técnicas): "Maximum Joint Speed 180°/s", "Maximum Speed of End-Effector 500mm/s".
+# Repetibilidade ±0.5 mm. O controlador do lab limitou o cartesiano a ~220 mm/s.
 JOINT_SPEED_MAX = 180.0     # graus/s, por junta
-TCP_SPEED_MAX = 500.0       # mm/s, velocidade linear da ferramenta
-REACH = 440.0               # mm, alcance máximo (do eixo de J2 ao flange)
+TCP_SPEED_MAX = 500.0       # mm/s, velocidade linear do efetor final
+REACH = 440.0               # mm, alcance máximo (≈ J2 -> centro do pulso J5)
 
 # Margem de segurança aplicada aos limites acima nas verificações de
 # viabilidade (Tarefa 2): 0.8 => só se aceitam trajetórias que usem <= 80 %.

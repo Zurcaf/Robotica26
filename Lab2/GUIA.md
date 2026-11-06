@@ -9,6 +9,10 @@ laboratório.
 > um arco a passar na bola, com o "pulso" a soltar tarde — e há código para
 > (1) a cinemática direta, (2) gerar e verificar essa trajetória, (3) mandá-la
 > para o robô e (4) medir a precisão da cinemática inversa do robô.
+>
+> **Há uma segunda versão, a V2** (secção 18): o robô é o braço, a pinça são as
+> mãos e uma **caneta** presa na pinça é o taco — pêndulo duplo ombro (J3) +
+> pulso (J5), enviado junta a junta. Simulação em `swing_v2.ipynb`.
 
 ---
 
@@ -31,6 +35,7 @@ laboratório.
 15. [Do código ao relatório](#15-do-código-ao-relatório)
 16. [Limitações conhecidas e ideias de melhoria](#16-limitações-conhecidas-e-ideias-de-melhoria)
 17. [Glossário](#17-glossário)
+18. [Swing V2 — a pinça é a mão, a caneta é o taco](#18-swing-v2--a-pinça-é-a-mão-a-caneta-é-o-taco)
 
 ---
 
@@ -709,7 +714,7 @@ resultado da Tarefa 4** — o resultado real só sai no laboratório.
 ### 11.4 O que discutir no relatório
 
 - ordem de grandeza dos erros (mm? µm?) face à repetibilidade do robô
-  (datasheet, ~±0.2 mm);
+  (datasheet: ±0.5 mm);
 - onde estão os maiores erros (topo do backswing? perto da bola?) e se
   coincidem com J5 pequeno (singularidade) ou juntas perto dos limites;
 - se a IK do robô devolve a mesma configuração (cotovelo/pulso) ao longo da
@@ -852,3 +857,90 @@ nomes.
 | **Blending** | passar perto de um waypoint sem parar, arredondando a esquina |
 | **Modo 0 / modo 1** | xArm: posição (o controlador planeia) / servo (o programa manda pontos em tempo real) |
 | **Lag / f_release** | o pulso fica armado e só solta numa fração do downswing — é o que gera velocidade no swing |
+
+---
+
+## 18. Swing V2 — a pinça é a mão, a caneta é o taco
+
+**Porquê uma V2.** No laboratório (5/11) viu-se que a V1 não parece uma
+tacada: a trajetória é definida só para a ponta da pinça, e a IK resolve-a
+rodando a base (J1 73°) e torcendo a pinça (J6 124°), com o ombro J2 quase
+parado. Além disso o controlador limitou o movimento cartesiano a ~220 mm/s.
+
+**A ideia.** Com J1 = J4 = J6 = 0, os eixos de J2, J3 e J5 são paralelos
+(horizontais, ao longo de y) e o Lite 6 fica um **braço plano** no plano x-z —
+um pêndulo duplo verdadeiro, como o V13 do Lab 1:
+
+| Golfista | Lite 6 | No swing |
+|---|---|---|
+| tronco inclinado sobre a bola | J2 = 43° | fixa |
+| ombro | **J3** | ativa |
+| braço | antebraço J3 → J5 (243.6 mm) | |
+| pulso (arma e solta) | **J5** | ativa |
+| mãos | pinça (TCP a 83.6 mm do flange) | fecha na caneta |
+| taco | caneta, 120 mm para lá dos dedos (`--taco`) | |
+
+Ângulos no plano (da vertical para baixo, + para a frente), tirados da FK:
+braço `A = 20.9° + q3 − q2` (20.9° vem do desvio de 87 mm do antebraço),
+taco `C = q3 − q2 − q5`.
+
+**Perfis (os do Lab 1).** A trajetória é definida **nas juntas**:
+- J3: backswing quíntico; downswing com aceleração constante
+  `q3(u) = q3_imp + (q3_top − q3_imp)(1 − (u/T)²)` → velocidade máxima na bola;
+- J5: arma 45° no backswing; no downswing fica armada até 40 % de T e solta
+  com aceleração constante, chegando à pose de impacto **no mesmo instante**
+  que J3;
+- follow-through: as duas desaceleram e param juntas.
+
+A posição e a orientação da pinça e da caneta (o que o enunciado pede como
+"funções do tempo") saem da FK da Tarefa 1. Como é enviada junta a junta
+(`set_servo_angle_j`), não precisa de IK e não apanha o limite cartesiano.
+
+**Como se escolheram os números.** Procura aleatória de ~2000 geometrias
+(inclinação, poses de impacto, amplitudes), ficando com as que passam todas as
+verificações; para cada uma, o downswing mais curto que respeita os limites.
+Escolhida a mais curta e com aspeto de tacada.
+
+**Resultado** (`python src/swing_v2.py`):
+
+| | |
+|---|---|
+| duração | 5.5 s (backswing 2.6, downswing 2.1, follow-through 0.8) |
+| cabeça do taco no impacto | **601 mm/s** (V1: ~214 planeado, ≤ 220 medido) |
+| pinça (efetor final) | máx. 379 mm/s ≤ 400 (500 do fabricante × 0.8) — **é este o limite** |
+| juntas | máx. 71 °/s ≤ 144 |
+| folga às juntas | ≥ 37° |
+| mesa | robô ≥ 167 mm, caneta ≥ 60 mm |
+| colisões (caneta/pinça vs base e braço) | ≥ 80 mm |
+| bola | (370, 0, 74) mm — num *tee*; golpe ligeiramente descendente (14 mm), como com um ferro |
+
+A ponta da caneta pode passar dos 500 mm/s: o limite do fabricante é do
+efetor final (a pinça). É essa a vantagem de ter um taco.
+
+**Pegar na caneta.** O ponto 0 tem a pinça virada para baixo a ~7 cm da mesa:
+a caneta bateria. Usa-se uma **pose de carregar** `q = [0, 0, 60, 0, −30, 0]`:
+pinça na horizontal, virada para a frente, pontas dos dedos em (386, 0, 405) mm.
+As deslocações com a caneta presa (carregar → início e fim → carregar) também
+são verificadas contra a mesa e colisões.
+
+**Verificações novas** (`check_v2`): velocidade da pinça, mesa para o robô e
+para a caneta em separado, e **colisões** por distância entre segmentos (caneta,
+pinça, antebraço contra a base e o braço do robô, com raios conservadores).
+
+**Ficheiros:** `src/swing_v2.py` (trajetória + verificações + gráficos
+`report/v2_*.png`), `src/run_robot_v2.py` (robô), `swing_v2.ipynb` (simulação
+com animação e varrimentos de limites).
+
+**Varrimentos** (no notebook): caneta de 0 a 160 mm é viável (cabeça de 376 a
+675 mm/s; com 180 mm a ponta desce demais); downswing < ~2.0 s faz a pinça
+passar dos 400 mm/s; a inclinação J2 (30°–50°) muda a altura da bola.
+
+**No laboratório:**
+```bash
+python src/run_robot_v2.py                     # ensaio
+python src/run_robot_v2.py --go --lento 3      # pega na caneta + swing
+python src/run_robot_v2.py --go --lento 1
+python src/run_robot_v2.py --soltar            # abre a pinça
+```
+Dados em `data/run_v2_lento<N>.csv` (q pedido, q medido, pose medida). **Não
+testado no robô ainda.**
