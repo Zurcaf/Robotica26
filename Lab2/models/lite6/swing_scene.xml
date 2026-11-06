@@ -1,0 +1,58 @@
+<!--
+  Cena do swing para pré-visualização em MuJoCo (src/mujoco_preview.py).
+
+  O robô vem do modelo oficial `lite6_gripper_narrow.xml` (mujoco_menagerie,
+  derivado do URDF da UFactory; licença BSD em LICENSE). Este ficheiro só junta:
+    - a mesa: plano em z = 0 (o referencial da base do robô, como em config.py);
+    - a bola: esfera visual em `bola` de trajectory.DEFAULTS (190, 0, 80) mm,
+      SEM colisão (é um marcador; a ponta da pinça passa-lhe pelo centro);
+    - duas câmaras com os nomes do Lab 1: `face_on` (perpendicular ao plano do
+      swing, que é o plano x = 190 mm) e `down_the_line` (atrás, a olhar na
+      direção do alvo +y).
+  A base assenta na mesa, por isso o par (mesa, base) está excluído dos contactos.
+  Tem de ficar nesta pasta: o modelo incluído usa meshdir="assets" relativo.
+-->
+<mujoco model="lite6 swing">
+  <include file="lite6_gripper_narrow.xml"/>
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
+    <global azimuth="150" elevation="-20" offwidth="1280" offheight="960"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.85 0.9 0.95" rgb2="0.55 0.65 0.8" width="512" height="3072"/>
+    <texture type="2d" name="mesa" builtin="checker" mark="edge" rgb1="0.78 0.74 0.66" rgb2="0.70 0.66 0.58"
+      markrgb="0.5 0.5 0.5" width="300" height="300"/>
+    <material name="mesa" texture="mesa" texuniform="true" texrepeat="10 10" reflectance="0.05"/>
+    <material name="bola" rgba="1 1 1 1"/>
+  </asset>
+
+  <worldbody>
+    <light pos="0.5 -0.5 1.5" dir="-0.3 0.3 -1" directional="true"/>
+    <geom name="mesa" type="plane" size="1 1 0.05" material="mesa"/>
+    <!-- bola de golfe (raio 21.3 mm), só visual -->
+    <geom name="bola" type="sphere" size="0.0213" pos="0.190 0 0.080" material="bola"
+      contype="0" conaffinity="0"/>
+    <camera name="face_on"       pos="1.05 0.05 0.40" xyaxes="0 1 0 -0.22 0 1"/>
+    <camera name="down_the_line" pos="0.30 -0.95 0.40" xyaxes="1 0 0 0 0.22 1"/>
+    <camera name="cima"          pos="0.20 0 1.1"  xyaxes="0 1 0 -1 0 0"/>
+  </worldbody>
+
+  <contact>
+    <exclude body1="world" body2="link_base"/>
+    <!-- link1 roda assente na base (a base é fixa, por isso o filtro pai/filho
+         do MuJoCo não exclui este par sozinho) -->
+    <exclude body1="link_base" body2="link1"/>
+    <!-- os dedos fechados tocam-se: não é colisão -->
+    <exclude body1="gripper_left_finger" body2="gripper_right_finger"/>
+    <!--
+      O MuJoCo colide malhas pelo seu invólucro convexo. O link4 tem forma de L e
+      o invólucro enche o canto interior onde o pulso dobra: com J5 > ~100 deg o
+      par (link4, link6) dá "penetração" de vários mm numa pose que o robô real
+      fez sem erro (5 nov, J5 = 116 deg). O limite físico de J5 (124 deg), já
+      verificado em check_feasibility(), é o que guarda este par.
+    -->
+    <exclude body1="link4" body2="link6"/>
+  </contact>
+</mujoco>

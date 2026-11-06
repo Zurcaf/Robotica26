@@ -51,7 +51,17 @@ python src/kinematics.py --q 0 30 60 0 30 0   # FK para outro q
 python src/kinematics.py --validar            # DH modificado vs DH clássico do PDF oficial
 python src/trajectory.py --plot               # gera o swing, verifica viabilidade, gráficos em report/
 python src/trajectory.py --t-down 3 --raio 180
+python src/mujoco_preview.py                  # swing no modelo 3D oficial: colisões elo a elo + FK vs URDF
+python src/mujoco_preview.py --view           # viewer interativo (swing em loop); --lento 2 --phi-end 50 etc.
+python src/mujoco_preview.py --fotos --strip  # 7 fases x 3 câmaras -> report/mj_*.png e tiras mj_sequencia_*.png
+python src/robot_info.py                      # (com robô) lê a configuração do controlador, não mexe nada
 ```
+
+O `mujoco_preview.py` é um replay cinemático (põe as juntas nos ângulos da IK
+numérica, sem física) sobre o modelo oficial do Lite 6 com pinça
+(`models/lite6/`, do `mujoco_menagerie`, licença BSD). Serve para ver o braço
+inteiro e verificar colisões com os elos a sério; as malhas de colisão são
+invólucros convexos, por isso as distâncias que imprime são conservadoras.
 
 Resultado atual com os `DEFAULTS`:
 
@@ -88,6 +98,9 @@ src/      config.py       IP, limites do fabricante, mesa/base (CONFIRMAR limite
           robot.py        ligação ao robô (SDK xArm)
           run_robot.py    Tarefa 3
           ik_compare.py   Tarefa 4
+          mujoco_preview.py  pré-visualização 3D do swing e colisões (MuJoCo, modelo oficial)
+          robot_info.py   lê a configuração do controlador (tcp_load, limites, firmware)
+models/lite6/  modelo MJCF oficial do Lite 6 + Gripper Lite (mujoco_menagerie) e a cena swing_scene.xml
 data/     CSVs recolhidos no laboratório
 report/   gráficos e relatorio.tex
 scripts_curso/  scripts de exemplo da página da cadeira
