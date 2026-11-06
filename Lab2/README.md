@@ -58,10 +58,10 @@ Resultado atual com os `DEFAULTS`:
 ```
   543 pontos, 5.42 s, IK numérica convergiu
   vel. TCP        : max    220.9 mm/s   (limite c/ margem 400.0)  OK
-  vel. flange     : max    297.6 mm/s   (limite c/ margem 400.0)  OK
-  vel. juntas     : max    111.9 deg/s  (limite c/ margem 144.0)  OK
-  alcance         : max    320.6 mm     (limite c/ margem 352.0)  OK
-  limites juntas  : menor folga 7.8 deg (J5, mínimo 5)  OK
+  vel. flange     : max    169.9 mm/s   (limite c/ margem 400.0)  OK
+  vel. juntas     : max     94.7 deg/s  (limite c/ margem 144.0)  OK
+  alcance         : max    270.0 mm     (limite c/ margem 352.0)  OK
+  limites juntas  : menor folga 44.1 deg (J5, mínimo 5)  OK
   ...
   => trajetória VIÁVEL
 ```

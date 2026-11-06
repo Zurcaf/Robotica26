@@ -13,9 +13,18 @@ de cabeça do taco:
 
   * "braço"  -> a garra percorre um ARCO de raio R num plano vertical, centrado
                 num "ombro" virtual por cima da bola; phi = 0 na bola.
-  * "pulso"  -> a orientação da garra roda phi + psi em torno da normal ao
-                plano; psi é o "lag" do pulso, armado no topo e solto tarde
+  * "pulso"  -> a garra INCLINA phi + psi no plano do swing, como um taco;
+                psi é o "lag" do pulso, armado no topo e solto tarde
                 (f_release), como no Lab 1.
+
+ORIENTAÇÃO SEM PIÃO
+-------------------
+A rotação é feita em torno de n2 = z0 x d (perpendicular ao eixo da pinça z0 e
+à direção do swing d). Como n2 é perpendicular ao eixo da pinça, a pinça
+inclina para o lado sem girar sobre si própria. A 1.ª versão rodava em torno da
+normal ao plano (eixo x); com a pinça inclinada 45 deg, cos 45 = 71 % dessa
+rotação era a pinça a girar como um pião (J6 a fazer 124 deg). Agora J6 ~39 deg,
+o antebraço (J4) faz a inclinação lateral, e o flange anda mais devagar.
 
 PINÇA
 -----
@@ -123,13 +132,16 @@ def swing_trajectory(p=None):
     d = np.asarray(p["direcao"], float)
     d /= np.linalg.norm(d)
     ez = np.array([0.0, 0.0, 1.0])
-    n = np.cross(d, ez)                          # normal ao plano do swing
     centro = B + p["raio"] * ez
 
     pos = centro + p["raio"] * (np.sin(phi)[:, None] * d - np.cos(phi)[:, None] * ez)
     R0 = R_from_rpy(*p["rpy_enderecio"])
-    # sinal: com phi < 0 (backswing) a garra roda "para trás", como o taco
-    R = np.array([axis_rotation(-n, ph + ps) @ R0 for ph, ps in zip(phi, psi)])
+    # eixo perpendicular ao eixo da pinça e à direção do swing: a pinça inclina
+    # para o lado sem girar sobre si própria. Com phi < 0 (backswing) a ponta
+    # inclina para -d, como a cabeça de um taco.
+    n2 = np.cross(R0[:, 2], d)
+    n2 /= np.linalg.norm(n2)
+    R = np.array([axis_rotation(n2, ph + ps) @ R0 for ph, ps in zip(phi, psi)])
     rpy = np.array([rpy_from_R(Ri) for Ri in R])
     pos_flange = pos - p["garra"] * R[:, :, 2]   # recua ao longo do z da ferramenta
     return dict(t=t, pos=pos, pos_flange=pos_flange, R=R,

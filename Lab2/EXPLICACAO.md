@@ -25,11 +25,11 @@ GitHub/VS Code). Para o contexto geral e o histórico das decisões, ver o
 | 1 | Cinemática direta (Tarefa 1) | [kinematics.py:61 `link_transform`](src/kinematics.py#L61), [kinematics.py:73 `fk`](src/kinematics.py#L73) |
 | 1b | Validação com a tabela D-H clássica | [kinematics.py:84 `fk_standard`](src/kinematics.py#L84), [kinematics.py:100 `validate`](src/kinematics.py#L100) |
 | 2 | Orientação ↔ roll/pitch/yaw | [kinematics.py:112 `rpy_from_R`](src/kinematics.py#L112), [kinematics.py:120 `R_from_rpy`](src/kinematics.py#L120) |
-| 3 | Perfis temporais do swing | [trajectory.py:85 `swing_angles`](src/trajectory.py#L85) |
-| 4 | Posição e orientação da ponta da pinça (Tarefa 2) | [trajectory.py:114 `swing_trajectory`](src/trajectory.py#L114) |
-| 5 | Ângulos das juntas (IK numérica, só para verificar) | [kinematics.py:179 `ik_numeric`](src/kinematics.py#L179), [trajectory.py:156 `joint_trajectory`](src/trajectory.py#L156) |
-| 6 | Viabilidade | [trajectory.py:169 `check_feasibility`](src/trajectory.py#L169) |
-| 7 | Conversão para o TCP do controlador | [trajectory.py:139 `command_poses`](src/trajectory.py#L139), [robot.py:26 `controller_tcp`](src/robot.py#L26) |
+| 3 | Perfis temporais do swing | [trajectory.py:94 `swing_angles`](src/trajectory.py#L94) |
+| 4 | Posição e orientação da ponta da pinça (Tarefa 2) | [trajectory.py:123 `swing_trajectory`](src/trajectory.py#L123) |
+| 5 | Ângulos das juntas (IK numérica, só para verificar) | [kinematics.py:179 `ik_numeric`](src/kinematics.py#L179), [trajectory.py:168 `joint_trajectory`](src/trajectory.py#L168) |
+| 6 | Viabilidade | [trajectory.py:181 `check_feasibility`](src/trajectory.py#L181) |
+| 7 | Conversão para o TCP do controlador | [trajectory.py:151 `command_poses`](src/trajectory.py#L151), [robot.py:26 `controller_tcp`](src/robot.py#L26) |
 | 8 | Execução no robô (Tarefa 3) | [run_robot.py:89 `main`](src/run_robot.py#L89), [run_robot.py:56 `run_servo`](src/run_robot.py#L56), [run_robot.py:47 `run_pontos`](src/run_robot.py#L47) |
 | 9 | Precisão da IK do robô (Tarefa 4) | [ik_compare.py:38 `collect`](src/ik_compare.py#L38), [ik_compare.py:63 `analyse`](src/ik_compare.py#L63) |
 
@@ -131,17 +131,17 @@ convenção.
 
 ---
 
-## 3. O tempo: perfis do swing — [trajectory.py:85 `swing_angles`](src/trajectory.py#L85)
+## 3. O tempo: perfis do swing — [trajectory.py:94 `swing_angles`](src/trajectory.py#L94)
 
 O swing é descrito por dois ângulos, como o pêndulo duplo do Lab 1:
 - $\varphi(t)$ — o **"braço"**: onde a ponta da pinça está no arco ($\varphi = 0$ na bola);
 - $\psi(t)$ — o **"pulso"**: quanto a pinça roda a mais (armada no topo, solta tarde).
 
-Valores ([trajectory.py:48 `DEFAULTS`](src/trajectory.py#L48)):
+Valores ([trajectory.py:57 `DEFAULTS`](src/trajectory.py#L57)):
 $\varphi_{top} = -90°$, $\varphi_{end} = 50°$, $\psi_{top} = 30°$,
 $T_b = 2.0$ s, $T_d = 2.2$ s, $f_{release} = 0.6$, $dt = 0.01$ s.
 
-### 3.1 Backswing ($0 \le t \le T_b$) — [trajectory.py:98](src/trajectory.py#L98)
+### 3.1 Backswing ($0 \le t \le T_b$) — [trajectory.py:107](src/trajectory.py#L107)
 
 Perfil **quíntico** $s(\tau) = 10\tau^3 - 15\tau^4 + 6\tau^5$, com $\tau = t/T_b$:
 
@@ -157,7 +157,7 @@ $$|\dot\varphi|_{max} = 1.875\,\frac{|\varphi_{top}|}{T_b} = 1.875 \times \frac{
 (É **este** o máximo de velocidade da ponta da pinça em todo o swing — o
 "vel. TCP 220.9 mm/s" da verificação.)
 
-### 3.2 Downswing ($T_b < t \le T_b + T_d$) — [trajectory.py:103](src/trajectory.py#L103)
+### 3.2 Downswing ($T_b < t \le T_b + T_d$) — [trajectory.py:112](src/trajectory.py#L112)
 
 Com $u = t - T_b$, **aceleração constante** (igual ao Lab 1):
 
@@ -168,22 +168,22 @@ $$\varphi(u) = \varphi_{top}\Bigl(1 - \bigl(\tfrac{u}{T_d}\bigr)^2\Bigr)
 - $u = 0$: $\varphi = \varphi_{top}$, $\dot\varphi = 0$ → encaixa com o fim do backswing;
 - $u = T_d$: $\varphi = 0$ (**bola**) com velocidade máxima
   $\omega_{imp} = -2\varphi_{top}/T_d = 2 \times 1.571 / 2.2 = 1.43$ rad/s
-  ([trajectory.py:91](src/trajectory.py#L91)) → $v_{imp} = 1.43 \times 150 = 214$ mm/s.
+  ([trajectory.py:100](src/trajectory.py#L100)) → $v_{imp} = 1.43 \times 150 = 214$ mm/s.
 
 Aceleração: $2 \times 1.571 / 2.2^2 = 0.65$ rad/s². Aceleração constante é o que
 dá mais velocidade na bola para a mesma aceleração máxima.
 
-**Pulso** ([trajectory.py:105](src/trajectory.py#L105)): fica armado até
+**Pulso** ([trajectory.py:114](src/trajectory.py#L114)): fica armado até
 $t_{rel} = f_{release}\,T_d = 1.32$ s e depois solta com um quíntico até 0
 exatamente em $u = T_d$:
 
 $$\psi(u) = \psi_{top}\Bigl(1 - s\bigl(\tfrac{u - t_{rel}}{T_d - t_{rel}}\bigr)\Bigr)$$
 
-### 3.3 Follow-through ($t > T_b + T_d$) — [trajectory.py:110](src/trajectory.py#L110)
+### 3.3 Follow-through ($t > T_b + T_d$) — [trajectory.py:119](src/trajectory.py#L119)
 
 Desaceleração constante $a$ desde $\omega_{imp}$ até parar em $\varphi_{end}$.
 Com velocidade inicial $\omega$ e final 0 em tempo $T_f$:
-$\varphi_{end} = \omega T_f / 2$, logo ([trajectory.py:92](src/trajectory.py#L92))
+$\varphi_{end} = \omega T_f / 2$, logo ([trajectory.py:101](src/trajectory.py#L101))
 
 $$T_f = \frac{2\varphi_{end}}{\omega_{imp}} = \frac{2 \times 0.873}{1.43} = 1.22\ \text{s},\qquad
 a = \frac{\omega_{imp}}{T_f} = 1.17\ \text{rad/s}^2,\qquad
@@ -195,13 +195,13 @@ $\omega_{imp}$ divide por N): a `--lento 3` são 16.3 s.
 
 ---
 
-## 4. O espaço: posição e orientação da pinça (Tarefa 2) — [trajectory.py:114](src/trajectory.py#L114)
+## 4. O espaço: posição e orientação da pinça (Tarefa 2) — [trajectory.py:123](src/trajectory.py#L123)
 
 ### 4.1 Posição: um arco
 
 Bola $b = (190, 0, 80)$ mm, direção do alvo $\hat d = (0,1,0)$ (o swing é
 **para o lado**), raio $R_a = 150$ mm. O "ombro" virtual fica por cima da bola:
-$c = b + R_a\,\hat z = (190, 0, 230)$. A ponta da pinça ([trajectory.py:129](src/trajectory.py#L129)):
+$c = b + R_a\,\hat z = (190, 0, 230)$. A ponta da pinça ([trajectory.py:137](src/trajectory.py#L137)):
 
 $$p(t) = c + R_a\bigl(\sin\varphi(t)\,\hat d - \cos\varphi(t)\,\hat z\bigr)
 = \bigl(190,\; 150\sin\varphi,\; 230 - 150\cos\varphi\bigr)$$
@@ -212,16 +212,35 @@ $$p(t) = c + R_a\bigl(\sin\varphi(t)\,\hat d - \cos\varphi(t)\,\hat z\bigr)
 | topo | −90° | (190, −150, 230) |
 | fim | 50° | (190, 115, 134) |
 
-### 4.2 Orientação: rotação em torno da normal ao plano
+### 4.2 Orientação: a pinça inclina como um taco, sem girar
 
-Normal ao plano do swing: $\hat n = \hat d \times \hat z = (0,1,0)\times(0,0,1) = (1,0,0)$.
 Orientação na bola: $R_0 = R(\text{roll}=180°, \text{pitch}=45°, \text{yaw}=0)$ — a
-pinça para baixo e **inclinada 45°** (a pique, a J5 ficava em 0 = singularidade,
-§5.3). Durante o swing ([trajectory.py:132](src/trajectory.py#L132)):
+pinça para baixo e **inclinada 45°** para a base (a pique, a J5 ficava em 0 =
+singularidade, §5.3). O eixo da pinça é a 3.ª coluna: $z_0 = (-0.707, 0, -0.707)$.
 
-$$R(t) = \operatorname{Rot}\bigl(-\hat n,\ \varphi(t) + \psi(t)\bigr)\,R_0$$
+Eixo de rotação: perpendicular ao eixo da pinça **e** à direção do swing
+([trajectory.py:142](src/trajectory.py#L142)):
 
-com a fórmula de **Rodrigues** ([trajectory.py:78](src/trajectory.py#L78)),
+$$\hat n_2 = \frac{z_0 \times \hat d}{\lVert z_0 \times \hat d\rVert}
+= \frac{(-0.707,0,-0.707)\times(0,1,0)}{\lVert\cdot\rVert} = (0.707,\ 0,\ -0.707)$$
+
+e durante o swing ([trajectory.py:144](src/trajectory.py#L144)):
+
+$$R(t) = \operatorname{Rot}\bigl(\hat n_2,\ \varphi(t) + \psi(t)\bigr)\,R_0$$
+
+**Porquê este eixo.** A velocidade angular da pinça é
+$\omega = (\dot\varphi + \dot\psi)\,\hat n_2$. A parte que a faz **girar sobre si
+própria** é a componente ao longo do seu eixo, $\omega\cdot z$. Como
+$\hat n_2 \perp z_0$ e a rotação em torno de $\hat n_2$ mantém $z \perp \hat n_2$,
+$\omega \cdot z = 0$ sempre: **a pinça inclina para o lado sem girar** (o eixo
+varre o plano de $z_0$ e $\hat d$, como um taco). Na 1.ª versão o eixo era a
+normal ao plano, $\hat n = (1,0,0)$, e $|\hat n \cdot z_0| = \cos 45° = 0.71$:
+71 % da rotação era a pinça a girar como um pião (J6 a fazer 124°). Agora J6
+faz 39°, a base J1 13° (era 73°), e a inclinação lateral é feita pelo
+antebraço J4 (121°) — com este pulso é a única forma de inclinar a pinça para o
+lado.
+
+com a fórmula de **Rodrigues** ([trajectory.py:87](src/trajectory.py#L87)),
 para eixo unitário $\hat k$ e ângulo $\theta$, $K$ = matriz do produto externo por $\hat k$:
 
 $$\operatorname{Rot}(\hat k,\theta) = I + \sin\theta\,K + (1-\cos\theta)\,K^2,
@@ -230,7 +249,7 @@ $$\operatorname{Rot}(\hat k,\theta) = I + \sin\theta\,K + (1-\cos\theta)\,K^2,
 $p(t)$ e $R(t)$ são as **"funções do tempo da posição e orientação da pinça"**
 que o enunciado pede.
 
-### 4.3 Da ponta ao flange: a pinça — [trajectory.py:134](src/trajectory.py#L134)
+### 4.3 Da ponta ao flange: a pinça — [trajectory.py:146](src/trajectory.py#L146)
 
 A pinça (Gripper Lite) tem o TCP a $L = 83.6$ mm do flange ao longo do $z$ da
 ferramenta (URDF oficial). O $z$ da ferramenta é a 3.ª coluna de $R$:
@@ -266,7 +285,7 @@ $$\Delta q = J^T\bigl(JJ^T + \lambda^2 I\bigr)^{-1} e,\qquad \lambda = 1$$
 $\lambda^2 I$ impede passos gigantes quando $J$ é quase singular. Repete-se
 (cortando $q$ aos limites) até $\|e_p\| < 10^{-3}$ mm e $\|e_R\| < 10^{-5}$ rad.
 
-### 5.2 Ao longo da trajetória — [trajectory.py:156](src/trajectory.py#L156)
+### 5.2 Ao longo da trajetória — [trajectory.py:168](src/trajectory.py#L168)
 
 A IK resolve o **flange** em cada um dos 543 pontos, começando na solução do
 ponto anterior → as juntas variam de forma contínua e no mesmo "ramo"
@@ -278,11 +297,11 @@ Com a pinça a pique, $q_5 = 0$ e os eixos de J4 e J6 alinham: o jacobiano perde
 característica. Para um pulso esférico, o bloco do pulso tem determinante
 proporcional a $\sin q_5$, e as velocidades das juntas são $\dot q = J^{-1}\nu$,
 com $J^{-1} \propto 1/\sin q_5$ → quando $q_5 \to 0$, J4 e J6 disparam (~1900 °/s
-no primeiro teste). Com a pinça a 45°, J5 fica entre 61° e 116°.
+no primeiro teste). Com a pinça a 45°, J5 fica entre 61° e 80° (44° de folga ao limite).
 
 ---
 
-## 6. Viabilidade — [trajectory.py:169 `check_feasibility`](src/trajectory.py#L169)
+## 6. Viabilidade — [trajectory.py:181 `check_feasibility`](src/trajectory.py#L181)
 
 Velocidades por **diferenças centrais** (`np.gradient`):
 $\dot x_k \approx (x_{k+1} - x_{k-1}) / (2\,dt)$.
@@ -290,21 +309,23 @@ $\dot x_k \approx (x_{k+1} - x_{k-1}) / (2\,dt)$.
 | Verificação | Conta | Limite | Valor (--lento 1) | Enunciado |
 |---|---|---|---|---|
 | vel. ponta da pinça | $\max_k\lVert\dot p_k\rVert$ | 0.8 × 500 = 400 mm/s | 221 | (i) |
-| vel. flange | $\max_k\lVert\dot p_{flange,k}\rVert$ | 400 mm/s | 298 | (i) |
-| vel. juntas | $\max_{k,i}\lvert\dot q_{i,k}\rvert$ | 0.8 × 180 = 144 °/s | 112 | (i) |
-| alcance | $\max_k\lVert p_{flange,k} - p_{\{2\}}\rVert$ | 0.8 × 440 = 352 mm | 321 | (ii) |
-| limites das juntas | $q_{min}+5° \le q_i \le q_{max}-5°$ | | folga mín. 7.8° (J5) | (iii) |
+| vel. flange | $\max_k\lVert\dot p_{flange,k}\rVert$ | 400 mm/s | 170 | (i) |
+| vel. juntas | $\max_{k,i}\lvert\dot q_{i,k}\rvert$ | 0.8 × 180 = 144 °/s | 95 | (i) |
+| alcance | $\max_k\lVert p_{flange,k} - p_{\{2\}}\rVert$ | 0.8 × 440 = 352 mm | 270 | (ii) |
+| limites das juntas | $q_{min}+5° \le q_i \le q_{max}-5°$ | | folga mín. 44° (J5) | (iii) |
 | acima da mesa | z da ponta, do flange e de todas as juntas | ≥ 30 mm | 80 | contacto |
 | fora da base | distância ao eixo de J1 da ponta e do flange | ≥ 80 mm | 190 | contacto |
 
 Limites do fabricante (180 °/s, 500 mm/s) confirmados nas especificações
-oficiais ([config.py](src/config.py)). **Aviso** (não chumba): o flange passa
-dos ~220 mm/s que o controlador do lab mostrou aguentar em servo cartesiano
-(`CART_SPEED_OBSERVED`), por isso a `--lento 1` o robô fica para trás.
+oficiais ([config.py](src/config.py)). **Aviso** (não chumba) se o flange
+passar dos ~220 mm/s que o controlador do lab mostrou aguentar em servo
+cartesiano (`CART_SPEED_OBSERVED`). Com a orientação sem pião o flange vai no
+máximo a 170 mm/s, por isso a `--lento 1` o robô deve seguir à risca (na 1.ª
+versão eram 298 mm/s e o robô ficava ~90 ms para trás).
 
 ---
 
-## 7. Do plano ao robô: que pose se envia — [trajectory.py:139](src/trajectory.py#L139)
+## 7. Do plano ao robô: que pose se envia — [trajectory.py:151](src/trajectory.py#L151)
 
 O SDK move o ponto que o **controlador** considera a ferramenta (`tcp_offset`,
 lido em [robot.py:26](src/robot.py#L26)). Com transformações homogéneas:
@@ -338,7 +359,7 @@ diferentes: a ponta cai sempre na bola.
      10 com `set_position(radius=5)` (blending) e a velocidade média de cada troço.
      Só com `--lento ≥ 2`.
 
-### 8.1 O que se mediu (5/11) e a correção do C31
+### 8.1 O que se mediu (5/11, ainda com a 1.ª orientação) e a correção do C31
 
 | Ensaio | Resultado |
 |---|---|

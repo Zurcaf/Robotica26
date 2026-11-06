@@ -358,7 +358,7 @@ p(t)   = centro + R·( sin(phi)·d̂  −  cos(phi)·ẑ )
 Orientação:
 
 ```
-R(t) = Rot(−n̂, phi + psi) · R_endereço
+R(t) = Rot(n̂₂, phi + psi) · R_endereço,   n̂₂ = z₀ × d̂ / |z₀ × d̂|
 ```
 
 - `n̂ = d̂ × ẑ` é a normal ao plano do swing;
@@ -393,6 +393,31 @@ exatamente no impacto — a garra chega à bola com a orientação de endereço.
 
 **3. Follow-through**: desaceleração constante até parar em `phi_end`. A
 duração sai das contas: `T_f = 2·phi_end / ω_impacto`.
+
+### 7.2b Porque é que a pinça rodava (e já não roda)
+
+Na 1.ª versão a rotação era em torno de n̂ = d̂ × ẑ = (1, 0, 0), a normal ao
+plano do swing. Mas a pinça está inclinada 45° (eixo z₀ = (−0.707, 0, −0.707)),
+por isso a componente dessa rotação **ao longo do próprio eixo da pinça** era
+|n̂ · z₀| = cos 45° = **71 %**: a pinça girava como um pião (~78° de giro) e a
+J6 fazia 124°. Somava-se a base J1 a rodar ±38° para seguir a ponta para os
+lados (atan(150/190)), que a J6 também tinha de compensar.
+
+Agora o eixo é n̂₂ = z₀ × d̂ (normalizado): perpendicular ao eixo da pinça
+**e** à direção do swing. Uma rotação em torno de um eixo perpendicular ao eixo
+da pinça **inclina-a sem a girar** — o eixo da pinça varre o plano que contém
+z₀ e d̂, como um taco a pendular para o lado. Comparação (`--lento 1`):
+
+| | antes (eixo x) | agora (eixo n̂₂) |
+|---|---|---|
+| giro da pinça sobre si própria | 120° | **0°** |
+| amplitude J1 / J4 / J6 | 73° / 8° / 124° | **13°** / 121° / 39° |
+| juntas, vel. máx. | 112 °/s | **95 °/s** |
+| flange, vel. máx. | 298 mm/s | **170 mm/s** (abaixo dos ~220 do controlador) |
+| menor folga a um limite | 7.8° (J5) | **44°** (J5) |
+
+A inclinação lateral é feita pelo antebraço (J4): com este pulso é a única
+forma de inclinar a pinça para o lado (J5 só a inclina para a frente/trás).
 
 ### 7.3 Valores por omissão (`DEFAULTS`)
 
@@ -440,13 +465,12 @@ Resultado atual:
 python src/trajectory.py --plot
 #   543 pontos, 5.42 s, IK numérica convergiu
 #   vel. TCP        : max    220.9 mm/s   (limite c/ margem 400.0)  OK
-#   vel. flange     : max    297.6 mm/s   (limite c/ margem 400.0)  OK
-#   vel. juntas     : max    111.9 deg/s  (limite c/ margem 144.0)  OK
-#   alcance         : max    320.6 mm     (limite c/ margem 352.0)  OK
-#   limites juntas  : menor folga 7.8 deg (J5, mínimo 5)  OK
+#   vel. flange     : max    169.9 mm/s   (limite c/ margem 400.0)  OK
+#   vel. juntas     : max     94.7 deg/s  (limite c/ margem 144.0)  OK
+#   alcance         : max    270.0 mm     (limite c/ margem 352.0)  OK
+#   limites juntas  : menor folga 44.1 deg (J5, mínimo 5)  OK
 #   acima da mesa   : z min 80.0 mm (ponta 80.0, flange 139.1, juntas 139.1)  OK
 #   fora da base    : r min 190.0 mm  OK
-#   AVISO: o flange chega a 298 mm/s; no lab o controlador não passou de ~220 mm/s ...
 #   => trajetória VIÁVEL
 ```
 
