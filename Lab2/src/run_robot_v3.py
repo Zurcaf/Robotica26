@@ -21,7 +21,7 @@ import time
 import numpy as np
 
 from robot import check, connect
-from swing_v3 import FOLGA_PONTA_MESA, ajustar, check_v3, from_joints, swing_v3
+from swing_v3 import FOLGA_PONTA_MESA, Q_BOLA_LAB, check_v3, from_joints, parametros, swing_v3
 
 import config as C
 
@@ -115,10 +115,13 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--go", action="store_true", help="mexe mesmo o robô")
     ap.add_argument("--lento", type=float, default=2.0, help="fator de abrandamento (>= 1)")
+    ap.add_argument("--bola-demo", action="store_true",
+                    help="bola onde a demonstração passava (ensaios das 12:5x de 6/11); por omissão: a bola do lab")
     ap.add_argument("--ip", default=None)
     args = ap.parse_args()
 
-    p = ajustar()
+    p = parametros(bola_demo=args.bola_demo)
+    print(f"  bola: {'demonstração' if args.bola_demo else 'marcada no lab, q = ' + str(Q_BOLA_LAB)}")
     for k in ("t_back", "t_down", "t_follow"):
         p[k] *= args.lento
     tr = swing_v3(p)
@@ -151,7 +154,7 @@ def main():
             print(f"  aproximação: {nome}...")
             check(arm.set_servo_angle(angle=[float(v) for v in alvo], speed=JOINT_SPEED_MOVE, wait=True), nome)
         input("  No endereço (a ponta está no sítio da bola). Carrega Enter para o swing... ")
-        run_swing(arm, tr, f"run_v3_lento{args.lento:g}")
+        run_swing(arm, tr, f"run_v3_{'' if args.bola_demo else 'bolalab_'}lento{args.lento:g}")
     finally:
         arm.disconnect()
 

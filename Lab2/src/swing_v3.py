@@ -67,6 +67,73 @@ DEFAULTS = dict(
 FOLGA_PONTA_MESA = 20.0   # mm, a ponta pode descer mais do que o resto do robô (passa na bola);
                           # a nossa FK difere ~2 mm do robô real, daí a margem
 
+# "Sítio da bola" marcado no robô (6/11): o braço levado à mão até à bola, lido no
+# UFactory Studio. A bola é onde fica a ponta da pinça nesta pose.
+Q_BOLA_LAB = [-87.7, 63.8, 89.0, -153.9, -5.0, 65.6]
+
+
+def ponta(q):
+    """Posição da ponta da pinça para as juntas q [deg]."""
+    return (fk(q) @ tool_transform(C.GRIPPER_TCP_Z))[:3, 3]
+
+
+def ik5(p_flange, z_pinca, q0, iters=300):
+    """
+    IK com 5 restrições: posição do flange + DIREÇÃO do eixo da pinça (a rotação
+    da pinça sobre o próprio eixo fica livre). Mínimos quadrados amortecidos.
+    """
+    lo = np.array([l for l, _ in C.JOINT_LIMITS]); hi = np.array([h for _, h in C.JOINT_LIMITS])
+    q = np.array(q0, float)
+
+    def err(qq):
+        T_ = fk(qq)
+        return np.concatenate([p_flange - T_[:3, 3], 100.0 * np.cross(T_[:3, 2], z_pinca)])
+
+    for _ in range(iters):
+        e = err(q)
+        if np.linalg.norm(e[:3]) < 1e-3 and np.linalg.norm(e[3:]) < 1e-3:
+            return q, True
+        J = np.zeros((6, 6))
+        for j in range(6):
+            dq = np.zeros(6); dq[j] = 1e-4
+            J[:, j] = -(err(q + dq) - e) / 1e-4
+        q = np.clip(q + J.T @ np.linalg.solve(J @ J.T + np.eye(6), e), lo, hi)
+    return q, False
+
+
+def bola_em(bola, p=None):
+    """
+    Reorienta a V3 para a ponta da pinça passar em `bola` no impacto:
+      1. roda o swing inteiro na base (J1) até ficar virado para a bola;
+      2. recalcula a pose de impacto (IK de 5 restrições) com a ponta na bola e a
+         pinça inclinada como na demonstração (rodada do mesmo ângulo);
+      3. topo e fim rodam com a base, o resto da postura fica igual;
+      4. o pulso (J5) acaba de soltar NO impacto (chega parado): a ponta passa na
+         bola no ponto mais baixo do arco. Com o pulso ainda a soltar, a ponta ia a
+         descer a 100 mm/s e, com a bola do lab a 27 mm da mesa, chegava a 6 mm dela.
+    Daí em diante a bola é fixa: ajustar() só mexe nos tempos.
+    """
+    p = {**DEFAULTS, **(p or {})}
+    tr0 = swing_v3(dict(p, dj2_impacto=0.0))
+    qa0, b0 = tr0["q_impacto"], tr0["bola"]
+    bola = np.asarray(bola, float)
+    dang = np.arctan2(bola[1], bola[0]) - np.arctan2(b0[1], b0[0])
+    c, s = np.cos(dang), np.sin(dang)
+    Rz = np.array([[c, -s, 0], [s, c, 0], [0, 0, 1.0]])
+    z_alvo = Rz @ fk(qa0)[:3, 2]                         # eixo da pinça rodado com a base
+    seed = np.array(qa0, float); seed[0] += np.degrees(dang)
+    qa, ok = ik5(bola - C.GRIPPER_TCP_Z * z_alvo, z_alvo, seed)
+    if not ok:
+        raise ValueError(f"a ponta não consegue chegar a {np.round(bola, 1)} com a pinça inclinada como na V3")
+    rodar = lambda q: [q[0] + np.degrees(dang)] + list(q[1:])
+    return dict(p, q_topo=rodar(p["q_topo"]), q_fim=rodar(p["q_fim"]), q_impacto=list(qa),
+                dj2_impacto=0.0, bola_fixa=True, juntas_swing=(0, 5))
+
+
+def parametros(bola_demo=False):
+    """Parâmetros finais: bola do lab (Q_BOLA_LAB) por omissão, ou a da demonstração."""
+    return ajustar() if bola_demo else ajustar(bola_em(ponta(Q_BOLA_LAB)))
+
 
 def quintic_bc(q0, v0, a0, q1, v1, a1, T, t):
     """Polinómio de grau 5 com posição, velocidade e aceleração dadas nos dois extremos."""
@@ -100,14 +167,17 @@ def joint_profiles(p):
     acel = qt + (qa - qt) * (u / Td) ** 2                       # swing: aceleração constante
     q[d][:, sw] = acel[:, sw]
     q[np.ix_(d, sw)] = acel[:, sw]
-    t_rel = p["f_release"] * Td                                 # pulso: armado até t_rel
-    s = np.clip((u[:, 0] - t_rel) / (Td - t_rel), 0, 1)
-    q[d, 4] = qt[4] + (qa[4] - qt[4]) * s ** 2
-
     v_imp = np.where(sw, 2 * (qa - qt) / Td, 0.0)               # velocidade no impacto
     a_imp = np.where(sw, 2 * (qa - qt) / Td ** 2, 0.0)
-    v_imp[4] = 2 * (qa[4] - qt[4]) / (Td - t_rel)
-    a_imp[4] = 2 * (qa[4] - qt[4]) / (Td - t_rel) ** 2
+    t_rel = p["f_release"] * Td
+    if sw[4]:                                                   # pulso: armado até t_rel, solta a acelerar
+        s = np.clip((u[:, 0] - t_rel) / (Td - t_rel), 0, 1)
+        q[d, 4] = qt[4] + (qa[4] - qt[4]) * s ** 2
+        v_imp[4] = 2 * (qa[4] - qt[4]) / (Td - t_rel)
+        a_imp[4] = 2 * (qa[4] - qt[4]) / (Td - t_rel) ** 2
+    else:                                                       # pulso: armado até t_rel, acaba de soltar NO impacto
+        s = np.clip((u[:, 0] - t_rel) / (Td - t_rel), 0, 1)
+        q[d, 4] = qt[4] + (qa[4] - qt[4]) * (10 * s ** 3 - 15 * s ** 4 + 6 * s ** 5)
     f = t > Tb + Td                                             # 3. follow-through
     q[f] = quintic_bc(qa, v_imp, a_imp, qf, z6, z6, Tf, t[f] - Tb - Td)
     return t, q, qa
@@ -182,8 +252,8 @@ def ajustar(p=None, verbose=False):
                 break
         tr = swing_v3(p)
         z_ponta = tr["pos"][:, 2].min()
-        if z_ponta >= C.TABLE_Z + FOLGA_PONTA_MESA:
-            break
+        if z_ponta >= C.TABLE_Z + FOLGA_PONTA_MESA or p.get("bola_fixa"):
+            break                               # com a bola fixa não se pode subir o impacto
         p["dj2_impacto"] -= 0.5                 # sobe a ponta e volta a ajustar os tempos
     if verbose:
         print(f"  tempos ajustados: backswing {p['t_back']:.2f} s, downswing {p['t_down']:.2f} s, "
@@ -230,11 +300,14 @@ def load_demo():
     return from_joints(d[:, 0], d[:, 1:7])
 
 
-def plot(tr, ex):
+def plot(tr, ex, sufixo=""):
     import matplotlib.pyplot as plt
 
     os.makedirs(REPORT, exist_ok=True)
     demo = load_demo()
+    rot = tr["params"]["q_topo"][0] - Q_TOPO[0]          # a V3 pode estar rodada na base (bola_em)
+    if abs(rot) > 0.1:
+        demo = from_joints(demo["t"], demo["qs"] + np.array([rot, 0, 0, 0, 0, 0]))
     t = tr["t"]
     # tempo da demo alinhado pelo impacto (demo: 2.80 s)
     td = demo["t"] - 2.80 + t[tr["k_imp"]]
@@ -250,7 +323,7 @@ def plot(tr, ex):
     ax[0, 0].legend(fontsize=8)
     ax[2, 0].set_xlabel("t [s]"); ax[2, 1].set_xlabel("t [s]")
     fig.tight_layout()
-    fig.savefig(os.path.join(REPORT, "v3_juntas.png"), dpi=150)
+    fig.savefig(os.path.join(REPORT, f"v3_juntas{sufixo}.png"), dpi=150)
 
     fig = plt.figure(figsize=(12, 5.5))
     a3 = fig.add_subplot(1, 2, 1, projection="3d")
@@ -269,22 +342,25 @@ def plot(tr, ex):
     a2.axvline(t[tr["k_imp"]], color="gray", ls=":")
     a2.set_xlabel("t [s]"); a2.set_ylabel("mm/s"); a2.legend(fontsize=8); a2.grid(alpha=.3)
     fig.tight_layout()
-    fig.savefig(os.path.join(REPORT, "v3_caminho.png"), dpi=150)
+    fig.savefig(os.path.join(REPORT, f"v3_caminho{sufixo}.png"), dpi=150)
     print(f"  gráficos em {os.path.normpath(REPORT)}")
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--t-down", type=float, default=None, help="fixar o downswing (por omissão: ajustado aos limites)")
+    ap.add_argument("--bola-demo", action="store_true",
+                    help="bola onde a demonstração passava (ensaios de 6/11 às 12:5x); por omissão: a bola do lab")
     ap.add_argument("--plot", action="store_true")
     args = ap.parse_args()
-    p = dict(t_down=args.t_down) if args.t_down else ajustar(verbose=True)
+    p = ajustar() if args.bola_demo else ajustar(bola_em(ponta(Q_BOLA_LAB)))
+    print(f"  bola: {'demonstração' if args.bola_demo else 'marcada no lab, q = ' + str(Q_BOLA_LAB)}")
+    print(f"  tempos: backswing {p['t_back']:.2f} s, downswing {p['t_down']:.2f} s, follow-through {p['t_follow']:.2f} s")
     tr = swing_v3(p)
     print(f"  {len(tr['t'])} pontos, {tr['t'][-1]:.2f} s (impacto em t = {tr['t'][tr['k_imp']]:.2f} s)")
     ok, ex = check_v3(tr)
     print(f"  => swing V3 {'VIÁVEL' if ok else 'NÃO VIÁVEL'}")
     if args.plot:
-        plot(tr, ex)
+        plot(tr, ex, sufixo="" if args.bola_demo else "_bola_lab")
 
 
 if __name__ == "__main__":
