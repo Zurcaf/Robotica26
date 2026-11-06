@@ -9,10 +9,6 @@ laboratório.
 > um arco a passar na bola, com o "pulso" a soltar tarde — e há código para
 > (1) a cinemática direta, (2) gerar e verificar essa trajetória, (3) mandá-la
 > para o robô e (4) medir a precisão da cinemática inversa do robô.
->
-> **Há uma segunda versão, a V2** (secção 18): o robô é o braço, a pinça são as
-> mãos e uma **caneta** presa na pinça é o taco — pêndulo duplo ombro (J3) +
-> pulso (J5), enviado junta a junta. Simulação em `swing_v2.ipynb`.
 
 ---
 
@@ -35,7 +31,6 @@ laboratório.
 15. [Do código ao relatório](#15-do-código-ao-relatório)
 16. [Limitações conhecidas e ideias de melhoria](#16-limitações-conhecidas-e-ideias-de-melhoria)
 17. [Glossário](#17-glossário)
-18. [Swing V2 — a pinça é a mão, a caneta é o taco](#18-swing-v2--a-pinça-é-a-mão-a-caneta-é-o-taco)
 
 ---
 
@@ -407,7 +402,7 @@ duração sai das contas: `T_f = 2·phi_end / ω_impacto`.
 | `direcao` | (0, 1, 0) | direção do alvo (+y) |
 | `raio` | 150 mm | raio do arco ("braço + taco") |
 | `phi_top` | −90° | topo do backswing (limitado por J5, secção 8.1) |
-| `phi_end` | 70° | fim do follow-through (idem) |
+| `phi_end` | 50° | fim do follow-through (com 70° o robô parava com C31 — secção 10.5) |
 | `psi_top` | 30° | quanto o "pulso" arma |
 | `f_release` | 0.6 | o pulso solta aos 60 % do downswing |
 | `t_back` | 2.0 s | duração do backswing |
@@ -419,8 +414,8 @@ duração sai das contas: `T_f = 2·phi_end / ω_impacto`.
 Contas com estes valores:
 - `ω_impacto = 2 × 1.571 rad / 2.2 s = 1.43 rad/s` → velocidade da ponta na
   bola `= 1.43 × 150 = 214 mm/s`;
-- `T_f = 2 × 1.222 / 1.43 = 1.71 s`;
-- duração total `= 2.0 + 2.2 + 1.71 = 5.91 s` (592 pontos a 100 Hz).
+- `T_f = 2 × 0.873 / 1.43 = 1.22 s`;
+- duração total `= 2.0 + 2.2 + 1.22 = 5.42 s` (543 pontos a 100 Hz).
 
 ### 7.4 A verificação de viabilidade (`check_feasibility`)
 
@@ -443,13 +438,15 @@ Resultado atual:
 
 ```bash
 python src/trajectory.py --plot
-#   592 pontos, 5.91 s, IK numérica convergiu
+#   543 pontos, 5.42 s, IK numérica convergiu
 #   vel. TCP        : max    220.9 mm/s   (limite c/ margem 400.0)  OK
+#   vel. flange     : max    297.6 mm/s   (limite c/ margem 400.0)  OK
 #   vel. juntas     : max    111.9 deg/s  (limite c/ margem 144.0)  OK
 #   alcance         : max    320.6 mm     (limite c/ margem 352.0)  OK
 #   limites juntas  : menor folga 7.8 deg (J5, mínimo 5)  OK
 #   acima da mesa   : z min 80.0 mm (ponta 80.0, flange 139.1, juntas 139.1)  OK
 #   fora da base    : r min 190.0 mm  OK
+#   AVISO: o flange chega a 298 mm/s; no lab o controlador não passou de ~220 mm/s ...
 #   => trajetória VIÁVEL
 ```
 
@@ -555,7 +552,7 @@ a 80°):
    | 45° | −80° | 70° | 112° | J6 99 °/s |
    | 35° | −90° | 70° | 113° | J6 129 °/s |
 
-   Escolheu-se **45°, −90°, 70°**: mantém a garra longe da singularidade de J5
+   Escolheu-se **45°, −90°, 70°** (o fim passou depois a **50°**, secção 10.5): mantém a garra longe da singularidade de J5
    = 0 e deixa J5 com 8° de folga ao limite, sem encolher muito o swing.
 3. Para isto não voltar a passar despercebido, a verificação exige agora pelo
    menos **5° de folga a todos os limites das juntas** (a IK numérica corta nos
@@ -624,17 +621,20 @@ Modos do xArm referidos no código:
 - Passa a modo 1 e manda **um ponto a cada `dt`** (10 ms × fator lento) com
   `set_servo_cartesian()`; espera ativamente até ao instante certo.
 - Em cada passo lê a pose real (`get_position()`) e no fim grava
-  `data/run_servo.csv` com referência e pose medida lado a lado → dá para fazer
-  um gráfico "referência vs real" no relatório.
+  `data/run_servo_lento<N>_phi<fim>.csv` com referência e pose medida lado a
+  lado → gráfico "referência vs real" no relatório. Nunca escreve por cima (se
+  o ficheiro existir, acrescenta a hora) e grava mesmo que o robô pare a meio,
+  mostrando o erro do controlador.
 - No fim volta a modo 0.
 
 ### 10.3 Comandos
 
 ```bash
 python src/run_robot.py                         # ensaio, não mexe
-python src/run_robot.py --go --lento 3          # primeira vez no robô
-python src/run_robot.py --go --lento 1          # velocidade planeada
+python src/run_robot.py --go --lento 3          # primeira vez no robô (pontos)
 python src/run_robot.py --go --metodo servo --lento 2
+python src/run_robot.py --go --metodo servo --lento 1   # velocidade planeada
+# pontos a --lento < 2 é recusado (deu C24 no lab)
 python src/run_robot.py --go --ip 192.168.1.xxx # outro IP
 ```
 
@@ -642,7 +642,7 @@ Ensaio já testado (offline):
 
 ```
   vel. TCP : max 73.6 mm/s ... OK      (3× mais lento)
-  pinça: 83.6 mm   duração: 17.7 s   método: pontos
+  pinça: 83.6 mm   duração: 16.3 s   método: pontos
   ponta da pinça no início: [190.   0.  80.] mm (= bola)
   pose a enviar se o controlador NÃO tiver tcp_offset (flange): [ 249.1  0.  139.1 -180.  45.  0. ]
   ENSAIO — nada foi enviado. Usa --go para executar.
@@ -663,6 +663,44 @@ outra ferramenta configurada). `--garra 0` = sem pinça.
   qualquer posição antes.
 - Começar sempre com `--lento 3` e baixar aos poucos.
 - **Mão no botão de emergência** sempre.
+
+
+### 10.5 O que se aprendeu no laboratório (5/11) e como ficou a versão final
+
+| Ensaio | Resultado | Causa / decisão |
+|---|---|---|
+| `pontos --lento 3`, φ_end 70° | executou, acabou com **C31** | ver abaixo |
+| `servo --lento 2`, φ_end 70° (×2) | parou **sempre no mesmo ponto** (1151–1152 de 1183, φ ≈ 69.4°) com **C31** | fim do follow-through, quase parado (10 mm/s), braço esticado para o lado: não é dinâmica |
+| `pontos --lento 1` | **C24** (velocidade acima do limite) | o blending entre waypoints pede mais às juntas que o plano |
+| `servo`, φ_end **50°**, `--lento 1`, `1.5` | **completos, sem erro** | |
+
+**C31** é a deteção de colisão do controlador ("corrente anormal"): a corrente
+num motor ficou longe da que o modelo do controlador previa. Num ponto fixo e
+quase parado, as hipóteses são o cabo da pinça a esticar nessa pose, ou a massa
+da pinça (290 g) não estar configurada como carga no controlador. **Solução
+adotada:** terminar o follow-through em **φ_end = 50°** em vez de 70° — a pose
+final fica com J5 = 92° em vez de 112° e o braço menos esticado. Não se mexeu
+na configuração do robô (é partilhado).
+
+**C24**: o método `pontos` passou a recusar `--lento < 2`; para velocidade
+máxima usa-se `servo`.
+
+**Limite cartesiano real:** em `servo` o flange nunca passou de ~220 mm/s
+(`config.CART_SPEED_OBSERVED`), abaixo dos 500 mm/s da datasheet. Com
+tcp_offset = 0 o controlador comanda o **flange**, que anda mais depressa do que
+a ponta da pinça (298 vs 221 mm/s a `--lento 1`) por causa da rotação da garra.
+A verificação passou a calcular a velocidade do flange e avisa quando passa dos
+220 mm/s:
+
+| `--lento` | flange pedido | erro medido (média / máx) |
+|---|---|---|
+| 2 (φ_end 70°) | 149 mm/s | 2.0 / 14.7 mm (1.1 mm descontando 10 ms de atraso) |
+| 1.5 | 198 mm/s | 5.8 / 29.1 mm |
+| 1 | 298 mm/s | 18.9 / 58.8 mm (atraso ~90 ms) |
+
+**Dados:** `data/run_servo_lento1_phi50.csv`, `data/run_servo_lento1.5_phi50.csv`
+(completos) e `data/run_servo_lento2_phi70_C31.csv` (o que parou). O ensaio
+completo a `--lento 2` com φ_end 50° foi escrito por cima e **tem de se repetir**.
 
 ---
 
@@ -800,7 +838,7 @@ comentários do que lá pôr. Correspondência:
 |---|---|
 | Tarefa 1 | figura dos referenciais (desenhar à mão ou a partir do `--frames`), tabela DH (secção 6.3), fórmula da secção 6.2, validação q = 0 e comparação com a FK do controlador |
 | Tarefa 2 | analogia com o Lab 1 (7.1), equações das fases (7.2), tabela de parâmetros (7.3), tabela de verificações (7.4), os 3 gráficos, **a história da singularidade (secção 8)** |
-| Tarefa 3 | método escolhido e porquê, fator de abrandamento, gráfico referência vs real a partir de `data/run_servo.csv`, fotos/vídeo |
+| Tarefa 3 | método escolhido e porquê, fator de abrandamento, gráfico referência vs real a partir de `data/run_servo_*.csv`, erros C31/C24 e como se resolveram (10.5), fotos/vídeo |
 | Tarefa 4 | procedimento (11.1), `ik_erros.png`, tabela de médias/máximos, discussão (11.4) |
 
 O autor está como "Grupo 1" (por causa do `GR1_Lab1.zip`) — trocar pelos
@@ -858,89 +896,3 @@ nomes.
 | **Modo 0 / modo 1** | xArm: posição (o controlador planeia) / servo (o programa manda pontos em tempo real) |
 | **Lag / f_release** | o pulso fica armado e só solta numa fração do downswing — é o que gera velocidade no swing |
 
----
-
-## 18. Swing V2 — a pinça é a mão, a caneta é o taco
-
-**Porquê uma V2.** No laboratório (5/11) viu-se que a V1 não parece uma
-tacada: a trajetória é definida só para a ponta da pinça, e a IK resolve-a
-rodando a base (J1 73°) e torcendo a pinça (J6 124°), com o ombro J2 quase
-parado. Além disso o controlador limitou o movimento cartesiano a ~220 mm/s.
-
-**A ideia.** Com J1 = J4 = J6 = 0, os eixos de J2, J3 e J5 são paralelos
-(horizontais, ao longo de y) e o Lite 6 fica um **braço plano** no plano x-z —
-um pêndulo duplo verdadeiro, como o V13 do Lab 1:
-
-| Golfista | Lite 6 | No swing |
-|---|---|---|
-| tronco inclinado sobre a bola | J2 = 43° | fixa |
-| ombro | **J3** | ativa |
-| braço | antebraço J3 → J5 (243.6 mm) | |
-| pulso (arma e solta) | **J5** | ativa |
-| mãos | pinça (TCP a 83.6 mm do flange) | fecha na caneta |
-| taco | caneta, 120 mm para lá dos dedos (`--taco`) | |
-
-Ângulos no plano (da vertical para baixo, + para a frente), tirados da FK:
-braço `A = 20.9° + q3 − q2` (20.9° vem do desvio de 87 mm do antebraço),
-taco `C = q3 − q2 − q5`.
-
-**Perfis (os do Lab 1).** A trajetória é definida **nas juntas**:
-- J3: backswing quíntico; downswing com aceleração constante
-  `q3(u) = q3_imp + (q3_top − q3_imp)(1 − (u/T)²)` → velocidade máxima na bola;
-- J5: arma 45° no backswing; no downswing fica armada até 40 % de T e solta
-  com aceleração constante, chegando à pose de impacto **no mesmo instante**
-  que J3;
-- follow-through: as duas desaceleram e param juntas.
-
-A posição e a orientação da pinça e da caneta (o que o enunciado pede como
-"funções do tempo") saem da FK da Tarefa 1. Como é enviada junta a junta
-(`set_servo_angle_j`), não precisa de IK e não apanha o limite cartesiano.
-
-**Como se escolheram os números.** Procura aleatória de ~2000 geometrias
-(inclinação, poses de impacto, amplitudes), ficando com as que passam todas as
-verificações; para cada uma, o downswing mais curto que respeita os limites.
-Escolhida a mais curta e com aspeto de tacada.
-
-**Resultado** (`python src/swing_v2.py`):
-
-| | |
-|---|---|
-| duração | 5.5 s (backswing 2.6, downswing 2.1, follow-through 0.8) |
-| cabeça do taco no impacto | **601 mm/s** (V1: ~214 planeado, ≤ 220 medido) |
-| pinça (efetor final) | máx. 379 mm/s ≤ 400 (500 do fabricante × 0.8) — **é este o limite** |
-| juntas | máx. 71 °/s ≤ 144 |
-| folga às juntas | ≥ 37° |
-| mesa | robô ≥ 167 mm, caneta ≥ 60 mm |
-| colisões (caneta/pinça vs base e braço) | ≥ 80 mm |
-| bola | (370, 0, 74) mm — num *tee*; golpe ligeiramente descendente (14 mm), como com um ferro |
-
-A ponta da caneta pode passar dos 500 mm/s: o limite do fabricante é do
-efetor final (a pinça). É essa a vantagem de ter um taco.
-
-**Pegar na caneta.** O ponto 0 tem a pinça virada para baixo a ~7 cm da mesa:
-a caneta bateria. Usa-se uma **pose de carregar** `q = [0, 0, 60, 0, −30, 0]`:
-pinça na horizontal, virada para a frente, pontas dos dedos em (386, 0, 405) mm.
-As deslocações com a caneta presa (carregar → início e fim → carregar) também
-são verificadas contra a mesa e colisões.
-
-**Verificações novas** (`check_v2`): velocidade da pinça, mesa para o robô e
-para a caneta em separado, e **colisões** por distância entre segmentos (caneta,
-pinça, antebraço contra a base e o braço do robô, com raios conservadores).
-
-**Ficheiros:** `src/swing_v2.py` (trajetória + verificações + gráficos
-`report/v2_*.png`), `src/run_robot_v2.py` (robô), `swing_v2.ipynb` (simulação
-com animação e varrimentos de limites).
-
-**Varrimentos** (no notebook): caneta de 0 a 160 mm é viável (cabeça de 376 a
-675 mm/s; com 180 mm a ponta desce demais); downswing < ~2.0 s faz a pinça
-passar dos 400 mm/s; a inclinação J2 (30°–50°) muda a altura da bola.
-
-**No laboratório:**
-```bash
-python src/run_robot_v2.py                     # ensaio
-python src/run_robot_v2.py --go --lento 3      # pega na caneta + swing
-python src/run_robot_v2.py --go --lento 1
-python src/run_robot_v2.py --soltar            # abre a pinça
-```
-Dados em `data/run_v2_lento<N>.csv` (q pedido, q medido, pose medida). **Não
-testado no robô ainda.**

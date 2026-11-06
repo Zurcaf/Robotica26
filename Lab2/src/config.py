@@ -31,6 +31,9 @@ JOINT_LIMITS = [
 JOINT_SPEED_MAX = 180.0     # graus/s, por junta
 TCP_SPEED_MAX = 500.0       # mm/s, velocidade linear do efetor final
 REACH = 440.0               # mm, alcance máximo (≈ J2 -> centro do pulso J5)
+# Medido no lab (5/11): em set_servo_cartesian o flange nunca passou de ~220 mm/s
+# (pedido 298 a --lento 1 -> atraso de ~90 ms). Só gera aviso, não chumba.
+CART_SPEED_OBSERVED = 220.0  # mm/s
 
 # Margem de segurança aplicada aos limites acima nas verificações de
 # viabilidade (Tarefa 2): 0.8 => só se aceitam trajetórias que usem <= 80 %.

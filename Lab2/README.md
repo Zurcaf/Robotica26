@@ -56,8 +56,9 @@ python src/trajectory.py --t-down 3 --raio 180
 Resultado atual com os `DEFAULTS`:
 
 ```
-  592 pontos, 5.91 s, IK numérica convergiu
+  543 pontos, 5.42 s, IK numérica convergiu
   vel. TCP        : max    220.9 mm/s   (limite c/ margem 400.0)  OK
+  vel. flange     : max    297.6 mm/s   (limite c/ margem 400.0)  OK
   vel. juntas     : max    111.9 deg/s  (limite c/ margem 144.0)  OK
   alcance         : max    320.6 mm     (limite c/ margem 352.0)  OK
   limites juntas  : menor folga 7.8 deg (J5, mínimo 5)  OK
@@ -70,7 +71,7 @@ Resultado atual com os `DEFAULTS`:
 ```bash
 python src/run_robot.py                           # ensaio: verifica, não mexe
 python src/run_robot.py --go --lento 3            # executa 3x mais lento (começar assim)
-python src/run_robot.py --go --metodo servo       # streaming ponto a ponto, grava data/run_servo.csv
+python src/run_robot.py --go --metodo servo --lento 2   # streaming, grava data/run_servo_lento2_phi50.csv
 python src/ik_compare.py --n 60                   # Tarefa 4 (não mexe o robô), grava data/ik_compare.csv
 python src/ik_compare.py --from-csv               # refaz o gráfico em casa
 ```
@@ -78,23 +79,11 @@ python src/ik_compare.py --from-csv               # refaz o gráfico em casa
 **Segurança:** emergência sempre à mão; `run_robot.py` recusa enviar
 trajetórias que falhem a verificação e pede confirmação antes de mexer.
 
-### Swing V2 — pinça = mãos, caneta = taco
-
-Pêndulo duplo com juntas reais: ombro J3 + pulso J5 (J2 = tronco inclinado,
-J1/J4/J6 = 0), enviado junta a junta. Cabeça do taco a ~600 mm/s. Simulação e
-limites em [swing_v2.ipynb](swing_v2.ipynb); explicação no GUIA, secção 18.
-
-```bash
-python src/swing_v2.py --plot                  # verifica + gráficos report/v2_*.png
-python src/run_robot_v2.py                     # ensaio
-python src/run_robot_v2.py --go --lento 3      # pega na caneta + swing
-python src/run_robot_v2.py --soltar            # abre a pinça
-```
-
 ## Estrutura
 
 ```
 lab2.ipynb  notebook com tudo (teoria + código + resultados); GUIA.md explica em texto
+EXPLICACAO.md  versão final passo a passo: todas as contas e a linha de código de cada uma
 src/      config.py       IP, limites do fabricante, mesa/base (CONFIRMAR limites)
           kinematics.py   Tarefa 1: DH do PDF oficial, fk(), validação, rpy, IK numérica
           trajectory.py   Tarefa 2: swing (arco + "pulso"), viabilidade, gráficos

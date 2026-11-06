@@ -53,7 +53,10 @@ DEFAULTS = dict(
     raio=150.0,                  # mm, raio do arco ("comprimento do braço+taco")
     # topo/fim limitados por J5 (limite 124 deg): com -100/80 e pinça, J5 chegava a 124
     phi_top=-90.0,               # graus, ângulo no topo do backswing
-    phi_end=70.0,                # graus, ângulo final do follow-through
+    # fim do follow-through: com 70 deg o robô parava SEMPRE com C31 (deteção de
+    # colisão) em phi ~69 deg, braço esticado para o lado (lab 5/11); com 50 deg
+    # correu completo a lento 1, 1.5 e 2 (data/LAB_2026-11-05.md)
+    phi_end=50.0,                # graus, ângulo final do follow-through
     psi_top=30.0,                # graus, "pulso armado" no topo
     f_release=0.6,               # fração do downswing em que o pulso solta
     t_back=2.0,                  # s, duração do backswing
@@ -171,6 +174,9 @@ def check_feasibility(traj, qs, verbose=True):
     t, pos, flange = traj["t"], traj["pos"], traj["pos_flange"]
     sf = C.SAFETY_FACTOR
     v_tcp = np.linalg.norm(np.gradient(pos, t, axis=0), axis=1)
+    # com tcp_offset = 0 (o robô do lab) o controlador comanda o FLANGE, que anda
+    # mais depressa do que a ponta por causa da rotação da garra
+    v_flange = np.linalg.norm(np.gradient(flange, t, axis=0), axis=1)
     qd = np.gradient(qs, t, axis=0)
     ombro = fk(np.zeros(6), all_frames=True)[2][:3, 3]     # origem de {2}
     alcance = np.linalg.norm(flange - ombro, axis=1)       # o alcance é do flange
@@ -182,6 +188,7 @@ def check_feasibility(traj, qs, verbose=True):
 
     checks = {
         "vel. TCP": (v_tcp.max(), sf * C.TCP_SPEED_MAX, "mm/s"),
+        "vel. flange": (v_flange.max(), sf * C.TCP_SPEED_MAX, "mm/s"),
         "vel. juntas": (np.abs(qd).max(), sf * C.JOINT_SPEED_MAX, "deg/s"),
         "alcance": (alcance.max(), sf * C.REACH, "mm"),
     }
@@ -201,7 +208,11 @@ def check_feasibility(traj, qs, verbose=True):
         print(f"  {'acima da mesa':<16}: z min {z_min:.1f} mm (ponta {pos[:, 2].min():.1f}, flange "
               f"{flange[:, 2].min():.1f}, juntas {z_juntas:.1f})  {'OK' if res['acima da mesa'] else 'FALHA'}")
         print(f"  {'fora da base':<16}: r min {r_xy:.1f} mm  {'OK' if res['fora da base'] else 'FALHA'}")
-    return all(res.values()), dict(v_tcp=v_tcp, qd=qd, alcance=alcance)
+        if v_flange.max() > C.CART_SPEED_OBSERVED:
+            print(f"  AVISO: o flange chega a {v_flange.max():.0f} mm/s; no lab o controlador não passou de "
+                  f"~{C.CART_SPEED_OBSERVED:.0f} mm/s em modo servo cartesiano -> o robô vai ficar para trás "
+                  f"(usar --lento >= {v_flange.max() / C.CART_SPEED_OBSERVED:.1f} para seguir à risca)")
+    return all(res.values()), dict(v_tcp=v_tcp, v_flange=v_flange, qd=qd, alcance=alcance)
 
 
 def plot(traj, qs, extra):

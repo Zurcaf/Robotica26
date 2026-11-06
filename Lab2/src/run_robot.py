@@ -13,8 +13,17 @@ Métodos (ambos com as funções do SDK):
           temporal à risca (é o que preserva a aceleração do downswing).
 
 --lento N estica o tempo N vezes (velocidades / N) — começar SEMPRE com N >= 3.
-Em servo grava-se a pose medida em data/run_servo.csv, para comparar com a
-de referência no relatório.
+Em servo grava-se a pose medida em data/run_servo_lento<N>_phi<fim>.csv (nunca
+escreve por cima: se já existir, acrescenta a hora), para comparar com a de
+referência no relatório.
+
+Lições do lab (5/11, data/LAB_2026-11-05.md):
+  - C31 (deteção de colisão) no fim do follow-through com phi_end = 70 ->
+    phi_end passou a 50 por omissão;
+  - C24 (velocidade acima do limite) com `pontos` a --lento 1: o blending entre
+    waypoints pede mais às juntas do que o plano -> `pontos` só com --lento >= 2;
+  - em servo cartesiano o flange não passou de ~220 mm/s -> a --lento 1 o robô
+    fica ~90 ms para trás (aviso na verificação).
 
 SEGURANÇA: a trajetória só é enviada se check_feasibility() passar. Ter sempre
 a mão no botão de emergência.
@@ -32,6 +41,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "..", "data")
 APPROACH_SPEED = 50.0  # mm/s, velocidade do último ponto (fim da trajetória)
 APPROACH_JOINT_SPEED = 20.0  # deg/s, aproximação junta a junta ao início
+PONTOS_LENTO_MIN = 2.0       # abaixo disto o método pontos deu C24 no lab
 
 
 def run_pontos(arm, traj, cmds, every):
@@ -87,6 +97,10 @@ def main():
     ap.add_argument("--ip", default=None)
     args = ap.parse_args()
 
+    if args.metodo == "pontos" and args.lento < PONTOS_LENTO_MIN:
+        raise SystemExit(f"  o método pontos deu C24 (velocidade) a --lento 1 no lab: usa --lento >= "
+                         f"{PONTOS_LENTO_MIN:g}, ou --metodo servo para a velocidade máxima")
+
     p = {k: DEFAULTS[k] * args.lento for k in ("t_back", "t_down")}
     traj = swing_trajectory(dict(p, garra=args.garra, phi_end=args.phi_end))
     qs, conv = joint_trajectory(traj)
@@ -122,7 +136,10 @@ def main():
         if args.metodo == "pontos":
             run_pontos(arm, traj, cmds, every=10)
         else:
-            run_servo(arm, traj, cmds, nome=f"run_servo_lento{args.lento:g}")
+            nome = f"run_servo_lento{args.lento:g}_phi{args.phi_end:g}"
+            if os.path.exists(os.path.join(DATA, f"{nome}.csv")):   # nunca escrever por cima
+                nome += time.strftime("_%H%M%S")
+            run_servo(arm, traj, cmds, nome=nome)
     finally:
         arm.disconnect()
 
