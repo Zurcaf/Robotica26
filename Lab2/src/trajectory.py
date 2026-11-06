@@ -96,19 +96,19 @@ DEFAULTS = dict(
 # Preset "golfista": modo juntas com o endereço e os ganhos escolhidos com o
 # mujoco_preview (sem colisão, J5 longe de 0, braço a levantar nos dois lados).
 # Preset "golfista": modo juntas, como o V17 do Lab 1 (tronco = J1, ombro = J2,
-# pulso = J5), com o robô DIREITO: braço quase esticado (J3 = 120 deg; a 150 o
-# braço fica totalmente esticado = singularidade do cotovelo) e a pinça a pique
+# pulso = J5), com o robô DIREITO: braço quase esticado (J3 = 110 deg = 91 % da
+# extensão; a 150 fica todo esticado = singularidade do cotovelo) e a pinça a pique
 # no endereço. A trajetória da pinça (Tarefa 2) é a FK destes perfis.
 GOLFISTA = dict(
     juntas=dict(
-        q_enderecio=(0.0, 71.0, 120.0, 0.0, 50.0, 0.0),   # ponta em (415, 0, 80), pinça vertical
+        q_enderecio=(0.0, 65.5, 110.0, 0.0, 50.0, 0.0),   # ponta em (390, 0, 80), pinça vertical
         a_tronco=-0.8,     # J1 = -0.8·phi: backswing para +y (alvo -y)
         b_ombro=35.0,      # J2 levanta o braço 35·(1-cos phi): topo a z ~ 400
         b_cotovelo=0.0,
         a_pulso=-1.0,      # J5 arma 30 deg no backswing, solta aos 60 % do downswing
     ),
     phi_top=-90.0, phi_end=50.0,
-    # ponta a ~415 mm da base: t_down 4 s dá ~300 mm/s (limite 0.8 x 500); o
+    # ponta a ~390 mm da base: t_down 4 s dá ~290 mm/s (limite 0.8 x 500); o
     # robô só fez ~220 a 5 nov => começar com --lento 2
     t_back=4.5, t_down=4.0,            # backswing mais lento que o downswing: pico de |v| na bola
 )
