@@ -79,6 +79,21 @@ python src/ik_compare.py --from-csv               # refaz o gráfico em casa
 **Segurança:** emergência sempre à mão; `run_robot.py` recusa enviar
 trajetórias que falhem a verificação e pede confirmação antes de mexer.
 
+### Swing V3 — a demonstração do colega, refinada
+
+Poses topo / impacto / fim tiradas de uma demonstração feita à mão
+(`data/demo_colega_2026-11-06.csv`); caminho refeito com as leis do Lab 1 e
+tempos ajustados aos limites; enviado junta a junta. Testado no robô
+(6/11): ponta a ~1 mm do planeado, passa na bola. Resultados em
+`data/LAB_2026-11-06.md`.
+
+```bash
+python src/ir_para_zero.py                     # começar no zero
+python src/swing_v3.py --plot                  # verifica + report/v3_*.png
+python src/run_robot_v3.py --go --lento 2      # aproximação por etapas + swing
+python src/gravar_demo.py --nome swing1        # gravar uma demonstração à mão (100 Hz)
+```
+
 ## Estrutura
 
 ```
