@@ -26,7 +26,7 @@ import time
 import numpy as np
 
 from robot import check, connect, controller_tcp
-from trajectory import DEFAULTS, check_feasibility, command_poses, joint_trajectory, swing_trajectory
+from trajectory import DEFAULTS, GOLFISTA, check_feasibility, command_poses, joint_trajectory, swing_trajectory
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "..", "data")
@@ -84,11 +84,16 @@ def main():
     ap.add_argument("--garra", type=float, default=DEFAULTS["garra"], help="mm, flange -> ponta (0 = sem pinça)")
     ap.add_argument("--phi-end", type=float, default=DEFAULTS["phi_end"],
                     help="graus, fim do follow-through (no lab o C31 aparecia em phi ~69)")
+    ap.add_argument("--k-phi", type=float, default=DEFAULTS["k_phi"], help="0..1, quanto do arco roda a pinça")
+    ap.add_argument("--golfista", action="store_true", help="modo juntas com o preset trajectory.GOLFISTA")
     ap.add_argument("--ip", default=None)
     args = ap.parse_args()
 
     p = {k: DEFAULTS[k] * args.lento for k in ("t_back", "t_down")}
-    traj = swing_trajectory(dict(p, garra=args.garra, phi_end=args.phi_end))
+    p = dict(p, garra=args.garra, phi_end=args.phi_end, k_phi=args.k_phi)
+    if args.golfista:
+        p = {**p, **GOLFISTA, "t_back": GOLFISTA["t_back"] * args.lento, "t_down": GOLFISTA["t_down"] * args.lento}
+    traj = swing_trajectory(p)
     qs, conv = joint_trajectory(traj)
     ok, _ = check_feasibility(traj, qs)
     if not (ok and conv):
@@ -122,7 +127,8 @@ def main():
         if args.metodo == "pontos":
             run_pontos(arm, traj, cmds, every=10)
         else:
-            run_servo(arm, traj, cmds, nome=f"run_servo_lento{args.lento:g}")
+            tag = "golfista" if traj["params"].get("juntas") is not None else f"kphi{args.k_phi:g}_phiend{args.phi_end:g}"
+            run_servo(arm, traj, cmds, nome=f"run_servo_lento{args.lento:g}_{tag}")
     finally:
         arm.disconnect()
 

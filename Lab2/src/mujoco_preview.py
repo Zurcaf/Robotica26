@@ -30,7 +30,7 @@ import numpy as np
 
 import config as C
 from kinematics import fk
-from trajectory import DEFAULTS, joint_trajectory, swing_trajectory
+from trajectory import DEFAULTS, GOLFISTA, joint_trajectory, swing_trajectory
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 MODEL = os.path.join(HERE, "..", "models", "lite6", "swing_scene.xml")
@@ -118,7 +118,7 @@ def desenha_trajetoria(scene, traj, passo=4):
         scene.ngeom += 1
 
 
-def fotos(m, d, traj, qs, largura, altura, strip):
+def fotos(m, d, traj, qs, largura, altura, strip, prefixo="mj_"):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.image as mpimg
@@ -136,9 +136,9 @@ def fotos(m, d, traj, qs, largura, altura, strip):
             desenha_trajetoria(renderer.scene, traj)
             img = renderer.render().copy()
             imagens[nome][cam] = img
-            caminho = os.path.join(REPORT, f"mj_{nome}_{cam}.png")
+            caminho = os.path.join(REPORT, f"{prefixo}{nome}_{cam}.png")
             mpimg.imsave(caminho, img)
-        print(f"  {titulo:<20} t = {traj['t'][k]:5.2f} s  -> report/mj_{nome}_<câmara>.png")
+        print(f"  {titulo:<20} t = {traj['t'][k]:5.2f} s  -> report/{prefixo}{nome}_<câmara>.png")
     if strip:
         for cam in CAMARAS:
             fig, axes = plt.subplots(1, len(FASES), figsize=(19.6, 3.4), dpi=100)
@@ -147,7 +147,7 @@ def fotos(m, d, traj, qs, largura, altura, strip):
                 ax.set_title(titulo, fontsize=9)
                 ax.axis("off")
             fig.tight_layout(pad=0.3)
-            caminho = os.path.join(REPORT, f"mj_sequencia_{cam}.png")
+            caminho = os.path.join(REPORT, f"{prefixo}sequencia_{cam}.png")
             fig.savefig(caminho, dpi=100)
             plt.close(fig)
             print(f"  tira {cam:<14} -> {os.path.relpath(caminho)}")
@@ -182,6 +182,9 @@ def main():
     ap.add_argument("--t-down", type=float, default=DEFAULTS["t_down"])
     ap.add_argument("--raio", type=float, default=DEFAULTS["raio"])
     ap.add_argument("--garra", type=float, default=DEFAULTS["garra"])
+    ap.add_argument("--k-phi", type=float, default=DEFAULTS["k_phi"], help="0..1, quanto do arco roda a pinça")
+    ap.add_argument("--golfista", action="store_true", help="modo juntas com o preset trajectory.GOLFISTA")
+    ap.add_argument("--prefixo", default="mj_", help="prefixo dos ficheiros em report/")
     ap.add_argument("--margem", type=float, default=C.TABLE_CLEARANCE,
                     help="mm: avisa de pares de geoms a menos desta distância")
     ap.add_argument("--view", action="store_true")
@@ -191,16 +194,21 @@ def main():
     ap.add_argument("--altura", type=int, default=960)
     args = ap.parse_args()
 
-    p = dict(phi_end=args.phi_end, phi_top=args.phi_top, raio=args.raio, garra=args.garra,
+    p = dict(phi_end=args.phi_end, phi_top=args.phi_top, raio=args.raio, garra=args.garra, k_phi=args.k_phi,
              t_back=DEFAULTS["t_back"] * args.lento, t_down=args.t_down * args.lento)
+    if args.golfista:
+        p = {**p, **GOLFISTA, "t_back": GOLFISTA["t_back"] * args.lento, "t_down": GOLFISTA["t_down"] * args.lento}
     traj = swing_trajectory(p)
     qs, conv = joint_trajectory(traj)
     print(f"  {len(qs)} poses, {traj['t'][-1]:.2f} s, IK numérica {'convergiu' if conv else 'NÃO convergiu em todos os pontos'}")
+    amp = qs.max(axis=0) - qs.min(axis=0)
+    print("  amplitude das juntas [deg]: " + "  ".join(f"J{i + 1} {a:.0f}" for i, a in enumerate(amp)))
 
     m, d = load(args.modelo)
+    m.geom("bola").pos[:] = np.asarray(traj["params"]["bola"]) / 1000.0   # a bola da cena segue a trajetória
     verificar(m, d, traj, qs, args.margem)
     if args.fotos or args.strip:
-        fotos(m, d, traj, qs, args.largura, args.altura, args.strip)
+        fotos(m, d, traj, qs, args.largura, args.altura, args.strip, args.prefixo)
     if args.view:
         view(m, d, traj, qs)
 

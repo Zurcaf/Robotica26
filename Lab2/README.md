@@ -63,25 +63,48 @@ numérica, sem física) sobre o modelo oficial do Lite 6 com pinça
 inteiro e verificar colisões com os elos a sério; as malhas de colisão são
 invólucros convexos, por isso as distâncias que imprime são conservadoras.
 
-Resultado atual com os `DEFAULTS`:
+Resultado atual com os `DEFAULTS` (swing `GOLFISTA`, ver abaixo):
 
 ```
-  592 pontos, 5.91 s, IK numérica convergiu
-  vel. TCP        : max    220.9 mm/s   (limite c/ margem 400.0)  OK
-  vel. juntas     : max    111.9 deg/s  (limite c/ margem 144.0)  OK
-  alcance         : max    320.6 mm     (limite c/ margem 352.0)  OK
-  limites juntas  : menor folga 7.8 deg (J5, mínimo 5)  OK
-  ...
+  1073 pontos, 10.72 s, IK numérica convergiu
+  vel. ponta      : max    302.9 mm/s   (limite c/ margem 400.0)  OK
+  vel. flange     : max    269.4 mm/s   (limite c/ margem 400.0)  OK
+  vel. juntas     : max     35.9 deg/s  (limite c/ margem 144.0)  OK
+  alcance         : max    418.4 mm     (limite c/ margem 421.5)  OK
+  limites juntas  : menor folga 74.0 deg (J5, mínimo 5)  OK
+  acima da mesa   : z min 79.7 mm (ponta 79.7, flange 163.3, juntas 163.3)  OK
+  fora da base    : r min 408.3 mm  OK
   => trajetória VIÁVEL
 ```
+
+### O swing ativo: `GOLFISTA` (modo juntas)
+
+Desenhado nas juntas como o V17 do Lab 1 (tronco = J1, ombro = J2, pulso = J5),
+com o robô direito: braço quase esticado (J3 = 120°) e a pinça a pique na bola.
+A trajetória cartesiana da pinça (o que a Tarefa 2 pede) é a FK destes perfis.
+
+| Junta | Perfil | Valor |
+|---|---|---|
+| J1 tronco | `-0.8·phi` | ±72° / 40° |
+| J2 ombro | `71 - 35·(1 - cos phi)` | topo a z ≈ 400 mm |
+| J3 cotovelo | fixo | 120° |
+| J5 pulso | `50 - psi` | arma 30° no backswing, solta aos 60 % do downswing |
+| J4, J6 | fixos | 0° |
+
+Fases do Lab 1: backswing quíntico (4.5 s) até `phi_top = -90°`, downswing com
+aceleração constante (4 s), follow-through até +50°. Bola em (415, 0, 80) mm.
+Tudo em `GOLFISTA`, no topo de [src/trajectory.py](src/trajectory.py); os
+outros modos (arco cartesiano original, híbrido, cópia do vídeo) ficam lá para
+comparação.
 
 ### No laboratório (robô ligado)
 
 ```bash
+python src/robot_info.py                          # lê a configuração do controlador, não mexe (grava data/robot_info.txt)
 python src/run_robot.py                           # ensaio: verifica, não mexe
-python src/run_robot.py --go --lento 3            # executa 3x mais lento (começar assim)
-python src/run_robot.py --go --metodo servo       # streaming ponto a ponto, grava data/run_servo.csv
-python src/ik_compare.py --n 60                   # Tarefa 4 (não mexe o robô), grava data/ik_compare.csv
+python src/run_robot.py --go --metodo servo --lento 2   # executa 2x mais lento (começar assim), grava data/run_servo_lento2_golfista.csv
+python src/run_robot.py --go --metodo servo --lento 1   # velocidade planeada
+python src/ik_compare.py --n 100                  # Tarefa 4 (não mexe o robô), grava data/ik_compare.csv
 python src/ik_compare.py --from-csv               # refaz o gráfico em casa
 ```
 
@@ -94,7 +117,7 @@ trajetórias que falhem a verificação e pede confirmação antes de mexer.
 lab2.ipynb  notebook com tudo (teoria + código + resultados); GUIA.md explica em texto
 src/      config.py       IP, limites do fabricante, mesa/base (CONFIRMAR limites)
           kinematics.py   Tarefa 1: DH do PDF oficial, fk(), validação, rpy, IK numérica
-          trajectory.py   Tarefa 2: swing (arco + "pulso"), viabilidade, gráficos
+          trajectory.py   Tarefa 2: swing (GOLFISTA nas juntas; arco cartesiano e híbrido em alternativa), viabilidade, gráficos
           robot.py        ligação ao robô (SDK xArm)
           run_robot.py    Tarefa 3
           ik_compare.py   Tarefa 4

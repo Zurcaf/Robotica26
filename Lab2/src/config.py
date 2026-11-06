@@ -28,7 +28,12 @@ JOINT_LIMITS = [
 # --- Velocidades máximas (CONFIRMAR) -----------------------------------------
 JOINT_SPEED_MAX = 180.0     # graus/s, por junta
 TCP_SPEED_MAX = 500.0       # mm/s, velocidade linear da ferramenta
-REACH = 440.0               # mm, alcance máximo (do eixo de J2 ao flange)
+# Alcance: distância do eixo do ombro (J2) ao CENTRO DO PULSO (J5) nunca pode
+# passar o braço esticado: 200 + sqrt(87² + 227.6²) mm (tabela DH). Perto disso o
+# cotovelo fica em singularidade e a IK do controlador sofre, por isso só se
+# aceita até REACH_FACTOR. (Os 440 mm da datasheet contam até ao flange.)
+REACH = 200.0 + (87.0 ** 2 + 227.6 ** 2) ** 0.5   # mm = 443.7: braço + antebraço (com o desvio de 87 mm) esticados
+REACH_FACTOR = 0.95
 
 # Margem de segurança aplicada aos limites acima nas verificações de
 # viabilidade (Tarefa 2): 0.8 => só se aceitam trajetórias que usem <= 80 %.
