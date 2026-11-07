@@ -55,6 +55,7 @@ python src/mujoco_preview.py                  # swing no modelo 3D oficial: coli
 python src/mujoco_preview.py --view           # viewer interativo (swing em loop); --lento 2 --phi-end 50 etc.
 python src/mujoco_preview.py --fotos --strip  # 7 fases x 3 câmaras -> report/mj_*.png e tiras mj_sequencia_*.png
 python src/mujoco_preview.py --golfista --fotos --strip --prefixo mjg_   # o mesmo para o GOLFISTA (mjg_*)
+python src/mujoco_preview.py --v3 --fotos --strip --prefixo mjv3_        # e para o V3 (mjv3_*)
 python src/robot_info.py                      # (com robô) lê a configuração do controlador, não mexe nada
 ```
 
@@ -64,7 +65,7 @@ numérica, sem física) sobre o modelo oficial do Lite 6 com pinça
 inteiro e verificar colisões com os elos a sério; as malhas de colisão são
 invólucros convexos, por isso as distâncias que imprime são conservadoras.
 Resultado: V1 sem contacto entre elos (menor distância 25.3 mm, pinça–antebraço);
-GOLFISTA idem (25.4 mm). FK nossa vs modelo URDF: ≤ 1.8 mm na ponta (o URDF usa
+GOLFISTA idem (25.4 mm); V3 idem (18.6 mm, corpo da pinça à mesa no follow-through). FK nossa vs modelo URDF: ≤ 1.8 mm na ponta (o URDF usa
 243.5/200.2/227.61/62.5 mm e pinça 81.1 mm; o PDF 243.3/200/227.6/61.5 e 83.6).
 
 Resultado atual com os `DEFAULTS` (arco cartesiano, a V1 que correu no robô a
@@ -149,6 +150,7 @@ tempos ajustados aos limites; enviado junta a junta. Testado no robô
 python src/ir_para_zero.py                     # começar no zero
 python src/swing_v3.py --plot                  # verifica + report/v3_*.png
 python src/run_robot_v3.py --go --lento 2      # aproximação por etapas + swing
+python src/mujoco_preview.py --v3 --view       # ver no modelo 3D (colisões elo a elo: 18.6 mm de folga)
 python src/gravar_demo.py --nome swing1        # gravar uma demonstração à mão (100 Hz)
 ```
 

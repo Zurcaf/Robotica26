@@ -17,6 +17,8 @@ Uso (a partir de Lab2/):
     python src/mujoco_preview.py --fotos         # 7 fases x 3 câmaras -> report/mj_*.png
     python src/mujoco_preview.py --fotos --strip # + tiras report/mj_sequencia_<câmara>.png
     python src/mujoco_preview.py --lento 2 --phi-end 50 --view
+    python src/mujoco_preview.py --golfista --fotos --strip --prefixo mjg_   # swing GOLFISTA
+    python src/mujoco_preview.py --v3 --fotos --strip --prefixo mjv3_        # swing V3 (swing_v3.py)
 
 Os parâmetros da trajetória são os de trajectory.DEFAULTS (ver --help).
 No macOS usar o python normal (não mjpython): o viewer corre com launch() e um
@@ -184,6 +186,8 @@ def main():
     ap.add_argument("--garra", type=float, default=DEFAULTS["garra"])
     ap.add_argument("--k-phi", type=float, default=DEFAULTS["k_phi"], help="0..1, quanto do arco roda a pinça")
     ap.add_argument("--golfista", action="store_true", help="modo juntas com o preset trajectory.GOLFISTA")
+    ap.add_argument("--v3", action="store_true", help="swing V3 de swing_v3.py (bola marcada no lab)")
+    ap.add_argument("--bola-demo", action="store_true", help="com --v3: bola da demonstração em vez da do lab")
     ap.add_argument("--prefixo", default="mj_", help="prefixo dos ficheiros em report/")
     ap.add_argument("--margem", type=float, default=C.TABLE_CLEARANCE,
                     help="mm: avisa de pares de geoms a menos desta distância")
@@ -198,8 +202,18 @@ def main():
              t_back=DEFAULTS["t_back"] * args.lento, t_down=args.t_down * args.lento)
     if args.golfista:
         p = {**p, **GOLFISTA, "t_back": GOLFISTA["t_back"] * args.lento, "t_down": GOLFISTA["t_down"] * args.lento}
-    traj = swing_trajectory(p)
-    qs, conv = joint_trajectory(traj)
+    if args.v3:
+        # swing_v3 é desenhado nas juntas: os ângulos vêm de lá, não há IK; só o
+        # tempo escala com --lento (as poses são as mesmas)
+        from swing_v3 import parametros, swing_v3
+        pv = parametros(args.bola_demo)
+        pv = {**pv, **{k: pv[k] * args.lento for k in ("t_back", "t_down", "t_follow")}}
+        traj = swing_v3(pv)
+        traj["params"] = dict(traj["params"], bola=traj["bola"], garra=C.GRIPPER_TCP_Z)
+        qs, conv = traj["qs"], True
+    else:
+        traj = swing_trajectory(p)
+        qs, conv = joint_trajectory(traj)
     print(f"  {len(qs)} poses, {traj['t'][-1]:.2f} s, IK numérica {'convergiu' if conv else 'NÃO convergiu em todos os pontos'}")
     amp = qs.max(axis=0) - qs.min(axis=0)
     print("  amplitude das juntas [deg]: " + "  ".join(f"J{i + 1} {a:.0f}" for i, a in enumerate(amp)))
