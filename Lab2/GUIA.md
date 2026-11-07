@@ -358,7 +358,7 @@ p(t)   = centro + R·( sin(phi)·d̂  −  cos(phi)·ẑ )
 Orientação:
 
 ```
-R(t) = Rot(−n̂, phi + psi) · R_endereço
+R(t) = Rot(n̂₂, phi + psi) · R_endereço,   n̂₂ = z₀ × d̂ / |z₀ × d̂|
 ```
 
 - `n̂ = d̂ × ẑ` é a normal ao plano do swing;
@@ -394,6 +394,31 @@ exatamente no impacto — a garra chega à bola com a orientação de endereço.
 **3. Follow-through**: desaceleração constante até parar em `phi_end`. A
 duração sai das contas: `T_f = 2·phi_end / ω_impacto`.
 
+### 7.2b Porque é que a pinça rodava (e já não roda)
+
+Na 1.ª versão a rotação era em torno de n̂ = d̂ × ẑ = (1, 0, 0), a normal ao
+plano do swing. Mas a pinça está inclinada 45° (eixo z₀ = (−0.707, 0, −0.707)),
+por isso a componente dessa rotação **ao longo do próprio eixo da pinça** era
+|n̂ · z₀| = cos 45° = **71 %**: a pinça girava como um pião (~78° de giro) e a
+J6 fazia 124°. Somava-se a base J1 a rodar ±38° para seguir a ponta para os
+lados (atan(150/190)), que a J6 também tinha de compensar.
+
+Agora o eixo é n̂₂ = z₀ × d̂ (normalizado): perpendicular ao eixo da pinça
+**e** à direção do swing. Uma rotação em torno de um eixo perpendicular ao eixo
+da pinça **inclina-a sem a girar** — o eixo da pinça varre o plano que contém
+z₀ e d̂, como um taco a pendular para o lado. Comparação (`--lento 1`):
+
+| | antes (eixo x) | agora (eixo n̂₂) |
+|---|---|---|
+| giro da pinça sobre si própria | 120° | **0°** |
+| amplitude J1 / J4 / J6 | 73° / 8° / 124° | **13°** / 121° / 39° |
+| juntas, vel. máx. | 112 °/s | **95 °/s** |
+| flange, vel. máx. | 298 mm/s | **170 mm/s** (abaixo dos ~220 do controlador) |
+| menor folga a um limite | 7.8° (J5) | **44°** (J5) |
+
+A inclinação lateral é feita pelo antebraço (J4): com este pulso é a única
+forma de inclinar a pinça para o lado (J5 só a inclina para a frente/trás).
+
 ### 7.3 Valores por omissão (`DEFAULTS`)
 
 | Parâmetro | Valor | Significado |
@@ -402,7 +427,7 @@ duração sai das contas: `T_f = 2·phi_end / ω_impacto`.
 | `direcao` | (0, 1, 0) | direção do alvo (+y) |
 | `raio` | 150 mm | raio do arco ("braço + taco") |
 | `phi_top` | −90° | topo do backswing (limitado por J5, secção 8.1) |
-| `phi_end` | 70° | fim do follow-through (idem) |
+| `phi_end` | 50° | fim do follow-through (com 70° o robô parava com C31 — secção 10.5) |
 | `psi_top` | 30° | quanto o "pulso" arma |
 | `f_release` | 0.6 | o pulso solta aos 60 % do downswing |
 | `t_back` | 2.0 s | duração do backswing |
@@ -414,8 +439,8 @@ duração sai das contas: `T_f = 2·phi_end / ω_impacto`.
 Contas com estes valores:
 - `ω_impacto = 2 × 1.571 rad / 2.2 s = 1.43 rad/s` → velocidade da ponta na
   bola `= 1.43 × 150 = 214 mm/s`;
-- `T_f = 2 × 1.222 / 1.43 = 1.71 s`;
-- duração total `= 2.0 + 2.2 + 1.71 = 5.91 s` (592 pontos a 100 Hz).
+- `T_f = 2 × 0.873 / 1.43 = 1.22 s`;
+- duração total `= 2.0 + 2.2 + 1.22 = 5.42 s` (543 pontos a 100 Hz).
 
 ### 7.4 A verificação de viabilidade (`check_feasibility`)
 
@@ -438,11 +463,12 @@ Resultado atual:
 
 ```bash
 python src/trajectory.py --plot
-#   592 pontos, 5.91 s, IK numérica convergiu
+#   543 pontos, 5.42 s, IK numérica convergiu
 #   vel. TCP        : max    220.9 mm/s   (limite c/ margem 400.0)  OK
-#   vel. juntas     : max    111.9 deg/s  (limite c/ margem 144.0)  OK
-#   alcance         : max    320.6 mm     (limite c/ margem 352.0)  OK
-#   limites juntas  : menor folga 7.8 deg (J5, mínimo 5)  OK
+#   vel. flange     : max    169.9 mm/s   (limite c/ margem 400.0)  OK
+#   vel. juntas     : max     94.7 deg/s  (limite c/ margem 144.0)  OK
+#   alcance         : max    270.0 mm     (limite c/ margem 352.0)  OK
+#   limites juntas  : menor folga 44.1 deg (J5, mínimo 5)  OK
 #   acima da mesa   : z min 80.0 mm (ponta 80.0, flange 139.1, juntas 139.1)  OK
 #   fora da base    : r min 190.0 mm  OK
 #   => trajetória VIÁVEL
@@ -550,7 +576,7 @@ a 80°):
    | 45° | −80° | 70° | 112° | J6 99 °/s |
    | 35° | −90° | 70° | 113° | J6 129 °/s |
 
-   Escolheu-se **45°, −90°, 70°**: mantém a garra longe da singularidade de J5
+   Escolheu-se **45°, −90°, 70°** (o fim passou depois a **50°**, secção 10.5): mantém a garra longe da singularidade de J5
    = 0 e deixa J5 com 8° de folga ao limite, sem encolher muito o swing.
 3. Para isto não voltar a passar despercebido, a verificação exige agora pelo
    menos **5° de folga a todos os limites das juntas** (a IK numérica corta nos
@@ -619,17 +645,20 @@ Modos do xArm referidos no código:
 - Passa a modo 1 e manda **um ponto a cada `dt`** (10 ms × fator lento) com
   `set_servo_cartesian()`; espera ativamente até ao instante certo.
 - Em cada passo lê a pose real (`get_position()`) e no fim grava
-  `data/run_servo.csv` com referência e pose medida lado a lado → dá para fazer
-  um gráfico "referência vs real" no relatório.
+  `data/run_servo_lento<N>_phi<fim>.csv` com referência e pose medida lado a
+  lado → gráfico "referência vs real" no relatório. Nunca escreve por cima (se
+  o ficheiro existir, acrescenta a hora) e grava mesmo que o robô pare a meio,
+  mostrando o erro do controlador.
 - No fim volta a modo 0.
 
 ### 10.3 Comandos
 
 ```bash
 python src/run_robot.py                         # ensaio, não mexe
-python src/run_robot.py --go --lento 3          # primeira vez no robô
-python src/run_robot.py --go --lento 1          # velocidade planeada
+python src/run_robot.py --go --lento 3          # primeira vez no robô (pontos)
 python src/run_robot.py --go --metodo servo --lento 2
+python src/run_robot.py --go --metodo servo --lento 1   # velocidade planeada
+# pontos a --lento < 2 é recusado (deu C24 no lab)
 python src/run_robot.py --go --ip 192.168.1.xxx # outro IP
 ```
 
@@ -637,7 +666,7 @@ Ensaio já testado (offline):
 
 ```
   vel. TCP : max 73.6 mm/s ... OK      (3× mais lento)
-  pinça: 83.6 mm   duração: 17.7 s   método: pontos
+  pinça: 83.6 mm   duração: 16.3 s   método: pontos
   ponta da pinça no início: [190.   0.  80.] mm (= bola)
   pose a enviar se o controlador NÃO tiver tcp_offset (flange): [ 249.1  0.  139.1 -180.  45.  0. ]
   ENSAIO — nada foi enviado. Usa --go para executar.
@@ -658,6 +687,44 @@ outra ferramenta configurada). `--garra 0` = sem pinça.
   qualquer posição antes.
 - Começar sempre com `--lento 3` e baixar aos poucos.
 - **Mão no botão de emergência** sempre.
+
+
+### 10.5 O que se aprendeu no laboratório (5/11) e como ficou a versão final
+
+| Ensaio | Resultado | Causa / decisão |
+|---|---|---|
+| `pontos --lento 3`, φ_end 70° | executou, acabou com **C31** | ver abaixo |
+| `servo --lento 2`, φ_end 70° (×2) | parou **sempre no mesmo ponto** (1151–1152 de 1183, φ ≈ 69.4°) com **C31** | fim do follow-through, quase parado (10 mm/s), braço esticado para o lado: não é dinâmica |
+| `pontos --lento 1` | **C24** (velocidade acima do limite) | o blending entre waypoints pede mais às juntas que o plano |
+| `servo`, φ_end **50°**, `--lento 1`, `1.5` | **completos, sem erro** | |
+
+**C31** é a deteção de colisão do controlador ("corrente anormal"): a corrente
+num motor ficou longe da que o modelo do controlador previa. Num ponto fixo e
+quase parado, as hipóteses são o cabo da pinça a esticar nessa pose, ou a massa
+da pinça (290 g) não estar configurada como carga no controlador. **Solução
+adotada:** terminar o follow-through em **φ_end = 50°** em vez de 70° — a pose
+final fica com J5 = 92° em vez de 112° e o braço menos esticado. Não se mexeu
+na configuração do robô (é partilhado).
+
+**C24**: o método `pontos` passou a recusar `--lento < 2`; para velocidade
+máxima usa-se `servo`.
+
+**Limite cartesiano real:** em `servo` o flange nunca passou de ~220 mm/s
+(`config.CART_SPEED_OBSERVED`), abaixo dos 500 mm/s da datasheet. Com
+tcp_offset = 0 o controlador comanda o **flange**, que anda mais depressa do que
+a ponta da pinça (298 vs 221 mm/s a `--lento 1`) por causa da rotação da garra.
+A verificação passou a calcular a velocidade do flange e avisa quando passa dos
+220 mm/s:
+
+| `--lento` | flange pedido | erro medido (média / máx) |
+|---|---|---|
+| 2 (φ_end 70°) | 149 mm/s | 2.0 / 14.7 mm (1.1 mm descontando 10 ms de atraso) |
+| 1.5 | 198 mm/s | 5.8 / 29.1 mm |
+| 1 | 298 mm/s | 18.9 / 58.8 mm (atraso ~90 ms) |
+
+**Dados:** `data/run_servo_lento1_phi50.csv`, `data/run_servo_lento1.5_phi50.csv`
+(completos) e `data/run_servo_lento2_phi70_C31.csv` (o que parou). O ensaio
+completo a `--lento 2` com φ_end 50° foi escrito por cima e **tem de se repetir**.
 
 ---
 
@@ -709,7 +776,7 @@ resultado da Tarefa 4** — o resultado real só sai no laboratório.
 ### 11.4 O que discutir no relatório
 
 - ordem de grandeza dos erros (mm? µm?) face à repetibilidade do robô
-  (datasheet, ~±0.2 mm);
+  (datasheet: ±0.5 mm);
 - onde estão os maiores erros (topo do backswing? perto da bola?) e se
   coincidem com J5 pequeno (singularidade) ou juntas perto dos limites;
 - se a IK do robô devolve a mesma configuração (cotovelo/pulso) ao longo da
@@ -795,7 +862,7 @@ comentários do que lá pôr. Correspondência:
 |---|---|
 | Tarefa 1 | figura dos referenciais (desenhar à mão ou a partir do `--frames`), tabela DH (secção 6.3), fórmula da secção 6.2, validação q = 0 e comparação com a FK do controlador |
 | Tarefa 2 | analogia com o Lab 1 (7.1), equações das fases (7.2), tabela de parâmetros (7.3), tabela de verificações (7.4), os 3 gráficos, **a história da singularidade (secção 8)** |
-| Tarefa 3 | método escolhido e porquê, fator de abrandamento, gráfico referência vs real a partir de `data/run_servo.csv`, fotos/vídeo |
+| Tarefa 3 | método escolhido e porquê, fator de abrandamento, gráfico referência vs real a partir de `data/run_servo_*.csv`, erros C31/C24 e como se resolveram (10.5), fotos/vídeo |
 | Tarefa 4 | procedimento (11.1), `ik_erros.png`, tabela de médias/máximos, discussão (11.4) |
 
 O autor está como "Grupo 1" (por causa do `GR1_Lab1.zip`) — trocar pelos
@@ -852,3 +919,4 @@ nomes.
 | **Blending** | passar perto de um waypoint sem parar, arredondando a esquina |
 | **Modo 0 / modo 1** | xArm: posição (o controlador planeia) / servo (o programa manda pontos em tempo real) |
 | **Lag / f_release** | o pulso fica armado e só solta numa fração do downswing — é o que gera velocidade no swing |
+

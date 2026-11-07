@@ -25,15 +25,20 @@ JOINT_LIMITS = [
     (-360.0, 360.0),   # J6
 ]
 
-# --- Velocidades máximas (CONFIRMAR) -----------------------------------------
+# --- Velocidades máximas: confirmadas em docs.lite6.ufactory.cc (especificações
+# técnicas): "Maximum Joint Speed 180°/s", "Maximum Speed of End-Effector 500mm/s".
+# Repetibilidade ±0.5 mm. O controlador do lab limitou o cartesiano a ~220 mm/s.
 JOINT_SPEED_MAX = 180.0     # graus/s, por junta
-TCP_SPEED_MAX = 500.0       # mm/s, velocidade linear da ferramenta
+TCP_SPEED_MAX = 500.0       # mm/s, velocidade linear do efetor final
 # Alcance: distância do eixo do ombro (J2) ao CENTRO DO PULSO (J5) nunca pode
 # passar o braço esticado: 200 + sqrt(87² + 227.6²) mm (tabela DH). Perto disso o
 # cotovelo fica em singularidade e a IK do controlador sofre, por isso só se
 # aceita até REACH_FACTOR. (Os 440 mm da datasheet contam até ao flange.)
 REACH = 200.0 + (87.0 ** 2 + 227.6 ** 2) ** 0.5   # mm = 443.7: braço + antebraço (com o desvio de 87 mm) esticados
 REACH_FACTOR = 0.95
+# Medido no lab (5/11): em set_servo_cartesian o flange nunca passou de ~220 mm/s
+# (pedido 298 a --lento 1 -> atraso de ~90 ms). Só gera aviso, não chumba.
+CART_SPEED_OBSERVED = 220.0  # mm/s
 
 # Margem de segurança aplicada aos limites acima nas verificações de
 # viabilidade (Tarefa 2): 0.8 => só se aceitam trajetórias que usem <= 80 %.

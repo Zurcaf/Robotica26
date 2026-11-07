@@ -54,6 +54,7 @@ python src/trajectory.py --t-down 3 --raio 180
 python src/mujoco_preview.py                  # swing no modelo 3D oficial: colisões elo a elo + FK vs URDF
 python src/mujoco_preview.py --view           # viewer interativo (swing em loop); --lento 2 --phi-end 50 etc.
 python src/mujoco_preview.py --fotos --strip  # 7 fases x 3 câmaras -> report/mj_*.png e tiras mj_sequencia_*.png
+python src/mujoco_preview.py --golfista --fotos --strip --prefixo mjg_   # o mesmo para o GOLFISTA (mjg_*)
 python src/robot_info.py                      # (com robô) lê a configuração do controlador, não mexe nada
 ```
 
@@ -62,27 +63,33 @@ numérica, sem física) sobre o modelo oficial do Lite 6 com pinça
 (`models/lite6/`, do `mujoco_menagerie`, licença BSD). Serve para ver o braço
 inteiro e verificar colisões com os elos a sério; as malhas de colisão são
 invólucros convexos, por isso as distâncias que imprime são conservadoras.
+Resultado: V1 sem contacto entre elos (menor distância 25.3 mm, pinça–antebraço);
+GOLFISTA idem (25.4 mm). FK nossa vs modelo URDF: ≤ 1.8 mm na ponta (o URDF usa
+243.5/200.2/227.61/62.5 mm e pinça 81.1 mm; o PDF 243.3/200/227.6/61.5 e 83.6).
 
-Resultado atual com os `DEFAULTS` (swing `GOLFISTA`, ver abaixo):
+Resultado atual com os `DEFAULTS` (arco cartesiano, a V1 que correu no robô a
+5 e 6 nov — ver `data/LAB_2026-11-06.md` e [EXPLICACAO.md](EXPLICACAO.md)):
 
 ```
-  1073 pontos, 10.72 s, IK numérica convergiu
-  vel. ponta      : max    288.1 mm/s   (limite c/ margem 400.0)  OK
-  vel. flange     : max    258.0 mm/s   (limite c/ margem 400.0)  OK
-  vel. juntas     : max     35.9 deg/s  (limite c/ margem 144.0)  OK
-  alcance         : max    404.0 mm     (limite c/ margem 421.5)  OK
-  limites juntas  : menor folga 74.0 deg (J5, mínimo 5)  OK
-  acima da mesa   : z min 80.4 mm (ponta 80.4, flange 163.7, juntas 163.7)  OK
-  fora da base    : r min 389.7 mm  OK
+  543 pontos, 5.42 s, IK numérica convergiu
+  vel. TCP        : max    220.9 mm/s   (limite c/ margem 400.0)  OK
+  vel. flange     : max    169.9 mm/s   (limite c/ margem 400.0)  OK
+  vel. juntas     : max     94.7 deg/s  (limite c/ margem 144.0)  OK
+  alcance         : max    298.8 mm     (limite c/ margem 421.5)  OK
+  limites juntas  : menor folga 44.1 deg (J5, mínimo 5)  OK
+  acima da mesa   : z min 80.0 mm (ponta 80.0, flange 139.1, juntas 139.1)  OK
+  fora da base    : r min 190.0 mm  OK
   => trajetória VIÁVEL
 ```
 
-### O swing ativo: `GOLFISTA` (modo juntas)
+### Swing `GOLFISTA` (modo juntas, `--golfista`)
 
-Desenhado nas juntas como o V17 do Lab 1 (tronco = J1, ombro = J2, pulso = J5),
-com o robô direito: braço quase esticado (J3 = 110°, 91 % da extensão; a 100 % é
-singularidade do cotovelo) e a pinça a pique na bola.
+Alternativa desenhada nas juntas como o V17 do Lab 1 (tronco = J1, ombro = J2,
+pulso = J5), com o robô direito: braço quase esticado (J3 = 110°, 91 % da
+extensão; a 100 % é singularidade do cotovelo) e a pinça a pique na bola.
 A trajetória cartesiana da pinça (o que a Tarefa 2 pede) é a FK destes perfis.
+Verificado no MuJoCo (sem contacto entre elos, folga mínima 25 mm); **ainda não
+correu no robô**.
 
 | Junta | Perfil | Valor |
 |---|---|---|
@@ -95,16 +102,34 @@ A trajetória cartesiana da pinça (o que a Tarefa 2 pede) é a FK destes perfis
 Fases do Lab 1: backswing quíntico (4.5 s) até `phi_top = -90°`, downswing com
 aceleração constante (4 s), follow-through até +50°. Bola em (390, 0, 80) mm.
 Tudo em `GOLFISTA`, no topo de [src/trajectory.py](src/trajectory.py); os
-outros modos (arco cartesiano original, híbrido, cópia do vídeo) ficam lá para
-comparação.
+outros presets (híbrido, cópia do vídeo) ficam lá para comparação.
+
+```bash
+python src/trajectory.py --plot --golfista        # verifica + report/traj_golfista_*.png
+python src/mujoco_preview.py --golfista --view    # ver no modelo 3D; --fotos --strip --prefixo mjg_ para as tiras
+```
+
+```
+  1073 pontos, 10.72 s, IK numérica convergiu
+  vel. TCP        : max    288.1 mm/s   (limite c/ margem 400.0)  OK
+  vel. flange     : max    258.0 mm/s   (limite c/ margem 400.0)  OK
+  vel. juntas     : max     35.9 deg/s  (limite c/ margem 144.0)  OK
+  alcance         : max    404.0 mm     (limite c/ margem 421.5)  OK
+  limites juntas  : menor folga 74.0 deg (J5, mínimo 5)  OK
+  acima da mesa   : z min 80.4 mm (ponta 80.4, flange 163.7, juntas 163.7)  OK
+  fora da base    : r min 389.7 mm  OK
+  => trajetória VIÁVEL
+```
 
 ### No laboratório (robô ligado)
 
 ```bash
 python src/robot_info.py                          # lê a configuração do controlador, não mexe (grava data/robot_info.txt)
 python src/run_robot.py                           # ensaio: verifica, não mexe
-python src/run_robot.py --go --metodo servo --lento 2   # executa 2x mais lento (começar assim), grava data/run_servo_lento2_golfista.csv
-python src/run_robot.py --go --metodo servo --lento 1   # velocidade planeada
+python src/run_robot.py --go --lento 3            # executa 3x mais lento (pontos só com --lento >= 2)
+python src/run_robot.py --go --metodo servo --lento 2   # V1: streaming, grava data/run_servo_lento2_phi50.csv
+python src/run_robot.py --go --metodo servo --lento 2 --golfista   # GOLFISTA (por correr), grava ..._golfista.csv
+python src/run_robot.py --go --metodo servo --lento 1 --golfista   # velocidade planeada
 python src/ik_compare.py --n 100                  # Tarefa 4 (não mexe o robô), grava data/ik_compare.csv
 python src/ik_compare.py --from-csv               # refaz o gráfico em casa
 ```
@@ -112,13 +137,31 @@ python src/ik_compare.py --from-csv               # refaz o gráfico em casa
 **Segurança:** emergência sempre à mão; `run_robot.py` recusa enviar
 trajetórias que falhem a verificação e pede confirmação antes de mexer.
 
+### Swing V3 — a demonstração do colega, refinada
+
+Poses topo / impacto / fim tiradas de uma demonstração feita à mão
+(`data/demo_colega_2026-11-06.csv`); caminho refeito com as leis do Lab 1 e
+tempos ajustados aos limites; enviado junta a junta. Testado no robô
+(6/11): ponta a ~1 mm do planeado, passa na bola. Resultados em
+`data/LAB_2026-11-06.md`.
+
+```bash
+python src/ir_para_zero.py                     # começar no zero
+python src/swing_v3.py --plot                  # verifica + report/v3_*.png
+python src/run_robot_v3.py --go --lento 2      # aproximação por etapas + swing
+python src/gravar_demo.py --nome swing1        # gravar uma demonstração à mão (100 Hz)
+```
+
 ## Estrutura
 
 ```
 lab2.ipynb  notebook com tudo (teoria + código + resultados); GUIA.md explica em texto
+EXPLICACAO.md  versão final passo a passo: todas as contas e a linha de código de cada uma
 src/      config.py       IP, limites do fabricante, mesa/base (CONFIRMAR limites)
           kinematics.py   Tarefa 1: DH do PDF oficial, fk(), validação, rpy, IK numérica
-          trajectory.py   Tarefa 2: swing (GOLFISTA nas juntas; arco cartesiano e híbrido em alternativa), viabilidade, gráficos
+          trajectory.py   Tarefa 2: swing (arco cartesiano V1; GOLFISTA nas juntas com --golfista), viabilidade, gráficos
+          swing_v3.py / run_robot_v3.py   swing V3 (poses da demonstração à mão, junta a junta)
+          ir_para_zero.py / gravar_demo.py   ir ao zero por etapas; gravar uma demonstração à mão
           robot.py        ligação ao robô (SDK xArm)
           run_robot.py    Tarefa 3
           ik_compare.py   Tarefa 4
@@ -136,7 +179,8 @@ scripts_curso/  scripts de exemplo da página da cadeira
   em roll/pitch/yaw com `R = Rz(yaw)·Ry(pitch)·Rx(roll)`.
 - **Swing:** a garra faz de cabeça do taco. Percorre um arco de raio `raio` num
   plano vertical que passa na bola (`phi = 0` na bola) — é o "braço" do Lab 1.
-  A orientação roda `phi + psi`, onde `psi` é o "pulso": armado no topo, solto a
+  A pinça inclina `phi + psi` no plano do swing sem girar sobre si própria
+  (rotação em torno de `n2 = z_pinça × d`), onde `psi` é o "pulso": armado no topo, solto a
   `f_release` do downswing.
 - **Perfis:** backswing quíntico; downswing com aceleração constante
   (`phi = phi_top·(1-(u/T)²)`, velocidade máxima na bola, como no Lab 1);

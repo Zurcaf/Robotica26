@@ -4,6 +4,7 @@ Tarefa 2 — Trajetória de swing para o Lite 6.
 Uso (a partir de Lab2/):
     python src/trajectory.py            # gera, verifica viabilidade e imprime o resumo
     python src/trajectory.py --plot     # + gráficos em report/traj_*.png
+    python src/trajectory.py --plot --golfista   # swing GOLFISTA (juntas) -> report/traj_golfista_*.png
     python src/trajectory.py --t-down 1.0 --raio 180
 
 ANALOGIA COM O LAB 1
@@ -13,9 +14,18 @@ de cabeça do taco:
 
   * "braço"  -> a garra percorre um ARCO de raio R num plano vertical, centrado
                 num "ombro" virtual por cima da bola; phi = 0 na bola.
-  * "pulso"  -> a orientação da garra roda phi + psi em torno da normal ao
-                plano; psi é o "lag" do pulso, armado no topo e solto tarde
+  * "pulso"  -> a garra INCLINA phi + psi no plano do swing, como um taco;
+                psi é o "lag" do pulso, armado no topo e solto tarde
                 (f_release), como no Lab 1.
+
+ORIENTAÇÃO SEM PIÃO
+-------------------
+A rotação é feita em torno de n2 = z0 x d (perpendicular ao eixo da pinça z0 e
+à direção do swing d). Como n2 é perpendicular ao eixo da pinça, a pinça
+inclina para o lado sem girar sobre si própria. A 1.ª versão rodava em torno da
+normal ao plano (eixo x); com a pinça inclinada 45 deg, cos 45 = 71 % dessa
+rotação era a pinça a girar como um pião (J6 a fazer 124 deg). Agora J6 ~39 deg,
+o antebraço (J4) faz a inclinação lateral, e o flange anda mais devagar.
 
 PINÇA
 -----
@@ -58,8 +68,9 @@ DEFAULTS = dict(
     ombro=None,
     # topo/fim limitados por J5 (limite 124 deg): com -100/80 e pinça, J5 chegava a 124
     phi_top=-90.0,               # graus, ângulo no topo do backswing
-    # 70 deg dava C31 (deteção de colisão) no robô sempre no mesmo ponto, phi ~ 69;
-    # com 50 o swing completou (data/LAB_2026-11-05.md)
+    # fim do follow-through: com 70 deg o robô parava SEMPRE com C31 (deteção de
+    # colisão) em phi ~69 deg, braço esticado para o lado (lab 5/11); com 50 deg
+    # correu completo a lento 1, 1.5 e 2 (data/LAB_2026-11-05.md)
     phi_end=50.0,                # graus, ângulo final do follow-through
     psi_top=30.0,                # graus, "pulso armado" no topo
     f_release=0.6,               # fração do downswing em que o pulso solta
@@ -156,10 +167,9 @@ GOLFISTA_VIDEO = dict(
     t_back=5.0, t_down=6.5,
 )
 
-# O swing ATIVO (o que todos os scripts usam por omissão: trajectory, run_robot,
-# ik_compare, mujoco_preview) é o GOLFISTA. Para voltar ao arco cartesiano
-# original, passar juntas=None (e pulso=None) em swing_trajectory().
-DEFAULTS.update(GOLFISTA)
+# Por omissão todos os scripts usam o arco cartesiano (V1, a que tem dados do
+# robô). O GOLFISTA ativa-se com --golfista (trajectory, run_robot,
+# mujoco_preview) ou com swing_trajectory(GOLFISTA).
 
 
 def quintic(s):
@@ -237,8 +247,14 @@ def swing_trajectory(p=None):
         R0 = np.column_stack([ex, np.cross(u, ex), u])
     else:
         R0 = R_from_rpy(*p["rpy_enderecio"])
-    # sinal: com phi < 0 (backswing) a garra roda "para trás", como o taco
-    R = np.array([axis_rotation(-n, p["k_phi"] * ph + ps) @ R0 for ph, ps in zip(phi, psi)])
+    # eixo perpendicular ao eixo da pinça e à direção do swing: a pinça inclina
+    # para o lado sem girar sobre si própria (ver ORIENTAÇÃO SEM PIÃO no topo).
+    # Com phi < 0 (backswing) a ponta inclina para -d, como a cabeça de um taco.
+    # (No caso "pendurada" n2 = u x d = normal ao plano: a pinça fica alinhada
+    # com o "cabo" ombro -> ponta.)
+    n2 = np.cross(R0[:, 2], d)
+    n2 /= np.linalg.norm(n2)
+    R = np.array([axis_rotation(n2, p["k_phi"] * ph + ps) @ R0 for ph, ps in zip(phi, psi)])
     rpy = np.array([rpy_from_R(Ri) for Ri in R])
     pos_flange = pos - p["garra"] * R[:, :, 2]   # recua ao longo do z da ferramenta
     return dict(t=t, pos=pos, pos_flange=pos_flange, R=R, centro=centro, raio=raio,
@@ -355,8 +371,8 @@ def check_feasibility(traj, qs, verbose=True):
     t, pos, flange = traj["t"], traj["pos"], traj["pos_flange"]
     sf = C.SAFETY_FACTOR
     v_tcp = np.linalg.norm(np.gradient(pos, t, axis=0), axis=1)
-    # o controlador limita o ponto que comanda (o flange, com tcp_offset = 0), que
-    # roda com a garra e anda mais depressa que a ponta: no lab deu C24 (velocidade)
+    # com tcp_offset = 0 (o robô do lab) o controlador comanda o FLANGE, que roda
+    # com a garra e anda mais depressa do que a ponta: no lab deu C24 (velocidade)
     v_flange = np.linalg.norm(np.gradient(flange, t, axis=0), axis=1)
     qd = np.gradient(qs, t, axis=0)
     ombro = fk(np.zeros(6), all_frames=True)[2][:3, 3]     # origem de {2}
@@ -369,7 +385,7 @@ def check_feasibility(traj, qs, verbose=True):
     r_xy = min(np.linalg.norm(pos[:, :2], axis=1).min(), np.linalg.norm(flange[:, :2], axis=1).min())
 
     checks = {
-        "vel. ponta": (v_tcp.max(), sf * C.TCP_SPEED_MAX, "mm/s"),
+        "vel. TCP": (v_tcp.max(), sf * C.TCP_SPEED_MAX, "mm/s"),
         "vel. flange": (v_flange.max(), sf * C.TCP_SPEED_MAX, "mm/s"),
         "vel. juntas": (np.abs(qd).max(), sf * C.JOINT_SPEED_MAX, "deg/s"),
         "alcance": (alcance.max(), C.REACH_FACTOR * C.REACH, "mm"),
@@ -390,10 +406,15 @@ def check_feasibility(traj, qs, verbose=True):
         print(f"  {'acima da mesa':<16}: z min {z_min:.1f} mm (ponta {pos[:, 2].min():.1f}, flange "
               f"{flange[:, 2].min():.1f}, juntas {z_juntas:.1f})  {'OK' if res['acima da mesa'] else 'FALHA'}")
         print(f"  {'fora da base':<16}: r min {r_xy:.1f} mm  {'OK' if res['fora da base'] else 'FALHA'}")
+        if v_flange.max() > C.CART_SPEED_OBSERVED:
+            print(f"  AVISO: o flange chega a {v_flange.max():.0f} mm/s; no lab o controlador não passou de "
+                  f"~{C.CART_SPEED_OBSERVED:.0f} mm/s em modo servo cartesiano -> o robô vai ficar para trás "
+                  f"(usar --lento >= {v_flange.max() / C.CART_SPEED_OBSERVED:.1f} para seguir à risca)")
     return all(res.values()), dict(v_tcp=v_tcp, v_flange=v_flange, qd=qd, alcance=alcance)
 
 
-def plot(traj, qs, extra):
+def plot(traj, qs, extra, sufixo=""):
+    """Gráficos em report/traj{sufixo}_*.png (sufixo="_golfista" com --golfista)."""
     import matplotlib.pyplot as plt
 
     os.makedirs(REPORT, exist_ok=True)
@@ -413,7 +434,7 @@ def plot(traj, qs, extra):
     ax[2].set_xlabel("t [s]")
     ax[2].legend()
     fig.tight_layout()
-    fig.savefig(os.path.join(REPORT, "traj_cartesiana.png"), dpi=150)
+    fig.savefig(os.path.join(REPORT, f"traj{sufixo}_cartesiana.png"), dpi=150)
 
     fig, ax = plt.subplots(2, 1, figsize=(8, 6), sharex=True)
     ax[0].plot(t, qs)
@@ -425,7 +446,7 @@ def plot(traj, qs, extra):
     ax[1].set_ylabel("dq/dt [deg/s]")
     ax[1].set_xlabel("t [s]")
     fig.tight_layout()
-    fig.savefig(os.path.join(REPORT, "traj_juntas.png"), dpi=150)
+    fig.savefig(os.path.join(REPORT, f"traj{sufixo}_juntas.png"), dpi=150)
 
     fig = plt.figure(figsize=(7, 7))
     a3 = fig.add_subplot(projection="3d")
@@ -441,7 +462,7 @@ def plot(traj, qs, extra):
     a3.set_ylabel("y [mm]")
     a3.set_zlabel("z [mm]")
     a3.legend()
-    fig.savefig(os.path.join(REPORT, "traj_3d.png"), dpi=150)
+    fig.savefig(os.path.join(REPORT, f"traj{sufixo}_3d.png"), dpi=150)
     print(f"  gráficos em {os.path.normpath(REPORT)}")
 
 
@@ -463,7 +484,7 @@ def main():
     ok, extra = check_feasibility(traj, qs)
     print(f"  => trajetória {'VIÁVEL' if ok and conv else 'NÃO VIÁVEL'}")
     if args.plot:
-        plot(traj, qs, extra)
+        plot(traj, qs, extra, "_golfista" if args.golfista else "")
 
 
 if __name__ == "__main__":
