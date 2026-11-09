@@ -130,9 +130,15 @@ def bola_em(bola, p=None):
                 dj2_impacto=0.0, bola_fixa=True, juntas_swing=(0, 5))
 
 
-def parametros(bola_demo=False):
-    """Parâmetros finais: bola do lab (Q_BOLA_LAB) por omissão, ou a da demonstração."""
-    return ajustar() if bola_demo else ajustar(bola_em(ponta(Q_BOLA_LAB)))
+def parametros(bola_demo=False, dj2=None):
+    """
+    Parâmetros finais: bola do lab (Q_BOLA_LAB) por omissão, ou a da demonstração.
+    dj2 [graus] substitui dj2_impacto: mais negativo = ponta mais alta no impacto
+    (só tem efeito com a bola da demonstração; com a bola do lab a ponta passa
+    sempre no ponto marcado). Com dj2 = -6 a pinça fica a 33 mm da mesa no MuJoCo.
+    """
+    base = None if dj2 is None else dict(DEFAULTS, dj2_impacto=dj2)
+    return ajustar(base) if bola_demo else ajustar(bola_em(ponta(Q_BOLA_LAB), base))
 
 
 def quintic_bc(q0, v0, a0, q1, v1, a1, T, t):
@@ -350,9 +356,11 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--bola-demo", action="store_true",
                     help="bola onde a demonstração passava (ensaios de 6/11 às 12:5x); por omissão: a bola do lab")
+    ap.add_argument("--dj2", type=float, default=None,
+                    help="graus a somar a J2 no impacto (omissão -2); -6 dá 33 mm de folga à mesa com --bola-demo")
     ap.add_argument("--plot", action="store_true")
     args = ap.parse_args()
-    p = ajustar() if args.bola_demo else ajustar(bola_em(ponta(Q_BOLA_LAB)))
+    p = parametros(args.bola_demo, args.dj2)
     print(f"  bola: {'demonstração' if args.bola_demo else 'marcada no lab, q = ' + str(Q_BOLA_LAB)}")
     print(f"  tempos: backswing {p['t_back']:.2f} s, downswing {p['t_down']:.2f} s, follow-through {p['t_follow']:.2f} s")
     tr = swing_v3(p)

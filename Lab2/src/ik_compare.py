@@ -72,16 +72,35 @@ def analyse(rows):
     print(f"                                       orient.  média {e_rot.mean():.4f}  máx {e_rot.max():.4f} deg")
     print(f"  nossa FK vs FK do controlador      : posição  máx {e_fk.max():.4f} mm")
 
+    d = pfk[:, :3] - ref[:, :3]
+    e_sdk = np.linalg.norm(psdk[:, :3] - ref[:, :3], axis=1)
+    virado = q[:, 4] < 0                       # solução de pulso virado (J5 < 0)
+    print(f"  FK do robô (IK do robô) vs referência: posição  máx {e_sdk.max():.4f} mm")
+    print(f"  viés da nossa FK (x, y, z)         : {np.round(d.mean(axis=0), 2)} mm")
+    print(f"  pulso virado (J5 < 0)              : {virado.sum()} de {len(q)} pontos")
+
     os.makedirs(REPORT, exist_ok=True)
-    fig, ax = plt.subplots(2, 1, figsize=(8, 5), sharex=True)
-    ax[0].plot(t, e_pos, "o-", ms=3)
-    ax[0].set_ylabel("erro posição [mm]")
-    ax[1].plot(t, e_rot, "o-", ms=3)
-    ax[1].set_ylabel("erro orientação [deg]")
-    ax[1].set_xlabel("t [s]")
+    cor = ["#2a78d6", "#eb6834", "#1baf7a"]
+    fig, ax = plt.subplots(3, 1, figsize=(8, 7), sharex=True)
+    ax[0].plot(t, e_pos, "o-", ms=3, lw=2, color=cor[0], label="IK do robô + nossa FK")
+    ax[0].plot(t, e_sdk, "o-", ms=3, lw=2, color=cor[1], label="IK do robô + FK do robô")
+    ax[0].plot(t[virado], e_pos[virado], "o", ms=7, mfc="none", mec="k", mew=0.9, label="pulso virado (J5 < 0)")
+    ax[0].set_ylabel("erro de posição [mm]")
+    ax[0].legend(fontsize=8, frameon=False, ncol=3, loc="lower center", bbox_to_anchor=(0.5, 1.0))
+    for i, n in enumerate("xyz"):
+        ax[1].plot(t, d[:, i], "o-", ms=3, lw=2, color=cor[i], label=f"$\\Delta {n}$")
+    ax[1].axhline(0, color="k", lw=0.6)
+    ax[1].set_ylabel("nossa FK − pedido [mm]")
+    ax[1].legend(fontsize=8, frameon=False, ncol=3, loc="upper right")
+    ax[2].plot(t, e_rot, "o-", ms=3, lw=2, color=cor[0])
+    ax[2].set_ylabel("erro de orientação [deg]")
+    ax[2].set_xlabel("t [s]")
+    for a in ax:
+        a.grid(alpha=0.25, lw=0.5)
+        a.spines[["top", "right"]].set_visible(False)
     fig.tight_layout()
     out = os.path.join(REPORT, "ik_erros.png")
-    fig.savefig(out, dpi=150)
+    fig.savefig(out, dpi=170)
     print(f"  gráfico em {os.path.normpath(out)}")
 
 

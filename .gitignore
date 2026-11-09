@@ -110,6 +110,4 @@ Lab1/report/*.gif
 Lab1/report/v17_[0-9]_*.png
 
 # ===== Lab2: poses soltas do MuJoCo (regeneram-se com src/mujoco_preview.py --fotos; só as tiras vão para o git) =====
-Lab2/report/mj_[0-9]_*.png
-Lab2/report/mjg_[0-9]_*.png
-Lab2/report/mjv3_[0-9]_*.png
+Lab2/report/frames/

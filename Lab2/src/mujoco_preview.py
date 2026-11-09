@@ -14,8 +14,9 @@ para:
 Uso (a partir de Lab2/):
     python src/mujoco_preview.py                 # verifica colisões e FK, não abre janela
     python src/mujoco_preview.py --view          # viewer interativo, swing em loop
-    python src/mujoco_preview.py --fotos         # 7 fases x 3 câmaras -> report/mj_*.png
+    python src/mujoco_preview.py --fotos         # 7 fases x 3 câmaras -> report/frames/mj_*.png
     python src/mujoco_preview.py --fotos --strip # + tiras report/mj_sequencia_<câmara>.png
+    python src/mujoco_preview.py --folgas        # folga mínima vs t -> report/mj_folgas.png
     python src/mujoco_preview.py --lento 2 --phi-end 50 --view
     python src/mujoco_preview.py --golfista --fotos --strip --prefixo mjg_   # swing GOLFISTA
     python src/mujoco_preview.py --v3 --fotos --strip --prefixo mjv3_        # swing V3 (swing_v3.py)
@@ -80,7 +81,7 @@ def verificar(m, d, traj, qs, margem_mm):
     encontrados. Com margem > 0 o MuJoCo também lista pares a menos de `margem`
     (dist > 0 = só perto; dist <= 0 = penetração = colisão).
     """
-    col = m.geom_group == 3                                 # geoms de colisão do modelo
+    col = m.geom_contype > 0                                # tudo o que colide: elos, corpo e DEDOS da pinça, mesa
     m.geom_margin[col] = margem_mm / 1000.0
     pares, folga = {}, np.inf
     e_flange = e_ponta = 0.0
@@ -109,6 +110,53 @@ def verificar(m, d, traj, qs, margem_mm):
     return ok, folga, pares
 
 
+def folgas(m, d, traj, qs, prefixo="mj_", alcance_mm=250.0):
+    """
+    Folga mínima em cada instante: robô-mesa e robô-robô (elos não adjacentes),
+    com as malhas de colisão do modelo. Gráfico em report/<prefixo>folgas.png.
+    É a resposta direta ao "no dangerous physical contact" do enunciado.
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    col = m.geom_contype > 0                                # elos, corpo e dedos da pinça, mesa
+    m.geom_margin[col] = alcance_mm / 1000.0                # lista todos os pares a menos de `alcance`
+    mesa, proprio = np.full(len(qs), np.nan), np.full(len(qs), np.nan)
+    for k, q in enumerate(qs):
+        pose(m, d, q)
+        # os contactos (com a margem grande) só servem para saber QUE pares estão
+        # perto e são permitidos pelo filtro de colisão; a distância exata de cada
+        # par vem de mj_geomDistance (com margens grandes o c.dist é aproximado)
+        for g1, g2 in {(c.geom1, c.geom2) for c in d.contact[:d.ncon]}:
+            dist = mujoco.mj_geomDistance(m, d, g1, g2, 1.0, None) * 1000
+            alvo = mesa if "mesa" in (nome_geom(m, g1), nome_geom(m, g2)) else proprio
+            alvo[k] = np.nanmin([alvo[k], dist])
+    m.geom_margin[col] = 0.0
+    t = traj["t"]
+    for nome, f in (("robô-mesa", mesa), ("robô-robô", proprio)):
+        k = int(np.nanargmin(f))
+        print(f"  folga {nome}: mínimo {f[k]:.1f} mm em t = {t[k]:.2f} s")
+
+    fig, ax = plt.subplots(figsize=(7.5, 3.6))
+    ax.plot(t, mesa, color="#2a78d6", lw=2, label="robô (com pinça) — mesa")
+    ax.plot(t, proprio, color="#eb6834", lw=2, label="entre elos não adjacentes")
+    ax.axhline(0, color="k", lw=1)
+    ax.text(t[-1], 2, "contacto", ha="right", va="bottom", fontsize=8, color="#52514e")
+    for c in instantes(traj)[2:5:2]:                        # topo do backswing e impacto
+        ax.axvline(c, color="#52514e", lw=0.8, ls=":")
+    ax.set_ylim(bottom=-5)
+    ax.set_xlabel("t [s]")
+    ax.set_ylabel("folga mínima [mm]")
+    ax.legend(fontsize=8, frameon=False)
+    ax.grid(alpha=0.25, lw=0.5)
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.tight_layout()
+    caminho = os.path.join(REPORT, f"{prefixo}folgas.png")
+    fig.savefig(caminho, dpi=170)
+    print(f"  gráfico -> report/{prefixo}folgas.png")
+
+
 def desenha_trajetoria(scene, traj, passo=4):
     """Esferas pequenas ao longo do caminho da ponta (geoms só visuais da cena)."""
     for p in traj["pos"][::passo]:
@@ -126,7 +174,8 @@ def fotos(m, d, traj, qs, largura, altura, strip, prefixo="mj_"):
     import matplotlib.image as mpimg
     import matplotlib.pyplot as plt
 
-    os.makedirs(REPORT, exist_ok=True)
+    frames = os.path.join(REPORT, "frames")                 # poses soltas: fora do git, regeneram-se
+    os.makedirs(frames, exist_ok=True)
     renderer = mujoco.Renderer(m, altura, largura)
     imagens = {}
     for (nome, titulo), t_alvo in zip(FASES, instantes(traj)):
@@ -138,9 +187,9 @@ def fotos(m, d, traj, qs, largura, altura, strip, prefixo="mj_"):
             desenha_trajetoria(renderer.scene, traj)
             img = renderer.render().copy()
             imagens[nome][cam] = img
-            caminho = os.path.join(REPORT, f"{prefixo}{nome}_{cam}.png")
+            caminho = os.path.join(frames, f"{prefixo}{nome}_{cam}.png")
             mpimg.imsave(caminho, img)
-        print(f"  {titulo:<20} t = {traj['t'][k]:5.2f} s  -> report/{prefixo}{nome}_<câmara>.png")
+        print(f"  {titulo:<20} t = {traj['t'][k]:5.2f} s  -> report/frames/{prefixo}{nome}_<câmara>.png")
     if strip:
         for cam in CAMARAS:
             fig, axes = plt.subplots(1, len(FASES), figsize=(19.6, 3.4), dpi=100)
@@ -188,12 +237,14 @@ def main():
     ap.add_argument("--golfista", action="store_true", help="modo juntas com o preset trajectory.GOLFISTA")
     ap.add_argument("--v3", action="store_true", help="swing V3 de swing_v3.py (bola marcada no lab)")
     ap.add_argument("--bola-demo", action="store_true", help="com --v3: bola da demonstração em vez da do lab")
+    ap.add_argument("--dj2", type=float, default=None, help="com --v3: graus a somar a J2 no impacto (ver swing_v3.py)")
     ap.add_argument("--prefixo", default="mj_", help="prefixo dos ficheiros em report/")
     ap.add_argument("--margem", type=float, default=C.TABLE_CLEARANCE,
                     help="mm: avisa de pares de geoms a menos desta distância")
     ap.add_argument("--view", action="store_true")
     ap.add_argument("--fotos", action="store_true")
     ap.add_argument("--strip", action="store_true")
+    ap.add_argument("--folgas", action="store_true", help="gráfico da folga mínima (mesa e entre elos) vs t")
     ap.add_argument("--largura", type=int, default=1280)
     ap.add_argument("--altura", type=int, default=960)
     args = ap.parse_args()
@@ -206,7 +257,7 @@ def main():
         # swing_v3 é desenhado nas juntas: os ângulos vêm de lá, não há IK; só o
         # tempo escala com --lento (as poses são as mesmas)
         from swing_v3 import parametros, swing_v3
-        pv = parametros(args.bola_demo)
+        pv = parametros(args.bola_demo, args.dj2)
         pv = {**pv, **{k: pv[k] * args.lento for k in ("t_back", "t_down", "t_follow")}}
         traj = swing_v3(pv)
         traj["params"] = dict(traj["params"], bola=traj["bola"], garra=C.GRIPPER_TCP_Z)
@@ -221,6 +272,8 @@ def main():
     m, d = load(args.modelo)
     m.geom("bola").pos[:] = np.asarray(traj["params"]["bola"]) / 1000.0   # a bola da cena segue a trajetória
     verificar(m, d, traj, qs, args.margem)
+    if args.folgas:
+        folgas(m, d, traj, qs, args.prefixo)
     if args.fotos or args.strip:
         fotos(m, d, traj, qs, args.largura, args.altura, args.strip, args.prefixo)
     if args.view:
