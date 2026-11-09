@@ -71,7 +71,7 @@ Robotica26/                 (repositório git do grupo, remoto Zurcaf/Robotica26
     │   └── ik_compare.py   Tarefa 4
     ├── data/               CSVs recolhidos no laboratório (vazia por agora)
     ├── report/
-    │   ├── relatorio.tex   esqueleto do relatório, uma secção por tarefa
+    │   ├── ROB_LAB2_Report/   relatório (main.tex, refs.bib, Photos/), formato do Lab 1
     │   ├── traj_cartesiana.png   posição, orientação e |v| da garra vs t
     │   ├── traj_juntas.png       ângulos e velocidades das 6 juntas vs t
     │   └── traj_3d.png           caminho 3D da garra, bola e base
@@ -855,7 +855,7 @@ de comandos só há dois atalhos (`--t-down`, `--raio`); para os outros, edita
 
 ## 15. Do código ao relatório
 
-O esqueleto `report/relatorio.tex` já tem uma secção por tarefa com
+O relatório está em `report/ROB_LAB2_Report/main.tex`, uma secção por tarefa, com
 comentários do que lá pôr. Correspondência:
 
 | Secção | Material |
