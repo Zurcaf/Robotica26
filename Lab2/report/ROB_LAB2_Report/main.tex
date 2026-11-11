@@ -114,18 +114,16 @@ Transpõe-se o swing do Laboratório~1 para um braço real, o UFactory Lite~6
 Denavit--Hartenberg modificado e validada contra uma segunda tabela do
 fabricante e contra o próprio controlador. A ponta da pinça faz de cabeça do
 taco: percorre um arco de \SI{150}{\milli\meter} que passa numa bola fixa, com
-as três fases e as leis de movimento do Lab~1 e a pinça a inclinar-se como um
-taco.
+as três fases e as leis de movimento do Lab~1.
 
 A trajetória usa no máximo \SI{44}{\percent} da velocidade cartesiana e
 \SI{53}{\percent} da velocidade das juntas admitidas pelo fabricante, e o
 modelo 3D do robô mostra folgas de pelo menos \SI{25}{\milli\meter} entre
 elos e \SI{75}{\milli\meter} à mesa. No robô, a metade da velocidade, o
 flange segue a referência com \SI{0.5}{\milli\meter} de erro médio. A
-cinemática inversa do controlador é exata face ao seu modelo interno
-(\SI{2}{\micro\meter}); composta com a nossa cinemática direta dá
-\SI{1.4}{\milli\meter}, diferença que vem dos parâmetros geométricos e não da
-inversa.
+cinemática inversa do controlador é exata face ao seu modelo interno; composta
+com a nossa cinemática direta dá \SI{1.4}{\milli\meter}, diferença que vem dos
+parâmetros geométricos e não da inversa.
 \end{caixaresumo}
 \end{abstract}
 
@@ -137,32 +135,24 @@ inversa.
 O Lite~6 é um manipulador série com seis juntas rotacionais. As três primeiras
 (base, ombro e cotovelo) posicionam o pulso; as três últimas têm eixos que se
 cruzam num ponto e formam um pulso esférico, que orienta a ferramenta. A
-cinemática direta~\cite{sequeira2024,siciliano2009} dá a pose do flange (posição $p$ e orientação $R$) em função
-dos seis ângulos $q = (q_1,\dots,q_6)$.
+cinemática direta~\cite{sequeira2024,siciliano2009} dá a pose do flange
+(posição $p$ e orientação $R$) em função de $q = (q_1,\dots,q_6)$.
 
 \subsection{Método e atribuição de referenciais}
 
 Usou-se a convenção de Denavit--Hartenberg \emph{modificada}~\cite{craig2005},
-que é a do documento do fabricante~\cite{ufactory_dh} e a que o controlador
-usa. A cada elo $i$ fixa-se um referencial $\{i\}$ com as seguintes regras:
+que é a do documento do fabricante~\cite{ufactory_dh} e a do controlador. A
+cada elo $i$ fixa-se um referencial $\{i\}$ com $z_i$ sobre o eixo da junta
+$i$, $x_i$ sobre a normal comum a $z_i$ e $z_{i+1}$ (perpendicular aos dois,
+se se cruzam) e $y_i$ a completar o referencial direto. A base $\{0\}$ está
+fixa à mesa, com $z_0$ vertical e a origem no tampo, sobre o eixo da junta~1.
+Os referenciais estão na Figura~\ref{fig:frames}: $\{1\}$ e $\{2\}$ têm a
+mesma origem no ombro, porque os eixos das juntas 1 e 2 se cruzam, e $\{4\}$ e
+$\{5\}$ no centro do pulso.
 
-\begin{itemize}
-  \item o eixo $z_i$ coincide com o eixo de rotação da junta $i$;
-  \item o eixo $x_i$ fica sobre a normal comum a $z_i$ e $z_{i+1}$ (se os
-        eixos se cruzam, é perpendicular aos dois);
-  \item $y_i$ completa o referencial direto;
-  \item $\{0\}$ é a base, fixa à mesa, com $z_0$ vertical para cima e a
-        origem no tampo, sobre o eixo da junta~1.
-\end{itemize}
-
-Os referenciais que resultam estão na Figura~\ref{fig:frames} e na
-Tabela~\ref{tab:frames}. Dois pares têm a mesma origem: $\{1\}$ e $\{2\}$ no
-ombro, porque os eixos das juntas 1 e 2 se cruzam, e $\{4\}$ e $\{5\}$ no
-centro do pulso.
-
-\begin{figure}[H]
+\begin{figure}[tbp]
 \centering
-\fig{Photos/referenciais.png}{0.62\textwidth}
+\fig{Photos/referenciais.png}{0.5\textwidth}
 \caption{Referenciais D-H modificados com todas as juntas a zero, em vista
 lateral (plano $x_0z_0$). Azul: $z_i$, eixo da junta $i$; vermelho: $x_i$.
 $\{2\}$ e $\{5\}$ estão desenhados ao lado da sua origem (tracejado), que é a
@@ -170,53 +160,19 @@ mesma de $\{1\}$ e de $\{4\}$. Cotas em mm.}
 \label{fig:frames}
 \end{figure}
 
-\begin{table}[H]
-\centering
-\caption{Origem e eixo de rotação de cada referencial (com $q = 0$).}
-\label{tab:frames}
-\small
-\begin{tabularx}{\textwidth}{@{}clLl@{}}
-\toprule
-\rowcolor{tabcab}
-Ref. & Junta & Origem & Direção de $z_i$ em $\{0\}$ \\
-\midrule
-$\{0\}$ & ---      & tampo da mesa, sobre o eixo da junta 1 & $+z_0$ (vertical) \\
-$\{1\}$ & base     & ombro, \SI{243.3}{\milli\meter} acima da mesa & $+z_0$ \\
-$\{2\}$ & ombro    & a mesma de $\{1\}$ & $+y_0$ (horizontal) \\
-$\{3\}$ & cotovelo & \SI{200}{\milli\meter} acima do ombro, na ponta do braço & $-y_0$ \\
-$\{4\}$ & antebraço & centro do pulso: \SI{87}{\milli\meter} à frente e \SI{227.6}{\milli\meter} abaixo do cotovelo & $-z_0$ \\
-$\{5\}$ & pulso    & a mesma de $\{4\}$ & $+y_0$ \\
-$\{6\}$ & flange   & \SI{61.5}{\milli\meter} abaixo do centro do pulso, na face do flange & $-z_0$ \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
 \subsection{Tabela D-H e transformações}
 
 Nesta convenção, passa-se de $\{i-1\}$ para $\{i\}$ com quatro movimentos
-elementares, cada um com um parâmetro:
+elementares, e a pose do flange é o produto das seis transformações:
 \begin{equation}
 \T{i-1}{i} = R_x(\alpha_{i-1})\,T_x(a_{i-1})\,R_z(\theta_i)\,T_z(d_i),
-\qquad \theta_i = q_i + \text{offset}_i ,
-\label{eq:dh}
-\end{equation}
-\begin{equation}
-\T{i-1}{i} =
-\begin{bmatrix}
-\cos\theta_i & -\sin\theta_i & 0 & a_{i-1}\\
-\sin\theta_i\cos\alpha_{i-1} & \cos\theta_i\cos\alpha_{i-1} & -\sin\alpha_{i-1} & -d_i\sin\alpha_{i-1}\\
-\sin\theta_i\sin\alpha_{i-1} & \cos\theta_i\sin\alpha_{i-1} & \cos\alpha_{i-1} & d_i\cos\alpha_{i-1}\\
-0 & 0 & 0 & 1
-\end{bmatrix}.
-\label{eq:elo}
-\end{equation}
-Os parâmetros do Lite~6 estão na Tabela~\ref{tab:dh}. A pose do flange é o
-produto das seis matrizes:
-\begin{equation}
-\T{0}{6}(q) = \T{0}{1}\,\T{1}{2}\,\T{2}{3}\,\T{3}{4}\,\T{4}{5}\,\T{5}{6}
-= \begin{bmatrix} R(q) & p(q)\\ 0 & 1\end{bmatrix}.
+\ \ \theta_i = q_i + \text{offset}_i;
+\qquad
+\T{0}{6}(q) = \T{0}{1}\cdots\T{5}{6}
+= \left[\begin{smallmatrix} R(q) & p(q)\\ 0 & 1\end{smallmatrix}\right],
 \label{eq:fk}
 \end{equation}
+com os parâmetros da Tabela~\ref{tab:dh}.
 
 \begin{table}[H]
 \centering
@@ -250,14 +206,12 @@ h &= 243{,}3 + 200\cos q_2 + 87\sin(q_3-q_2) - 227{,}6\,\cos(q_3-q_2),
 \end{equation}
 e o flange fica \SI{61.5}{\milli\meter} à frente, ao longo do eixo da
 ferramenta: $p = p_w + 61{,}5\,R\,\hat e_z$. A orientação exprime-se em
-\emph{roll}, \emph{pitch} e \emph{yaw} com
+\emph{roll}, \emph{pitch} e \emph{yaw},
 $R = R_z(\text{yaw})\,R_y(\text{pitch})\,R_x(\text{roll})$, a convenção do
-SDK~\cite{xarm_sdk}. A implementação está em \texttt{src/kinematics.py}
-(funções \texttt{link\_transform} e \texttt{fk}).
-
-A pinça montada (Gripper Lite) não tem desvio nem rotação em relação ao
-flange: a sua ponta está a $L = \SI{83.6}{\milli\meter}$ ao longo de $z_6$,
-logo $\T{0}{\text{ponta}} = \T{0}{6}\,T_z(L)$.
+SDK~\cite{xarm_sdk}. A pinça (Gripper Lite) não tem desvio nem rotação em
+relação ao flange e a sua ponta está a $L = \SI{83.6}{\milli\meter}$ ao longo
+de $z_6$: $\T{0}{\text{ponta}} = \T{0}{6}\,T_z(L)$. Implementação em
+\texttt{src/kinematics.py}.
 
 \subsection{Verificação}
 
@@ -268,13 +222,11 @@ logo $\T{0}{\text{ponta}} = \T{0}{6}\,T_z(L)$.
         Figura~\ref{fig:frames}.
   \item \textbf{Segunda tabela do fabricante.} O mesmo documento dá os
         parâmetros na convenção D-H clássica, com outros referenciais.
-        Implementada à parte e comparada em \num{10000} configurações
-        aleatórias, a maior diferença de posição é
-        \SI{2e-13}{\milli\meter}, ou seja, erro de arredondamento.
+        Comparada em \num{10000} configurações aleatórias, a maior diferença
+        de posição é \SI{2e-13}{\milli\meter} (arredondamento).
   \item \textbf{Controlador do robô.} Nos 60 pontos da Tarefa~4, a nossa
-        cinemática difere da do controlador em média
-        \SI{1.4}{\milli\meter} (máximo \SI{2.0}{\milli\meter}) e
-        \ang{0.03} na orientação. A origem desta diferença discute-se na
+        cinemática difere da do controlador em média \SI{1.4}{\milli\meter}
+        (máximo \SI{2.0}{\milli\meter}) e \ang{0.03}; discute-se na
         Secção~\ref{sec:ik}.
 \end{itemize}
 
@@ -284,41 +236,23 @@ logo $\T{0}{\text{ponta}} = \T{0}{6}\,T_z(L)$.
 \label{sec:traj}
 % =============================================================================
 
-\subsection{Analogia com o Laboratório 1}
-
-No Lab~1 o swing era um pêndulo duplo~\cite{cochran1968}: o braço roda em
-torno do ombro e o taco roda em torno do pulso, que fica armado no topo e só
-solta perto do impacto. Aqui a ponta da pinça faz de cabeça do taco e o
-movimento descreve-se com os mesmos dois ângulos:
-
-\begin{itemize}
-  \item $\varphi(t)$, o \textbf{braço}: posição da ponta da pinça num arco
-        vertical de raio $R_a = \SI{150}{\milli\meter}$ centrado num
-        ``ombro'' virtual por cima da bola; $\varphi = 0$ na bola;
-  \item $\psi(t)$, o \textbf{pulso}: inclinação adicional da pinça em relação
-        ao arco, armada no topo e solta tarde.
-\end{itemize}
-
-A bola está fixa em $b = (190;\,0;\,80)$~mm no referencial da base, à frente
-do robô, e o swing faz-se para o lado, na direção $\hat d = \hat y_0$. As
-dimensões foram escolhidas para o robô: com o raio de \SI{150}{\milli\meter}
-e a bola a \SI{190}{\milli\meter}, todo o arco fica dentro do espaço de
-trabalho com a pinça montada.
-
-\begin{destaque}
-\textbf{O que o enunciado pede} são as funções do tempo da posição $p(t)$ e
-da orientação $R(t)$ da pinça. São as equações~\eqref{eq:pos}
-e~\eqref{eq:ori}, com os perfis $\varphi(t)$ e $\psi(t)$ da
-Secção~\ref{sec:perfis}.
-\end{destaque}
-
-\subsection{Perfis temporais}
+\subsection{Analogia com o Laboratório 1 e perfis temporais}
 \label{sec:perfis}
 
-As três fases e as leis de movimento são as do Lab~1
-(Tabela~\ref{tab:fases}), com
-$s(\tau) = 10\tau^3 - 15\tau^4 + 6\tau^5$ o polinómio de grau 5 que vai de 0
-a 1 com velocidade e aceleração nulas nos extremos.
+No Lab~1 o swing era um pêndulo duplo~\cite{cochran1968}: o braço roda em
+torno do ombro e o taco em torno do pulso, que fica armado no topo e só solta
+perto do impacto. Aqui a ponta da pinça faz de cabeça do taco e o movimento
+descreve-se com os mesmos dois ângulos: $\varphi(t)$, o \textbf{braço}, que
+dá a posição da ponta num arco vertical de raio $R_a = \SI{150}{\milli\meter}$
+centrado num ``ombro'' virtual por cima da bola ($\varphi = 0$ na bola); e
+$\psi(t)$, o \textbf{pulso}, uma inclinação adicional da pinça, armada no topo
+e solta tarde. A bola está fixa em $b = (190;\,0;\,80)$~mm, à frente do robô,
+e o swing faz-se para o lado, na direção $\hat d = \hat y_0$; com estas
+dimensões todo o arco fica dentro do espaço de trabalho com a pinça montada.
+
+As fases e as leis de movimento são as do Lab~1 (Tabela~\ref{tab:fases}), com
+$s(\tau) = 10\tau^3 - 15\tau^4 + 6\tau^5$, o polinómio de grau 5 com
+velocidade e aceleração nulas nos extremos.
 
 \begin{table}[H]
 \centering
@@ -339,41 +273,33 @@ Downswing & $T_d = \SI{2.2}{\second}$ &
   $\varphi_{top}\bigl(1-(u/T_d)^2\bigr)$: aceleração constante, velocidade máxima na bola &
   armado até $0{,}6\,T_d$; depois solta com $s$ e chega a 0 no impacto \\
 Follow-through & $T_f = \SI{1.22}{\second}$ &
-  $\omega_{imp}\,u - \tfrac12 (\omega_{imp}/T_f)\,u^2$: desaceleração constante até parar em $\varphi_{end}$ &
+  $\omega_{imp}\,u - \tfrac12 (\omega_{imp}/T_f)\,u^2$: desaceleração constante até $\varphi_{end}$ &
   0 \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-A velocidade angular no impacto é $\omega_{imp} = -2\varphi_{top}/T_d =
-\SI{1.43}{\radian\per\second}$, que dá \SI{214}{\milli\meter\per\second} na
-ponta da pinça, e $T_f = 2\varphi_{end}/\omega_{imp}$. O swing completo dura
-\SI{5.42}{\second} e é amostrado a \SI{100}{\hertz} (543 pontos). O
-downswing com aceleração constante é o que dá mais velocidade na bola para
-uma dada aceleração máxima. A velocidade mais alta de toda a trajetória
-(\SI{221}{\milli\meter\per\second}) ocorre a meio do backswing, onde o
-polinómio tem o seu máximo; como os tempos foram escolhidos para respeitar os
-limites do robô e não para imitar um jogador, o backswing não é mais lento do
-que o downswing como num swing real.
+No impacto, $\omega_{imp} = -2\varphi_{top}/T_d = \SI{1.43}{\radian\per\second}$,
+ou seja \SI{214}{\milli\meter\per\second} na ponta da pinça. O swing dura
+\SI{5.42}{\second} e é amostrado a \SI{100}{\hertz} (543 pontos). Os tempos
+foram escolhidos para respeitar os limites do robô e não para imitar um
+jogador, por isso o backswing não é mais lento do que o downswing.
 
 \subsection{Posição e orientação da pinça}
 
 \paragraph{Posição.} Com o centro do arco em
-$c = b + R_a\,\hat z_0 = (190;\,0;\,230)$~mm, a ponta da pinça é
+$c = b + R_a\,\hat z_0 = (190;\,0;\,230)$~mm,
 \begin{equation}
 p(t) = c + R_a\bigl(\sin\varphi(t)\,\hat d - \cos\varphi(t)\,\hat z_0\bigr)
      = \bigl(190;\ 150\sin\varphi;\ 230 - 150\cos\varphi\bigr)\ \text{mm}.
 \label{eq:pos}
 \end{equation}
-No topo do backswing está em $(190;\,-150;\,230)$ e no fim do swing em
-$(190;\,115;\,134)$~mm.
 
-\paragraph{Orientação.} Na bola, a pinça aponta para baixo e está inclinada
+\paragraph{Orientação.} Na bola, a pinça aponta para baixo, inclinada
 \ang{45} para o lado da base:
-$R_0 = R(\text{roll}=\ang{180},\,\text{pitch}=\ang{45},\,\text{yaw}=0)$. O
-seu eixo é a terceira coluna de $R_0$, $z_t = (-0{,}707;\,0;\,-0{,}707)$.
-Durante o swing roda-se $R_0$ em torno de um eixo fixo $\hat n$, perpendicular
-ao eixo da pinça e à direção do swing:
+$R_0 = R(\text{roll}=\ang{180},\,\text{pitch}=\ang{45},\,\text{yaw}=0)$, com
+eixo $z_t = (-0{,}707;\,0;\,-0{,}707)$. Durante o swing roda-se $R_0$ em torno
+de um eixo fixo $\hat n$, perpendicular ao eixo da pinça e à direção do swing:
 \begin{equation}
 R(t) = \operatorname{Rot}\bigl(\hat n,\ \varphi(t)+\psi(t)\bigr)\,R_0,
 \qquad
@@ -382,70 +308,62 @@ R(t) = \operatorname{Rot}\bigl(\hat n,\ \varphi(t)+\psi(t)\bigr)\,R_0,
 \label{eq:ori}
 \end{equation}
 com $\operatorname{Rot}(\hat n,\theta) = I + \sin\theta\,K +
-(1-\cos\theta)K^2$ (fórmula de Rodrigues, $K$ a matriz do produto externo por
-$\hat n$).
-
-Duas escolhas merecem justificação:
+(1-\cos\theta)K^2$ (Rodrigues, $K$ a matriz do produto externo por $\hat n$).
+As equações~\eqref{eq:pos} e~\eqref{eq:ori} são as funções do tempo pedidas.
+Duas escolhas justificam-se:
 
 \begin{itemize}[itemsep=3pt]
-  \item \textbf{Inclinação de \ang{45} na bola.} Com a pinça a pique, a
-        junta~5 ficaria em \ang{0}: os eixos das juntas 4 e 6 alinham-se
-        (singularidade do pulso) e as suas velocidades disparam, cerca de
-        \SI{1900}{\degree\per\second} no primeiro teste. Com \ang{45}, a
-        junta~5 fica entre \ang{61} e \ang{80} em todo o swing.
-  \item \textbf{Eixo $\hat n$ perpendicular ao eixo da pinça.} A velocidade
-        angular é sempre paralela a $\hat n$, logo não tem componente ao longo
-        de $z_t$: a pinça inclina-se para o lado, como um taco, sem girar
-        sobre si própria. Na primeira versão a rotação era em torno da normal
-        ao plano do swing, e \SI{71}{\percent} dela ($\cos\ang{45}$) era a
-        pinça a rodar sobre o seu eixo: a junta~6 fazia \ang{124} e a base
-        \ang{73}. Agora fazem \ang{39} e \ang{13}, e o flange anda a
-        \SI{170}{\milli\meter\per\second} em vez de 298.
+  \item \textbf{Inclinação de \ang{45}.} Com a pinça a pique, a junta~5
+        ficaria em \ang{0}: os eixos das juntas 4 e 6 alinham-se
+        (singularidade do pulso) e as suas velocidades disparam
+        ($\sim$\SI{1900}{\degree\per\second} no primeiro teste). Com
+        \ang{45}, a junta~5 fica entre \ang{61} e \ang{80}.
+  \item \textbf{Eixo $\hat n$ perpendicular à pinça.} A velocidade angular
+        não tem componente ao longo de $z_t$: a pinça inclina-se como um
+        taco, sem girar sobre si própria. Na primeira versão, rodando em torno
+        da normal ao plano do swing, a junta~6 fazia \ang{124} e o flange
+        andava a \SI{298}{\milli\meter\per\second}; agora são \ang{39} e
+        \SI{170}{\milli\meter\per\second}.
 \end{itemize}
 
 \paragraph{Flange.} O controlador do laboratório tem o desvio de ferramenta a
-zero, portanto comanda o flange e não a ponta. A pose enviada é
-\begin{equation}
-p_f(t) = p(t) - L\,R(t)\,\hat e_z , \qquad L = \SI{83.6}{\milli\meter},
-\end{equation}
-com a mesma orientação. Na bola, $p_f = (249{,}1;\,0;\,139{,}1)$~mm. O código
-lê o desvio configurado no controlador e converte as poses para o ponto que
-ele comanda, pelo que a ponta passa na bola com qualquer configuração.
-
-A Figura~\ref{fig:cart} mostra $p(t)$, a orientação e o módulo da velocidade;
-a Figura~\ref{fig:3d} mostra o caminho no espaço.
+zero e comanda o flange, por isso envia-se
+$p_f(t) = p(t) - L\,R(t)\,\hat e_z$, com a mesma orientação. O código lê o
+desvio configurado e converte as poses, pelo que a ponta passa na bola com
+qualquer configuração. As Figuras~\ref{fig:cart} e~\ref{fig:3d} mostram a
+trajetória.
 
 \begin{figure}[H]
 \centering
-\fig{Photos/traj_cartesiana.png}{0.74\textwidth}
-\caption{Trajetória da ponta da pinça: posição, orientação
-(\emph{roll}/\emph{pitch}/\emph{yaw}) e módulo da velocidade da ponta e do
-flange, com o limite do fabricante.}
+\begin{minipage}[b]{0.56\textwidth}
+\centering
+\fig{Photos/traj_cartesiana.png}{\textwidth}
+\caption{Posição, orientação e velocidade da ponta da pinça e do flange, com
+o limite do fabricante.}
 \label{fig:cart}
-\end{figure}
-
-\begin{figure}[H]
+\end{minipage}\hfill
+\begin{minipage}[b]{0.42\textwidth}
 \centering
-\fig{Photos/traj_3d.png}{0.55\textwidth}
-\caption{Caminho da ponta da pinça e do flange no referencial da base. Os
-segmentos cinzentos são a pinça em instantes sucessivos; os círculos marcam o
-cilindro da base.}
+\fig{Photos/traj_3d.png}{\textwidth}
+\caption{Caminho da ponta e do flange; a cinzento, a pinça em instantes
+sucessivos; os círculos marcam o cilindro da base.}
 \label{fig:3d}
+\end{minipage}
 \end{figure}
 
 \subsection{Viabilidade}
 \label{sec:viab}
 
-Para verificar as juntas é preciso $q(t)$. Antes de ir ao robô, obteve-se com
-uma cinemática inversa numérica própria (mínimos quadrados
-amortecidos~\cite{buss2004} sobre o erro de posição e de orientação), ponto a
-ponto e partindo sempre da solução anterior, para as juntas variarem de forma
-contínua. Esta inversa serve só para a verificação; a do robô é avaliada na
-Tarefa~4. As velocidades e as acelerações calculam-se por diferenças centrais. A
-Tabela~\ref{tab:viab} resume as três condições do enunciado, com uma margem de
-segurança de \SI{20}{\percent} sobre os limites do
-fabricante~\cite{ufactory_lite6,ufactory_specs}; a Tabela~\ref{tab:juntas} e a
-Figura~\ref{fig:juntas} detalham as juntas.
+Para verificar as juntas obteve-se $q(t)$ com uma cinemática inversa numérica
+própria (mínimos quadrados amortecidos~\cite{buss2004}), ponto a ponto e
+partindo da solução anterior, para as juntas variarem de forma contínua;
+velocidades e acelerações por diferenças centrais. A Tabela~\ref{tab:viab}
+resume as três condições do enunciado, com \SI{20}{\percent} de margem sobre
+os limites do fabricante~\cite{ufactory_lite6,ufactory_specs}. O alcance
+mede-se do ombro ao centro do pulso, que não pode passar o braço esticado,
+$200 + \sqrt{87^2 + 227{,}6^2} = \SI{443.7}{\milli\meter}$; perto desse valor
+o cotovelo entra em singularidade, por isso só se aceita até
+\SI{95}{\percent}.
 
 \begin{table}[H]
 \centering
@@ -473,59 +391,49 @@ Folga ao limite mais próximo & $\min_i$ (Tabela~\ref{tab:juntas}) & --- & $\geq
 \end{tabularx}
 \end{table}
 
-O alcance mede-se do eixo do ombro ao centro do pulso, porque é essa
-distância que não pode passar o comprimento do braço esticado,
-$200 + \sqrt{87^2 + 227{,}6^2} = \SI{443.7}{\milli\meter}$; perto desse valor
-o cotovelo entra em singularidade, e por isso só se aceita até
-\SI{95}{\percent}. A trajetória usa \SI{67}{\percent}.
-
-\begin{table}[H]
-\centering
-\caption{Limites das juntas~\cite{ufactory_specs} e gama usada no swing.}
-\label{tab:juntas}
-\small
-\begin{tabular}{clccc}
-\toprule
-\rowcolor{tabcab}
-Junta & Papel & Limites & Gama usada & Amplitude \\
-\midrule
-1 & base      & $\pm\ang{360}$            & \ang{-12} a \ang{1}  & \ang{13} \\
-2 & ombro     & $\pm\ang{150}$            & \ang{16} a \ang{48}  & \ang{32} \\
-3 & cotovelo  & \ang{-3.5} a \ang{300}    & \ang{45} a \ang{63}  & \ang{18} \\
-4 & antebraço & $\pm\ang{360}$            & \ang{-66} a \ang{55} & \ang{121} \\
-5 & pulso     & $\pm\ang{124}$            & \ang{61} a \ang{80}  & \ang{19} \\
-6 & flange    & $\pm\ang{360}$            & \ang{-26} a \ang{14} & \ang{39} \\
-\bottomrule
-\end{tabular}
-\end{table}
-
 \begin{figure}[H]
 \centering
-\fig{Photos/traj_juntas.png}{0.72\textwidth}
-\caption{Ângulos e velocidades das seis juntas ao longo do swing. A tracejado,
-o limite de velocidade do fabricante ($\pm\SI{180}{\degree\per\second}$). A
-junta~4 (rotação do antebraço) é a que faz a inclinação lateral da pinça.}
+\begin{minipage}[c]{0.42\textwidth}
+\centering
+\small
+\captionof{table}{Limites das juntas~\cite{ufactory_specs} e gama usada.}
+\label{tab:juntas}
+\begin{tabular}{@{}ccc@{}}
+\toprule
+\rowcolor{tabcab}
+Junta & Limites & Gama usada \\
+\midrule
+1 & $\pm\ang{360}$         & \ang{-12} a \ang{1}  \\
+2 & $\pm\ang{150}$         & \ang{16} a \ang{48}  \\
+3 & \ang{-3.5} a \ang{300} & \ang{45} a \ang{63}  \\
+4 & $\pm\ang{360}$         & \ang{-66} a \ang{55} \\
+5 & $\pm\ang{124}$         & \ang{61} a \ang{80}  \\
+6 & $\pm\ang{360}$         & \ang{-26} a \ang{14} \\
+\bottomrule
+\end{tabular}
+\end{minipage}\hfill
+\begin{minipage}[c]{0.55\textwidth}
+\centering
+\fig{Photos/traj_juntas.png}{\textwidth}
+\captionof{figure}{Ângulos e velocidades das juntas; a tracejado, o limite
+de \SI{180}{\degree\per\second}. A junta~4 faz a inclinação lateral da
+pinça.}
 \label{fig:juntas}
+\end{minipage}
 \end{figure}
 
 \subsection{Ausência de contacto perigoso}
 \label{sec:contacto}
 
-A verificação anterior inclui duas condições geométricas simples: a ponta, o
-flange e as origens de todos os referenciais ficam pelo menos
-\SI{30}{\milli\meter} acima da mesa (o mínimo é \SI{80}{\milli\meter}, a
-própria bola) e a mais de \SI{80}{\milli\meter} do eixo da base (o mínimo é
-\SI{190}{\milli\meter}). Estas condições só olham para pontos; não veem o
-volume dos elos nem da pinça.
-
-Para o robô inteiro, reproduziu-se a trajetória das juntas no
-MuJoCo~\cite{todorov2012}, com o modelo oficial do Lite~6 com
-pinça~\cite{menagerie2022}, e mediu-se em cada instante a distância entre as
-malhas de colisão de todos os pares de corpos que podem tocar-se e entre o
-robô e o plano da mesa (\texttt{src/mujoco\_preview.py}). As malhas de
-colisão são invólucros convexos dos elos, logo as distâncias são
-conservadoras. A Figura~\ref{fig:seq} mostra o movimento e a
-Figura~\ref{fig:folgas} as folgas.
+A verificação anterior garante que a ponta, o flange e as origens de todos os
+referenciais ficam a mais de \SI{30}{\milli\meter} da mesa (mínimo:
+\SI{80}{\milli\meter}, a própria bola) e a mais de \SI{80}{\milli\meter} do
+eixo da base (mínimo: \SI{190}{\milli\meter}). Como isto só olha para pontos,
+reproduziu-se também a trajetória das juntas no MuJoCo~\cite{todorov2012}, com
+o modelo oficial do Lite~6 com pinça~\cite{menagerie2022}, e mediu-se em cada
+instante a distância entre as malhas de colisão (invólucros convexos, logo
+conservadoras) de todos os pares de elos e entre o robô e a mesa
+(\texttt{src/mujoco\_preview.py}; Figuras~\ref{fig:seq} e~\ref{fig:folgas}).
 
 \begin{figure}[H]
 \centering
@@ -537,29 +445,19 @@ vermelho, o caminho da ponta da pinça; a esfera é a bola.}
 
 \begin{figure}[H]
 \centering
-\fig{Photos/mj_folgas.png}{0.72\textwidth}
-\caption{Folga mínima ao longo do swing: entre o robô (com pinça) e a mesa, e
-entre elos não adjacentes. As linhas verticais marcam o topo do backswing e o
-impacto.}
+\fig{Photos/mj_folgas.png}{0.6\textwidth}
+\caption{Folga mínima ao longo do swing: robô (com pinça) à mesa e entre elos
+não adjacentes. As linhas verticais marcam o topo do backswing e o impacto.}
 \label{fig:folgas}
 \end{figure}
 
-\begin{itemize}[itemsep=3pt]
-  \item \textbf{Mesa.} O ponto mais baixo do robô é a pinça, no endereço e
-        no impacto, a \SI{75}{\milli\meter} da mesa.
-  \item \textbf{Entre elos.} A menor distância é de \SI{25}{\milli\meter},
-        entre o corpo da pinça e o elo~4, e é praticamente constante: é a
-        distância construtiva entre os dois, que nesta trajetória quase não
-        muda. O par seguinte (elos 2 e 4) nunca fica a menos de
-        \SI{34}{\milli\meter}.
-  \item \textbf{Modelo.} O modelo 3D e a nossa cinemática coincidem a menos de
-        \SI{1}{\milli\meter} no flange e \SI{2}{\milli\meter} na ponta da
-        pinça, diferença desprezável face às folgas.
-\end{itemize}
-
-A bola é o único objeto na zona de trabalho e o contacto com ela é o
-pretendido: a ponta da pinça passa nela a
-\SI{214}{\milli\meter\per\second}.
+O ponto mais baixo do robô é a pinça, a \SI{75}{\milli\meter} da mesa no
+endereço e no impacto. Entre elos, a menor distância é de
+\SI{25}{\milli\meter} (corpo da pinça e elo~4) e é praticamente a distância
+construtiva entre os dois; o par seguinte (elos 2 e 4) nunca fica a menos de
+\SI{34}{\milli\meter}. O modelo 3D e a nossa cinemática coincidem a menos de
+\SI{2}{\milli\meter}. A bola é o único objeto na zona de trabalho e o contacto
+com ela é o pretendido.
 
 
 % =============================================================================
@@ -569,37 +467,21 @@ pretendido: a ponta da pinça passa nela a
 
 \subsection{Script}
 
-O script \texttt{src/run\_robot.py} usa só funções do
-SDK~\cite{xarm_sdk}. A sequência é:
-
-\begin{enumerate}[itemsep=2pt]
-  \item gera a trajetória e corre a verificação da Secção~\ref{sec:viab}; se
-        alguma condição falhar, nada é enviado;
-  \item liga ao robô, lê o desvio de ferramenta do controlador e converte as
-        poses para o ponto que ele comanda; pede confirmação ao operador;
-  \item aproxima-se da pose inicial junta a junta, a
-        \SI{20}{\degree\per\second} (\texttt{set\_servo\_angle}), para não
-        atravessar zonas imprevistas a partir de uma pose qualquer;
-  \item executa o swing por um de dois métodos.
-\end{enumerate}
-
-\paragraph{Método \texttt{servo}.} Em modo~1, envia uma pose a cada
-\SI{10}{\milli\second} com \texttt{set\_servo\_cartesian}
-(Listagem~\ref{lst:servo}). É o controlador que resolve a cinemática inversa
-em cada ponto, e o perfil temporal é o nosso: é o método que preserva a
-aceleração constante do downswing. Em cada ciclo lê-se a pose com
-\texttt{get\_position} e grava-se ao lado da pedida.
-
-\paragraph{Método \texttt{pontos}.} Em modo~0, envia um ponto em cada dez com
-\texttt{set\_position} e raio de concordância de \SI{5}{\milli\meter}; o
-controlador interpola entre eles. É mais simples, mas o perfil de velocidade
-passa a ser o do controlador.
-
-O parâmetro \texttt{-{}-lento N} estica o tempo $N$ vezes, mantendo o
-caminho; permite ensaiar devagar antes de passar à velocidade planeada.
+O script \texttt{src/run\_robot.py} usa só funções do SDK~\cite{xarm_sdk}:
+gera a trajetória e corre a verificação da Secção~\ref{sec:viab} (se alguma
+condição falhar, nada é enviado); liga ao robô, lê o desvio de ferramenta e
+converte as poses; aproxima-se da pose inicial junta a junta, a
+\SI{20}{\degree\per\second}; e executa o swing por um de dois métodos. No
+método \texttt{servo} (modo~1) envia uma pose a cada \SI{10}{\milli\second}
+com \texttt{set\_servo\_cartesian} (Listagem~\ref{lst:servo}): o controlador
+resolve a inversa em cada ponto e o perfil temporal é o nosso, incluindo a
+aceleração constante do downswing. No método \texttt{pontos} (modo~0) envia um
+ponto em cada dez com \texttt{set\_position} e o controlador interpola entre
+eles, impondo o seu próprio perfil de velocidade. O parâmetro
+\texttt{-{}-lento N} estica o tempo $N$ vezes, mantendo o caminho.
 
 \begin{lstlisting}[language=Python, caption={Ciclo do método \texttt{servo}
-(simplificado de \texttt{run\_servo} em \texttt{src/run\_robot.py}).},
+(simplificado de \texttt{src/run\_robot.py}).},
 label={lst:servo}, captionpos=b]
 arm.set_mode(1); arm.set_state(0)            # modo servo
 t0 = time.perf_counter()
@@ -615,16 +497,17 @@ arm.set_mode(0); arm.set_state(0)
 
 \subsection{Resultados}
 
-Os ensaios da versão final fizeram-se a 6/11/2026 (controlador com
-\emph{firmware} 2.7.1). A Tabela~\ref{tab:exec} resume o seguimento e a
-Figura~\ref{fig:exec} compara a posição pedida com a medida. O erro é a
-distância entre o flange medido e o pedido no mesmo instante; o atraso é o
-deslocamento temporal que minimiza esse erro.
+Os ensaios da versão final fizeram-se a 6/11/2026 (\emph{firmware} 2.7.1). O
+erro é a distância entre o flange medido e o pedido no mesmo instante; o
+atraso é o deslocamento temporal que minimiza esse erro
+(Tabela~\ref{tab:exec}, Figura~\ref{fig:exec}). O método \texttt{pontos}
+também executou o swing completo, com \texttt{-{}-lento 3}, mas não regista a
+pose medida.
 
 \begin{table}[H]
 \centering
-\caption{Seguimento da trajetória em modo \texttt{servo} (posição do flange).
-Cada ensaio foi feito duas vezes.}
+\caption{Seguimento em modo \texttt{servo} (flange); cada ensaio foi feito
+duas vezes e os dois dão o mesmo erro.}
 \label{tab:exec}
 \small
 \begin{tabular}{lcccccc}
@@ -642,7 +525,7 @@ Ensaio & Duração & Pontos & Erro médio & Erro máx. & Atraso & Erro sem o atr
 
 \begin{figure}[H]
 \centering
-\fig{Photos/run_servo.png}{\textwidth}
+\fig{Photos/run_servo.png}{0.92\textwidth}
 \caption{Posição do flange pedida (tracejado) e medida, e erro de posição, a
 metade da velocidade (esquerda) e à velocidade planeada (direita). As linhas
 verticais separam as três fases.}
@@ -653,52 +536,41 @@ verticais separam as três fases.}
   \item \textbf{A metade da velocidade o robô segue a trajetória.} O erro
         médio é de \SI{0.5}{\milli\meter}, da ordem da repetibilidade do robô
         ($\pm\SI{0.5}{\milli\meter}$~\cite{ufactory_lite6}), e quase todo é
-        um atraso de um ciclo (\SI{10}{\milli\second}). No impacto o flange
-        está a \SI{1.3}{\milli\meter} da referência.
+        um atraso de um ciclo (\SI{10}{\milli\second}).
   \item \textbf{À velocidade planeada o robô atrasa-se onde a velocidade
-        varia depressa.} O erro concentra-se no backswing (média
-        \SI{11}{\milli\meter}) e no follow-through (\SI{16}{\milli\meter});
-        no downswing, onde a aceleração é constante, é de
-        \SI{1.4}{\milli\meter}. Não é um atraso puro: descontar
-        \SI{58}{\milli\second} só baixa o erro de 8,4 para
-        \SI{7.2}{\milli\meter}. A velocidade máxima medida
-        (\SI{173}{\milli\meter\per\second}) iguala a pedida, por isso não é
-        saturação de velocidade. Também não é o limite de aceleração das
-        juntas: a trajetória pede no máximo \SI{227}{\degree\per\second\squared}
-        (junta~4), um quinto dos \SI{1145}{\degree\per\second\squared} do
-        fabricante~\cite{ufactory_specs}.
-        \semlab{O comportamento é compatível com um limite de aceleração
-        cartesiana ou com uma filtragem do controlador em modo servo; sem
-        acesso à configuração do controlador não foi possível distinguir os
-        dois.}
-        \comlab{A configuração do controlador (\texttt{robot\_info.py})
-        tem um limite de aceleração cartesiana de
+        varia depressa}: no backswing (média \SI{11}{\milli\meter}) e no
+        follow-through (\SI{16}{\milli\meter}); no downswing, de aceleração
+        constante, o erro é de \SI{1.4}{\milli\meter}. Não é um atraso puro
+        (descontar \SI{58}{\milli\second} só baixa o erro para
+        \SI{7.2}{\milli\meter}), nem saturação de velocidade (a máxima
+        medida, \SI{173}{\milli\meter\per\second}, iguala a pedida), nem o
+        limite de aceleração das juntas (a trajetória pede no máximo
+        \SI{227}{\degree\per\second\squared}, um quinto do do fabricante).
+        \semlab{É compatível com um limite de aceleração cartesiana ou com
+        uma filtragem do controlador em modo servo, que sem acesso à sua
+        configuração não foi possível distinguir.}
+        \comlab{A configuração do controlador (\texttt{robot\_info.py}) tem
+        um limite de aceleração cartesiana de
         \XX\,\si{\milli\meter\per\second\squared} e de \emph{jerk} de
-        \XX\,\si{\milli\meter\per\second\cubed}. O flange pede no máximo
-        \SI{431}{\milli\meter\per\second\squared}, \opc{acima desse
-        limite, o que explica o atraso}{abaixo desse limite, pelo que o atraso
-        vem de uma filtragem do controlador em modo servo}.}
-  \item \textbf{O resultado é reprodutível.} Dois ensaios iguais dão o mesmo
-        erro (Tabela~\ref{tab:exec}).
-  \item \textbf{O método \texttt{pontos}} executou o swing completo com
-        \texttt{-{}-lento 3}, sem erros. Não regista a pose medida.
+        \XX\,\si{\milli\meter\per\second\cubed}; o flange pede no máximo
+        \SI{431}{\milli\meter\per\second\squared}, \opc{acima desse limite,
+        o que explica o atraso}{abaixo desse limite, pelo que o atraso vem de
+        uma filtragem do controlador em modo servo}.}
 \end{itemize}
 
 \subsection{Ocorrências e correções}
 
-Na primeira sessão (5/11) a trajetória era diferente em dois pontos: o
-follow-through ia até $\varphi_{end} = \ang{70}$ e a pinça rodava em torno da
-normal ao plano. Três ocorrências levaram à versão final:
+Na primeira sessão (5/11) o follow-through ia até $\varphi_{end} = \ang{70}$
+e a pinça ainda girava sobre si própria. Duas ocorrências levaram à versão
+final:
 
 \begin{itemize}[itemsep=3pt]
   \item \textbf{Erro C31 (deteção de colisão).} Com $\varphi_{end}=\ang{70}$
-        o robô parou sempre no mesmo ponto, a $\varphi \approx \ang{69}$,
-        quase parado e com o braço esticado para o lado (junta~5 a
-        \ang{110}). Sendo num ponto fixo e a baixa velocidade, não é um
-        efeito dinâmico; as hipóteses são o cabo
-        da pinça a esticar ou a massa da pinça não estar configurada no
-        controlador. Encurtar o follow-through para \ang{50} eliminou o erro
-        em todos os ensaios seguintes.
+        o robô parou sempre no mesmo ponto, quase parado e com o braço
+        esticado para o lado (junta~5 a \ang{110}). Não sendo um efeito
+        dinâmico, as hipóteses são o cabo da pinça a esticar ou a massa da
+        pinça não estar configurada no controlador. Encurtar o follow-through
+        para \ang{50} eliminou o erro.
         \comlab{A configuração do controlador indicava uma carga de
         \XX\,\si{\kilo\gram}, para uma pinça de \SI{0.29}{\kilo\gram}.
         \opc{Sem a carga declarada, o controlador subestima o binário de
@@ -707,19 +579,13 @@ normal ao plano. Três ocorrências levaram à versão final:
         da pinça}.}
   \item \textbf{Erro C24 (velocidade excedida)} no método \texttt{pontos} à
         velocidade planeada: a concordância entre pontos pede às juntas mais
-        do que o plano. O script passou a recusar este método com
-        $N < 2$.
-  \item \textbf{Seguimento fraco com a primeira orientação.} O flange tinha
-        de andar a \SI{298}{\milli\meter\per\second} e o erro médio era de
-        \SI{2.0}{\milli\meter} a metade da velocidade e
-        \SI{18.9}{\milli\meter} à velocidade planeada. Com a pinça a
-        inclinar-se sem girar (Secção~\ref{sec:traj}), o erro desceu para
-        0,5 e \SI{8.4}{\milli\meter}.
+        do que o plano, por isso o script recusa este método com $N < 2$.
 \end{itemize}
 
-A verificação de viabilidade também foi corrigida depois desta sessão: só
-olhava para a velocidade da ponta da pinça, quando o ponto que o controlador
-comanda é o flange.
+A orientação final (Secção~\ref{sec:traj}) reduziu o erro de seguimento de
+2,0 para \SI{0.5}{\milli\meter} a metade da velocidade e de 18,9 para
+\SI{8.4}{\milli\meter} à velocidade planeada. A verificação de viabilidade
+passou também a incluir a velocidade do flange, que é o ponto comandado.
 
 
 % =============================================================================
@@ -727,25 +593,15 @@ comanda é o flange.
 \label{sec:ik}
 % =============================================================================
 
-\subsection{Método}
-
-Escolheram-se 60 pontos igualmente espaçados no tempo ao longo de todo o swing
-(\texttt{src/ik\_compare.py}). Para cada pose pedida $(p_k, R_k)$:
-
-\begin{enumerate}[itemsep=2pt]
-  \item $q_k$ = \texttt{get\_inverse\_kinematics}$(p_k, R_k)$, a inversa do
-        controlador;
-  \item $(\hat p_k, \hat R_k) = \T{0}{6}(q_k)$, a nossa cinemática direta da
-        Tarefa~1;
-  \item erro de posição $\lVert\hat p_k - p_k\rVert$ e erro de orientação, o
-        ângulo da rotação $\hat R_k R_k^{T}$.
-\end{enumerate}
-
-Para separar o erro da inversa do erro do nosso modelo, calculou-se também a
-pose com a cinemática direta do próprio controlador
-(\texttt{get\_forward\_kinematics}). O robô não se move neste ensaio.
-
-\subsection{Resultados}
+Escolheram-se 60 pontos igualmente espaçados no tempo ao longo do swing
+(\texttt{src/ik\_compare.py}). Para cada pose pedida $(p_k, R_k)$ obteve-se
+$q_k$ com a inversa do controlador\linebreak (\texttt{get\_inverse\_kinematics}),
+calculou-se $(\hat p_k, \hat R_k) = \T{0}{6}(q_k)$ com a nossa cinemática
+direta e mediram-se o erro de posição $\lVert\hat p_k - p_k\rVert$ e o de
+orientação (ângulo de $\hat R_k R_k^{T}$). Para separar o erro da inversa do
+erro do nosso modelo, repetiu-se com a cinemática direta do próprio
+controlador (\texttt{get\_forward\_kinematics}). O robô não se move neste
+ensaio.
 
 \begin{table}[H]
 \centering
@@ -768,65 +624,47 @@ A nossa (Tabela~\ref{tab:dh}) & \SI{1.36}{\milli\meter} & \SI{2.02}{\milli\meter
 
 \begin{figure}[H]
 \centering
-\fig{Photos/ik_erros.png}{0.8\textwidth}
-\caption{Erro da pose recuperada ao longo do swing. Em cima: erro de posição
-com a nossa cinemática direta e com a do controlador. Ao meio: componentes da
-diferença com a nossa cinemática. Em baixo: erro de orientação. Os círculos
-marcam os pontos em que a inversa devolveu o pulso virado.}
+\fig{Photos/ik_erros.png}{0.66\textwidth}
+\caption{Erro da pose recuperada ao longo do swing: posição com as duas
+cinemáticas diretas, componentes da diferença com a nossa, e orientação. Os
+círculos marcam os pontos em que a inversa devolveu o pulso virado.}
 \label{fig:ik}
 \end{figure}
 
-\subsection{Discussão}
-
 \begin{itemize}[itemsep=3pt]
   \item \textbf{A inversa do robô é exata face ao seu modelo.} Resolveu os 60
-        pontos, e a cinemática direta do controlador devolve a pose pedida
-        com menos de \SI{2}{\micro\meter} e \ang{0.0004}, ou seja, ao
-        nível do arredondamento.
-  \item \textbf{A diferença de \SI{1.4}{\milli\meter} está no modelo, não na
-        inversa.} É, ponto a ponto, a diferença entre a nossa cinemática
-        direta e a do controlador. Tem um desvio sistemático de
-        $(-0{,}2;\,+0{,}6;\,-0{,}9)$~mm e a componente vertical quase não
-        varia ao longo do swing. O erro de orientação é muito pequeno: um
-        desvio de \ang{0.03} num braço de \SI{300}{\milli\meter} desloca a
-        ponta \SI{0.16}{\milli\meter}, dez vezes menos do que a diferença
-        medida. A diferença vem, por isso, sobretudo de comprimentos e não
-        de ângulos.
-  \item \textbf{A diferença é compatível com parâmetros geométricos
-        ligeiramente diferentes dos nominais.} Ajustando pequenas correções
-        aos parâmetros da Tabela~\ref{tab:dh} para reproduzir o controlador
-        nestes 60 pontos, a diferença desce de 1,36 para
-        \SI{0.06}{\milli\meter}. Os mesmos parâmetros, aplicados a dados que
-        não entraram no ajuste (juntas e pose medidas
-        num segundo swing executado no robô, desenhado no espaço das
-        juntas\comlab{ (Secção~\ref{sec:v3})}, noutra
-        zona do espaço de trabalho), baixam a
-        diferença de 1,6 para \SI{0.9}{\milli\meter}
-        (\texttt{src/ajuste\_dh.py}). O controlador usa, portanto, um modelo
-        cinemático que não é exatamente o da tabela nominal. Os valores
-        ajustados não se podem tomar como a calibração do robô: com poses de
-        uma só trajetória, vários parâmetros compensam-se entre si.
+        pontos, e a direta do controlador devolve a pose pedida com menos de
+        \SI{2}{\micro\meter} e \ang{0.0004}, ao nível do arredondamento.
+  \item \textbf{A diferença de \SI{1.4}{\milli\meter} está no modelo
+        geométrico, não na inversa.} É, ponto a ponto, a diferença entre a
+        nossa direta e a do controlador, com um desvio quase constante de
+        $(-0{,}2;\,+0{,}6;\,-0{,}9)$~mm. Um erro de \ang{0.03} num braço de
+        \SI{300}{\milli\meter} só desloca a ponta \SI{0.16}{\milli\meter}, por
+        isso a diferença vem sobretudo de comprimentos. Ajustando pequenas
+        correções aos parâmetros da Tabela~\ref{tab:dh}, desce para
+        \SI{0.06}{\milli\meter} nestes pontos e de 1,6 para
+        \SI{0.9}{\milli\meter} num segundo swing executado no robô, que não
+        entrou no ajuste\comlab{ (Secção~\ref{sec:v3})}
+        (\texttt{src/ajuste\_dh.py}): o controlador usa um modelo que não é
+        exatamente o nominal. Com uma só trajetória, porém, vários parâmetros
+        compensam-se, e o ajuste não é uma calibração.
         \comlab{Os parâmetros D-H lidos do controlador
         (\texttt{robot\_info.py}) \opc{diferem dos nominais em \XX, o que
         fecha esta explicação}{não são acessíveis com este \emph{firmware},
         pelo que a explicação fica por esta via}.}
   \item \textbf{A inversa não garante continuidade das juntas.} Em 19 dos 60
         pontos devolveu a solução de pulso virado
-        ($q_4 \pm \ang{180}$, $-q_5$, $q_6 \pm \ang{180}$), que dá a mesma
-        pose com outros ângulos. Nos restantes 41, e nos 19 depois de
-        convertidos, coincide com a nossa inversa numérica a menos de
-        \ang{0.5} em todas as juntas. Na Figura~\ref{fig:ik} vê-se que a
-        diferença para o nosso modelo depende do ramo: nos pontos de pulso
-        virado a componente $y$ quase se anula.
+        ($q_4 \pm \ang{180}$, $-q_5$, $q_6 \pm \ang{180}$), a mesma pose com
+        outros ângulos; depois de convertidos, todos coincidem com a nossa
+        inversa numérica a menos de \ang{0.5}.
 \end{itemize}
 
 \begin{destaque}
-\textbf{Conclusão.} A cinemática inversa incorporada é numericamente exata e
-resolveu todos os pontos da trajetória. A precisão com que a ferramenta
-atinge uma pose é limitada pelo modelo geométrico e pela repetibilidade do
-robô, da ordem de 1 a \SI{2}{\milli\meter}, e não pela inversa. Para executar
-uma trajetória com as juntas obtidas ponto a ponto, é preciso escolher o ramo
-da solução, porque a inversa pode alternar entre soluções equivalentes.
+\textbf{Conclusão.} A inversa incorporada é numericamente exata. A precisão
+com que a ferramenta atinge uma pose é limitada pelo modelo geométrico e pela
+repetibilidade do robô (1 a \SI{2}{\milli\meter}), e não pela inversa; para
+executar trajetórias com as juntas obtidas ponto a ponto é preciso escolher o
+ramo da solução.
 \end{destaque}
 
 
@@ -838,49 +676,35 @@ da solução, porque a inversa pode alternar entre soluções equivalentes.
 
 O swing da Secção~\ref{sec:traj} é pequeno: a base roda \ang{13}. Para um
 movimento mais próximo do de um jogador, em que o tronco roda, fez-se um
-segundo swing diretamente no espaço das juntas (\texttt{src/swing\_v3.py}).
-
-Moveu-se o robô à mão (modo manual) ao longo do gesto pretendido e
-leram-se as juntas em 20 instantes. Dessa demonstração tiraram-se três poses: topo do
-backswing, impacto e fim. O caminho entre elas foi refeito com as leis do
-Lab~1, em todas as juntas ao mesmo tempo: polinómio de grau~5 no backswing;
-aceleração constante no downswing para as juntas que fazem o swing (base,
-pulso e rotação da pinça), que chegam ao impacto no mesmo instante e à
-velocidade máxima, com o pulso armado durante a primeira metade; e um
-polinómio de grau~5 até parar no follow-through. A base roda \ang{125}. A
-posição e a orientação da pinça obtêm-se pela cinemática direta da Tarefa~1
-(Figura~\ref{fig:v3}), e os tempos foram ajustados para a ponta não passar de
-\SI{400}{\milli\meter\per\second}.
+segundo swing no espaço das juntas (\texttt{src/swing\_v3.py}). Moveu-se o
+robô à mão ao longo do gesto pretendido e tiraram-se três poses (topo do
+backswing, impacto e fim); o caminho entre elas foi refeito com as leis do
+Lab~1 em todas as juntas, com as juntas do swing (base, pulso e rotação da
+pinça) a chegar ao impacto ao mesmo tempo e à velocidade máxima. A base roda
+\ang{125} e a ponta não passa de \SI{400}{\milli\meter\per\second}
+(Figura~\ref{fig:v3}). É enviado junta a junta com
+\texttt{set\_servo\_angle\_j}, sem cinemática inversa.
 
 \begin{figure}[H]
 \centering
-\fig{Photos/v3_caminho_dj2.png}{0.9\textwidth}
-\caption{Segundo swing. Esquerda: caminho da ponta da pinça e a demonstração
-feita à mão (a laranja). Direita: velocidade da ponta e do flange à
-velocidade planeada; a linha vertical marca o impacto.}
+\fig{Photos/v3_caminho_dj2.png}{0.8\textwidth}\\[1mm]
+\fig{Photos/mjv3dj2_sequencia_face_on.png}{\textwidth}
+\caption{Segundo swing. Em cima: caminho da ponta, com a demonstração feita à
+mão (a laranja), e velocidade da ponta e do flange. Em baixo: o swing no
+modelo 3D do robô.}
 \label{fig:v3}
 \end{figure}
 
-\begin{figure}[H]
-\centering
-\fig{Photos/mjv3dj2_sequencia_face_on.png}{\textwidth}
-\caption{O segundo swing no modelo 3D do robô.}
-\label{fig:v3seq}
-\end{figure}
-
-É enviado junta a junta com \texttt{set\_servo\_angle\_j}, sem cinemática
-inversa. Uma primeira execução, a 6/11, seguiu a referência com \ang{0.05} de
-erro médio nas juntas e \SI{1.0}{\milli\meter} na ponta, mas no modelo 3D os
-dedos da pinça passavam a \SI{17}{\milli\meter} da mesa logo a seguir ao
-impacto, abaixo dos \SI{30}{\milli\meter} exigidos ao primeiro swing. Por
-isso o ombro (junta~2) chega ao impacto \ang{6} mais acima: a ponta passa a
-\SI{61}{\milli\meter} da mesa, com a bola a essa altura, e no modelo 3D a
-folga mínima sobe para \SI{33}{\milli\meter} à mesa, mantendo
-\SI{21}{\milli\meter} entre elos. A ponta continua abaixo de
-\SI{400}{\milli\meter\per\second} (máximo \SI{389}{\milli\meter\per\second}).
-No robô, a metade da velocidade (\SI{20.4}{\second}, \XX{} ensaios), o erro
-médio das juntas foi de \XX\,\si{\degree} (máximo \XX\,\si{\degree}) e a
-ponta da pinça ficou em média a \XX\,\si{\milli\meter} da planeada.
+Uma primeira execução, a 6/11, seguiu a referência com \ang{0.05} de erro
+médio nas juntas e \SI{1.0}{\milli\meter} na ponta, mas os dedos da pinça
+passavam a \SI{17}{\milli\meter} da mesa, abaixo dos \SI{30}{\milli\meter}
+exigidos ao primeiro swing. Por isso o ombro chega ao impacto \ang{6} mais
+acima: a ponta passa a \SI{61}{\milli\meter} da mesa, com a bola a essa
+altura, e a folga mínima no modelo 3D sobe para \SI{33}{\milli\meter} à mesa
+(\SI{21}{\milli\meter} entre elos). No robô, a metade da velocidade
+(\SI{20.4}{\second}, \XX{} ensaios), o erro médio das juntas foi de
+\XX\,\si{\degree} (máximo \XX\,\si{\degree}) e a ponta ficou em média a
+\XX\,\si{\milli\meter} da planeada.
 }\fi
 
 
@@ -893,48 +717,33 @@ ponta da pinça ficou em média a \XX\,\si{\milli\meter} da planeada.
 
 \begin{itemize}[itemsep=3pt]
   \item \textbf{Cinemática direta validada de três formas}: pose de
-        referência, segunda tabela do fabricante (\SI{e-13}{\milli\meter}) e
-        controlador (\SI{1.4}{\milli\meter}).
-  \item \textbf{Trajetória com folga em todos os limites.} Usa
-        \SI{44}{\percent} da velocidade cartesiana, \SI{53}{\percent} da
-        velocidade das juntas e \SI{67}{\percent} do alcance, e a junta mais
-        próxima de um limite fica a \ang{44} dele.
-  \item \textbf{Ausência de contacto verificada com o volume real do robô},
-        e não só com pontos: \SI{25}{\milli\meter} entre elos e
-        \SI{75}{\milli\meter} à mesa.
+        referência, segunda tabela do fabricante e controlador.
+  \item \textbf{Trajetória com folga em todos os limites} (no máximo
+        \SI{53}{\percent} de um limite) e \textbf{sem contacto} verificado
+        com o volume real do robô.
   \item \textbf{Seguimento de \SI{0.5}{\milli\meter}} a metade da velocidade,
-        reprodutível entre ensaios.
-  \item \textbf{A escolha do eixo de rotação da pinça} reduziu o erro de
-        seguimento quatro vezes e eliminou o movimento desnecessário das
-        juntas 1 e 6.
-  \comlab{\item \textbf{Um segundo swing mais amplo}, desenhado nas juntas
-        com a base a rodar \ang{125}, foi executado com a mesma margem à mesa
-        e \XX\,\si{\milli\meter} de erro médio na ponta.}
+        reprodutível, depois de a escolha do eixo de rotação da pinça ter
+        reduzido o erro quatro vezes.
+  \comlab{\item \textbf{Um segundo swing mais amplo}, com a base a rodar
+        \ang{125}, executado com a mesma margem à mesa e
+        \XX\,\si{\milli\meter} de erro médio na ponta.}
 \end{itemize}
 
 \subsection*{\textcolor{mau}{O que não correu tão bem}}
 
 \begin{itemize}[itemsep=3pt]
-  \item \textbf{À velocidade planeada o robô não segue o perfil}: erro médio
-        de \SI{8}{\milli\meter} e máximo de \SI{28}{\milli\meter}, apesar de
-        a trajetória respeitar todos os limites publicados, incluindo a
-        aceleração das juntas.
-  \semlab{\item \textbf{A causa do erro C31 não ficou identificada}; foi
-        contornada encurtando o follow-through.}
+  \item \textbf{À velocidade planeada o robô não segue o perfil} (erro médio
+        de \SI{8}{\milli\meter}), apesar de respeitar todos os limites
+        publicados.
+  \semlab{\item \textbf{As causas do erro C31 e da diferença de
+        \SI{1.4}{\milli\meter}} ficaram por confirmar: exigem ler a
+        configuração do controlador.}
   \comlab{\item \textbf{O erro C31 obrigou a encurtar o follow-through}
         \opc{e só depois se identificou a causa, a carga da pinça não
         declarada}{e a causa não ficou identificada}.}
-  \item \textbf{O swing é pequeno e lento} face ao do Lab~1: arco de
-        \SI{150}{\milli\meter} e \SI{0.21}{\meter\per\second} no impacto. É
-        uma consequência das dimensões do robô e do limite de
-        \SI{500}{\milli\meter\per\second}.
-  \semlab{\item \textbf{A diferença de \SI{1.4}{\milli\meter}} para o
-        controlador ficou explicada qualitativamente, mas não se
-        identificaram os parâmetros que a causam.}
-  \comlab{\item \textbf{A diferença de \SI{1.4}{\milli\meter}} para o
-        controlador \opc{vem de parâmetros D-H que diferem dos nominais, e
-        só se percebeu lendo o controlador}{ficou explicada qualitativamente,
-        porque o \emph{firmware} não dá acesso aos seus parâmetros D-H}.}
+  \item \textbf{O swing é pequeno e lento} face ao do Lab~1
+        (\SI{0.21}{\meter\per\second} no impacto), consequência das dimensões
+        do robô e do limite de \SI{500}{\milli\meter\per\second}.
 \end{itemize}
 
 \subsection*{\textcolor{azul}{O que podíamos melhorar}}
@@ -942,19 +751,11 @@ ponta da pinça ficou em média a \XX\,\si{\milli\meter} da planeada.
 \begin{itemize}[itemsep=3pt]
   \item \textbf{Limitar a aceleração e o \emph{jerk}} no desenho dos perfis,
         para o robô seguir a trajetória à velocidade planeada.
-  \semlab{\item \textbf{Ler a configuração do controlador} (carga da
-        ferramenta, parâmetros cinemáticos, limites de aceleração) para fechar
-        as questões em aberto.}
-  \comlab{\item \textbf{Usar a configuração do controlador} (carga da
-        ferramenta, parâmetros cinemáticos, limites de aceleração) no próprio
-        desenho e verificação da trajetória, e não só para explicar os
-        resultados.}
   \item \textbf{Calibrar a cinemática} com poses medidas em todo o espaço de
-        trabalho, em vez de uma só trajetória.
-  \item \textbf{Desenhar o swing nas juntas}, com a base a fazer de tronco
-        \semlab{como num jogador, para um movimento mais amplo do que os
-        \ang{13} de rotação da base deste swing.}\comlab{como no segundo
-        swing, e levá-lo à velocidade planeada.}
+        trabalho.
+  \item \textbf{Desenhar o swing nas juntas}, com a base a fazer de tronco,
+        \semlab{para um movimento mais amplo, como num jogador.}\comlab{como
+        no segundo swing, e levá-lo à velocidade planeada.}
 \end{itemize}
 
 \newpage
@@ -963,21 +764,19 @@ ponta da pinça ficou em média a \XX\,\si{\milli\meter} da planeada.
 Todos os membros contribuíram de forma igual para a realização do projeto.
 Cada um ficou responsável por uma área, sem deixar de participar nas restantes:
 \begin{itemize}
-  \item \textbf{Afonso Cruz:} verificação de contacto no modelo 3D e
-        redação do relatório.
-  \item \textbf{Eduardo Batista:} limites e acelerações na verificação de
-        viabilidade e revisão do relatório\comlab{; verificação no modelo 3D
-        do segundo swing com a ponta mais alta}.
-  \item \textbf{Henrique Póvoa:} código de cinemática, trajetória e execução
-        no robô; ensaios no laboratório.
+  \item \textbf{Afonso Cruz:} modelação: cinemática direta e modelo 3D com
+        verificação de contacto.
+  \item \textbf{Eduardo Batista:} planeamento: trajetória de swing, limites e
+        segundo swing.
+  \item \textbf{Henrique Póvoa:} execução: scripts do robô e comparação com a
+        inversa do controlador.
 \end{itemize}
-\comlab{A última ida ao laboratório (\XX/11), para ler a configuração do
-controlador e repetir o segundo swing, foi feita por \XX.}
+As sessões de laboratório e a redação do relatório foram feitas por todos.
 
 \section*{Declaração de uso de IA}
-Usou-se o \emph{Claude} (Anthropic) como apoio na geração e revisão do código
-Python (\texttt{src/}) e na revisão do texto deste relatório. Todos os membros do grupo compreendem integralmente
-todos os componentes do trabalho entregue.
+Foi usado o \emph{Claude} (Anthropic) como apoio na geração de código Python e
+na revisão do texto. Todos os membros compreendem integralmente o trabalho
+entregue.
 
 % =============================================================================
 \bibliographystyle{IEEEtran}
