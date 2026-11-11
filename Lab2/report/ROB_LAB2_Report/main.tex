@@ -3,7 +3,7 @@
 %  Compilar com:  latexmk -pdf main.tex
 %  Figuras em Photos/ (cópias de ../*.png; refazer com os scripts de ../../src)
 %  Bibliografia em refs.bib (bibtex, estilo IEEEtran)
-%  RASCUNHO: procurar \todo{...} — pontos por confirmar antes de entregar.
+%  DUAS VERSÕES: ver o bloco "VERSÃO A ENTREGAR" mais abaixo (\versao{...}).
 % =============================================================================
 \documentclass[11pt,a4paper]{article}
 
@@ -75,11 +75,29 @@
 \newcolumntype{L}{>{\raggedright\arraybackslash}X}
 \newcommand{\T}[2]{{}^{#1}T_{#2}}
 
-% Secção "Um segundo swing, desenhado nas juntas" (V3). Só entra no relatório se
-% for repetido no robô com 30 mm de folga à mesa (run_robot_v3.py --bola-demo
-% --dj2 -6). Para a incluir: trocar \segundoswingfalse por \segundoswingtrue.
-\newif\ifsegundoswing
-\segundoswingfalse
+% =============================================================================
+% VERSÃO A ENTREGAR
+% O que depende da ida ao laboratório está escrito duas vezes:
+%   \semlab{...}  VERDE    -> versão SEM ida ao laboratório (pronta a entregar)
+%   \comlab{...}  VERMELHO -> versão COM ida ao laboratório: robot_info.py e o
+%                 segundo swing repetido com a ponta mais alta (Secção 5).
+%                 Preencher os \XX e escolher uma das opções [a | b] de \opc.
+% Para entregar, mudar SÓ a linha \versao{...} abaixo:
+%   \versao{ambas}  rascunho: as duas versões, a cores
+%   \versao{sem}    entrega sem laboratório (sem cores)
+%   \versao{com}    entrega com laboratório (sem cores)
+% =============================================================================
+\newif\ifmostrarsem \newif\ifmostrarcom \newif\ifcores
+\def\vsem{sem}\def\vcom{com}
+\newcommand{\versao}[1]{\def\vesc{#1}%
+  \ifx\vesc\vsem \mostrarsemtrue\mostrarcomfalse\coresfalse
+  \else\ifx\vesc\vcom \mostrarsemfalse\mostrarcomtrue\coresfalse
+  \else \mostrarsemtrue\mostrarcomtrue\corestrue\fi\fi}
+\versao{ambas}
+\newcommand{\semlab}[1]{\ifmostrarsem{\ifcores\color{verde!80!black}\fi#1}\fi}
+\newcommand{\comlab}[1]{\ifmostrarcom{\ifcores\color{red!80!black}\fi#1}\fi}
+\newcommand{\XX}{\textbf{XX}}                      % valor a preencher depois do lab
+\newcommand{\opc}[2]{\textbf{[}#1~\textbf{|}~#2\textbf{]}}  % apagar uma das duas
 
 \title{{\color{verde}\textbf{Golf swing with the UFactory Lite 6}}\\[2mm]
        {\large\color{azul} Robótica --- Laboratório 2}}
@@ -542,7 +560,6 @@ impacto.}
 A bola é o único objeto na zona de trabalho e o contacto com ela é o
 pretendido: a ponta da pinça passa nela a
 \SI{214}{\milli\meter\per\second}.
-\todo{descrever o que fez de bola no laboratório e como ficou a mesa.}
 
 
 % =============================================================================
@@ -649,10 +666,18 @@ verticais separam as três fases.}
         saturação de velocidade. Também não é o limite de aceleração das
         juntas: a trajetória pede no máximo \SI{227}{\degree\per\second\squared}
         (junta~4), um quinto dos \SI{1145}{\degree\per\second\squared} do
-        fabricante~\cite{ufactory_specs}. O comportamento é compatível com
-        um limite de aceleração cartesiana ou uma filtragem do controlador em
-        modo servo. \todo{ler no laboratório os limites de aceleração e de
-        \emph{jerk} configurados (\texttt{robot\_info.py}).}
+        fabricante~\cite{ufactory_specs}.
+        \semlab{O comportamento é compatível com um limite de aceleração
+        cartesiana ou com uma filtragem do controlador em modo servo; sem
+        acesso à configuração do controlador não foi possível distinguir os
+        dois.}
+        \comlab{A configuração do controlador (\texttt{robot\_info.py})
+        tem um limite de aceleração cartesiana de
+        \XX\,\si{\milli\meter\per\second\squared} e de \emph{jerk} de
+        \XX\,\si{\milli\meter\per\second\cubed}. O flange pede no máximo
+        \SI{431}{\milli\meter\per\second\squared}, \opc{acima desse
+        limite, o que explica o atraso}{abaixo desse limite, pelo que o atraso
+        vem de uma filtragem do controlador em modo servo}.}
   \item \textbf{O resultado é reprodutível.} Dois ensaios iguais dão o mesmo
         erro (Tabela~\ref{tab:exec}).
   \item \textbf{O método \texttt{pontos}} executou o swing completo com
@@ -673,8 +698,13 @@ normal ao plano. Três ocorrências levaram à versão final:
         efeito dinâmico; as hipóteses são o cabo
         da pinça a esticar ou a massa da pinça não estar configurada no
         controlador. Encurtar o follow-through para \ang{50} eliminou o erro
-        em todos os ensaios seguintes. \todo{correr \texttt{robot\_info.py}
-        no laboratório para ler a carga configurada (\texttt{tcp\_load}).}
+        em todos os ensaios seguintes.
+        \comlab{A configuração do controlador indicava uma carga de
+        \XX\,\si{\kilo\gram}, para uma pinça de \SI{0.29}{\kilo\gram}.
+        \opc{Sem a carga declarada, o controlador subestima o binário de
+        gravidade com o braço esticado para o lado, onde o erro aparecia: é
+        esta a causa}{Com a carga declarada, a causa mais provável é o cabo
+        da pinça}.}
   \item \textbf{Erro C24 (velocidade excedida)} no método \texttt{pontos} à
         velocidade planeada: a concordância entre pontos pede às juntas mais
         do que o plano. O script passou a recusar este método com
@@ -768,16 +798,18 @@ marcam os pontos em que a inversa devolveu o pulso virado.}
         nestes 60 pontos, a diferença desce de 1,36 para
         \SI{0.06}{\milli\meter}. Os mesmos parâmetros, aplicados a dados que
         não entraram no ajuste (juntas e pose medidas
-        \ifsegundoswing no swing da Secção~\ref{sec:v3}, \else num segundo
-        swing executado no robô, desenhado no espaço das juntas, \fi noutra
+        num segundo swing executado no robô, desenhado no espaço das
+        juntas\comlab{ (Secção~\ref{sec:v3})}, noutra
         zona do espaço de trabalho), baixam a
         diferença de 1,6 para \SI{0.9}{\milli\meter}
         (\texttt{src/ajuste\_dh.py}). O controlador usa, portanto, um modelo
         cinemático que não é exatamente o da tabela nominal. Os valores
         ajustados não se podem tomar como a calibração do robô: com poses de
         uma só trajetória, vários parâmetros compensam-se entre si.
-        \todo{ler os parâmetros D-H do controlador com
-        \texttt{robot\_info.py} para fechar este ponto.}
+        \comlab{Os parâmetros D-H lidos do controlador
+        (\texttt{robot\_info.py}) \opc{diferem dos nominais em \XX, o que
+        fecha esta explicação}{não são acessíveis com este \emph{firmware},
+        pelo que a explicação fica por esta via}.}
   \item \textbf{A inversa não garante continuidade das juntas.} Em 19 dos 60
         pontos devolveu a solução de pulso virado
         ($q_4 \pm \ang{180}$, $-q_5$, $q_6 \pm \ang{180}$), que dá a mesma
@@ -798,7 +830,7 @@ da solução, porque a inversa pode alternar entre soluções equivalentes.
 \end{destaque}
 
 
-\ifsegundoswing
+\ifmostrarcom{\ifcores\color{red!80!black}\fi
 % =============================================================================
 \section{Um segundo swing, desenhado nas juntas}
 \label{sec:v3}
@@ -822,7 +854,7 @@ posição e a orientação da pinça obtêm-se pela cinemática direta da Tarefa
 
 \begin{figure}[H]
 \centering
-\fig{Photos/v3_caminho.png}{0.9\textwidth}
+\fig{Photos/v3_caminho_dj2.png}{0.9\textwidth}
 \caption{Segundo swing. Esquerda: caminho da ponta da pinça e a demonstração
 feita à mão (a laranja). Direita: velocidade da ponta e do flange à
 velocidade planeada; a linha vertical marca o impacto.}
@@ -831,22 +863,25 @@ velocidade planeada; a linha vertical marca o impacto.}
 
 \begin{figure}[H]
 \centering
-\fig{Photos/mjv3demo_sequencia_face_on.png}{\textwidth}
+\fig{Photos/mjv3dj2_sequencia_face_on.png}{\textwidth}
 \caption{O segundo swing no modelo 3D do robô.}
 \label{fig:v3seq}
 \end{figure}
 
 É enviado junta a junta com \texttt{set\_servo\_angle\_j}, sem cinemática
-inversa. A metade da velocidade (\SI{20.4}{\second}, 2044 pontos, dois
-ensaios) o erro médio das juntas foi de \ang{0.05} (máximo \ang{0.6}) e a
-ponta da pinça ficou em média a \SI{1.0}{\milli\meter} da planeada. No modelo
-3D a folga mínima é de \SI{17}{\milli\meter}, entre os dedos da pinça e a
-mesa logo a seguir ao impacto, e de \SI{21}{\milli\meter} entre elos: não há
-contacto, mas a margem à mesa é mais curta do que os \SI{30}{\milli\meter}
-exigidos ao primeiro swing. \todo{esta secção só entra se o swing for
-repetido no robô com a ponta mais alta (\texttt{-{}-dj2 -6}: 33 mm de folga à
-mesa no modelo 3D); atualizar então os números e as figuras.}
-\fi
+inversa. Uma primeira execução, a 6/11, seguiu a referência com \ang{0.05} de
+erro médio nas juntas e \SI{1.0}{\milli\meter} na ponta, mas no modelo 3D os
+dedos da pinça passavam a \SI{17}{\milli\meter} da mesa logo a seguir ao
+impacto, abaixo dos \SI{30}{\milli\meter} exigidos ao primeiro swing. Por
+isso o ombro (junta~2) chega ao impacto \ang{6} mais acima: a ponta passa a
+\SI{61}{\milli\meter} da mesa, com a bola a essa altura, e no modelo 3D a
+folga mínima sobe para \SI{33}{\milli\meter} à mesa, mantendo
+\SI{21}{\milli\meter} entre elos. A ponta continua abaixo de
+\SI{400}{\milli\meter\per\second} (máximo \SI{389}{\milli\meter\per\second}).
+No robô, a metade da velocidade (\SI{20.4}{\second}, \XX{} ensaios), o erro
+médio das juntas foi de \XX\,\si{\degree} (máximo \XX\,\si{\degree}) e a
+ponta da pinça ficou em média a \XX\,\si{\milli\meter} da planeada.
+}\fi
 
 
 % =============================================================================
@@ -872,6 +907,9 @@ mesa no modelo 3D); atualizar então os números e as figuras.}
   \item \textbf{A escolha do eixo de rotação da pinça} reduziu o erro de
         seguimento quatro vezes e eliminou o movimento desnecessário das
         juntas 1 e 6.
+  \comlab{\item \textbf{Um segundo swing mais amplo}, desenhado nas juntas
+        com a base a rodar \ang{125}, foi executado com a mesma margem à mesa
+        e \XX\,\si{\milli\meter} de erro médio na ponta.}
 \end{itemize}
 
 \subsection*{\textcolor{mau}{O que não correu tão bem}}
@@ -881,15 +919,22 @@ mesa no modelo 3D); atualizar então os números e as figuras.}
         de \SI{8}{\milli\meter} e máximo de \SI{28}{\milli\meter}, apesar de
         a trajetória respeitar todos os limites publicados, incluindo a
         aceleração das juntas.
-  \item \textbf{A causa do erro C31 não ficou identificada}; foi contornada
-        encurtando o follow-through.
+  \semlab{\item \textbf{A causa do erro C31 não ficou identificada}; foi
+        contornada encurtando o follow-through.}
+  \comlab{\item \textbf{O erro C31 obrigou a encurtar o follow-through}
+        \opc{e só depois se identificou a causa, a carga da pinça não
+        declarada}{e a causa não ficou identificada}.}
   \item \textbf{O swing é pequeno e lento} face ao do Lab~1: arco de
         \SI{150}{\milli\meter} e \SI{0.21}{\meter\per\second} no impacto. É
         uma consequência das dimensões do robô e do limite de
         \SI{500}{\milli\meter\per\second}.
-  \item \textbf{A diferença de \SI{1.4}{\milli\meter}} para o controlador
-        ficou explicada qualitativamente, mas não se identificaram os
-        parâmetros que a causam.
+  \semlab{\item \textbf{A diferença de \SI{1.4}{\milli\meter}} para o
+        controlador ficou explicada qualitativamente, mas não se
+        identificaram os parâmetros que a causam.}
+  \comlab{\item \textbf{A diferença de \SI{1.4}{\milli\meter}} para o
+        controlador \opc{vem de parâmetros D-H que diferem dos nominais, e
+        só se percebeu lendo o controlador}{ficou explicada qualitativamente,
+        porque o \emph{firmware} não dá acesso aos seus parâmetros D-H}.}
 \end{itemize}
 
 \subsection*{\textcolor{azul}{O que podíamos melhorar}}
@@ -897,38 +942,41 @@ mesa no modelo 3D); atualizar então os números e as figuras.}
 \begin{itemize}[itemsep=3pt]
   \item \textbf{Limitar a aceleração e o \emph{jerk}} no desenho dos perfis,
         para o robô seguir a trajetória à velocidade planeada.
-  \item \textbf{Ler a configuração do controlador} (carga da ferramenta,
-        parâmetros cinemáticos, sensibilidade de colisão) para fechar as
-        duas questões em aberto.
+  \semlab{\item \textbf{Ler a configuração do controlador} (carga da
+        ferramenta, parâmetros cinemáticos, limites de aceleração) para fechar
+        as questões em aberto.}
+  \comlab{\item \textbf{Usar a configuração do controlador} (carga da
+        ferramenta, parâmetros cinemáticos, limites de aceleração) no próprio
+        desenho e verificação da trajetória, e não só para explicar os
+        resultados.}
   \item \textbf{Calibrar a cinemática} com poses medidas em todo o espaço de
         trabalho, em vez de uma só trajetória.
   \item \textbf{Desenhar o swing nas juntas}, com a base a fazer de tronco
-        \ifsegundoswing como no segundo swing, mantendo as margens de
-        segurança do primeiro.\else como num jogador, para um movimento mais
-        amplo do que os \ang{13} de rotação da base deste swing.\fi
+        \semlab{como num jogador, para um movimento mais amplo do que os
+        \ang{13} de rotação da base deste swing.}\comlab{como no segundo
+        swing, e levá-lo à velocidade planeada.}
 \end{itemize}
 
 \newpage
 % =============================================================================
 \section*{Contribuição dos membros}
-\todo{rever esta secção; o texto abaixo é uma proposta.}
 Todos os membros contribuíram de forma igual para a realização do projeto.
 Cada um ficou responsável por uma área, sem deixar de participar nas restantes:
 \begin{itemize}
   \item \textbf{Afonso Cruz:} verificação de contacto no modelo 3D e
         redação do relatório.
-  \item \textbf{Eduardo Batista:} \todo{proposta} limites e
-        acelerações na verificação de viabilidade, leitura da configuração do
-        controlador no laboratório e revisão do relatório.
+  \item \textbf{Eduardo Batista:} limites e acelerações na verificação de
+        viabilidade e revisão do relatório\comlab{; verificação no modelo 3D
+        do segundo swing com a ponta mais alta}.
   \item \textbf{Henrique Póvoa:} código de cinemática, trajetória e execução
         no robô; ensaios no laboratório.
 \end{itemize}
+\comlab{A última ida ao laboratório (\XX/11), para ler a configuração do
+controlador e repetir o segundo swing, foi feita por \XX.}
 
 \section*{Declaração de uso de IA}
-\todo{texto a rever pelo grupo: tem de descrever com verdade todas as
-ferramentas usadas e para quê.}
 Usou-se o \emph{Claude} (Anthropic) como apoio na geração e revisão do código
-Python (\texttt{src/}). Todos os membros do grupo compreendem integralmente
+Python (\texttt{src/}) e na revisão do texto deste relatório. Todos os membros do grupo compreendem integralmente
 todos os componentes do trabalho entregue.
 
 % =============================================================================
