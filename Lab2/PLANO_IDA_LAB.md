@@ -1,5 +1,9 @@
 # Próxima ida ao laboratório (antes da entrega de 13/11)
 
+O relatório tem as duas versões: `\versao{sem}` (pronta) e `\versao{com}`
+(vermelho). Depois do laboratório: preencher os **XX** e escolher uma das opções
+`[a | b]` do texto vermelho, e mudar para `\versao{com}`.
+
 Tudo a partir de `Lab2/`, com a `.venv` ativa e o portátil ligado ao robô por
 cabo (`192.168.1.158`). Por ordem de prioridade:
 
@@ -28,8 +32,8 @@ python src/run_robot_v3.py --go --lento 2 --bola-demo --dj2 -6
 python src/plot_run.py --v3                                       # com o CSV novo
 ```
 
-Depois, no `main.tex`, trocar `\segundoswingfalse` por `\segundoswingtrue`.
-Se não houver tempo, o V3 fica de fora (já está desligado).
+As figuras do relatório para este caso já estão feitas (`v3_caminho_dj2`,
+`mjv3dj2_sequencia_face_on`); só faltam os números do ensaio.
 
 ## 3. Anotar e fotografar
 
