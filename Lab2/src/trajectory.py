@@ -375,6 +375,7 @@ def check_feasibility(traj, qs, verbose=True):
     # com a garra e anda mais depressa do que a ponta: no lab deu C24 (velocidade)
     v_flange = np.linalg.norm(np.gradient(flange, t, axis=0), axis=1)
     qd = np.gradient(qs, t, axis=0)
+    qdd = np.gradient(qd, t, axis=0)
     ombro = fk(np.zeros(6), all_frames=True)[2][:3, 3]     # origem de {2}
     pulso = np.array([fk(q, all_frames=True)[5][:3, 3] for q in qs])   # centro do pulso (origem de {5})
     alcance = np.linalg.norm(pulso - ombro, axis=1)
@@ -388,6 +389,7 @@ def check_feasibility(traj, qs, verbose=True):
         "vel. TCP": (v_tcp.max(), sf * C.TCP_SPEED_MAX, "mm/s"),
         "vel. flange": (v_flange.max(), sf * C.TCP_SPEED_MAX, "mm/s"),
         "vel. juntas": (np.abs(qd).max(), sf * C.JOINT_SPEED_MAX, "deg/s"),
+        "acel. juntas": (np.abs(qdd).max(), sf * C.JOINT_ACC_MAX, "deg/s2"),
         "alcance": (alcance.max(), C.REACH_FACTOR * C.REACH, "mm"),
     }
     res = {k: v[0] <= v[1] for k, v in checks.items()}
@@ -410,7 +412,7 @@ def check_feasibility(traj, qs, verbose=True):
             print(f"  AVISO: o flange chega a {v_flange.max():.0f} mm/s; no lab o controlador não passou de "
                   f"~{C.CART_SPEED_OBSERVED:.0f} mm/s em modo servo cartesiano -> o robô vai ficar para trás "
                   f"(usar --lento >= {v_flange.max() / C.CART_SPEED_OBSERVED:.1f} para seguir à risca)")
-    return all(res.values()), dict(v_tcp=v_tcp, v_flange=v_flange, qd=qd, alcance=alcance)
+    return all(res.values()), dict(v_tcp=v_tcp, v_flange=v_flange, qd=qd, qdd=qdd, alcance=alcance)
 
 
 def plot(traj, qs, extra, sufixo=""):

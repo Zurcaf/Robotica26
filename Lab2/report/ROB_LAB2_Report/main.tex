@@ -423,10 +423,10 @@ uma cinemática inversa numérica própria (mínimos quadrados
 amortecidos~\cite{buss2004} sobre o erro de posição e de orientação), ponto a
 ponto e partindo sempre da solução anterior, para as juntas variarem de forma
 contínua. Esta inversa serve só para a verificação; a do robô é avaliada na
-Tarefa~4. As velocidades calculam-se por diferenças centrais. A
+Tarefa~4. As velocidades e as acelerações calculam-se por diferenças centrais. A
 Tabela~\ref{tab:viab} resume as três condições do enunciado, com uma margem de
 segurança de \SI{20}{\percent} sobre os limites do
-fabricante~\cite{ufactory_lite6}; a Tabela~\ref{tab:juntas} e a
+fabricante~\cite{ufactory_lite6,ufactory_specs}; a Tabela~\ref{tab:juntas} e a
 Figura~\ref{fig:juntas} detalham as juntas.
 
 \begin{table}[H]
@@ -440,10 +440,11 @@ Figura~\ref{fig:juntas} detalham as juntas.
 \rowcolor{tabcab}
 Condição & O que se mede & Limite & Aceite até & Trajetória \\
 \midrule
-\rowcolor{tabgrupo}\multicolumn{5}{@{}l}{\emph{(i) Velocidade}} \\
+\rowcolor{tabgrupo}\multicolumn{5}{@{}l}{\emph{(i) Velocidade e aceleração}} \\
 Ponta da pinça & $\max\lVert\dot p\rVert$ & \SI{500}{\milli\meter\per\second} & 400 & \textbf{221} \\
 Flange         & $\max\lVert\dot p_f\rVert$ & \SI{500}{\milli\meter\per\second} & 400 & \textbf{170} \\
 Juntas         & $\max_i\lvert\dot q_i\rvert$ & \SI{180}{\degree\per\second} & 144 & \textbf{95} (junta 4) \\
+Acel.\ das juntas & $\max_i\lvert\ddot q_i\rvert$ & \SI{1145}{\degree\per\second\squared} & 916 & \textbf{227} (junta 4) \\
 \midrule
 \rowcolor{tabgrupo}\multicolumn{5}{@{}l}{\emph{(ii) Alcance}} \\
 Ombro ao centro do pulso & $\max\lVert p_w - p_{\{2\}}\rVert$ & \SI{443.7}{\milli\meter} & 421,5 & \textbf{299} \\
@@ -462,9 +463,7 @@ o cotovelo entra em singularidade, e por isso só se aceita até
 
 \begin{table}[H]
 \centering
-\caption{Limites das juntas~\cite{ufactory_lite6} e gama usada no swing.
-\todo{confirmar os limites no manual; em \texttt{config.py} ainda estão
-marcados como por confirmar.}}
+\caption{Limites das juntas~\cite{ufactory_specs} e gama usada no swing.}
 \label{tab:juntas}
 \small
 \begin{tabular}{clccc}
@@ -647,10 +646,13 @@ verticais separam as três fases.}
         \SI{58}{\milli\second} só baixa o erro de 8,4 para
         \SI{7.2}{\milli\meter}. A velocidade máxima medida
         (\SI{173}{\milli\meter\per\second}) iguala a pedida, por isso não é
-        saturação de velocidade; o comportamento é compatível com um limite
-        de aceleração ou uma filtragem do controlador em modo servo.
-        \todo{não confirmámos qual; ver se o Studio mostra limites de
-        aceleração.}
+        saturação de velocidade. Também não é o limite de aceleração das
+        juntas: a trajetória pede no máximo \SI{227}{\degree\per\second\squared}
+        (junta~4), um quinto dos \SI{1145}{\degree\per\second\squared} do
+        fabricante~\cite{ufactory_specs}. O comportamento é compatível com
+        um limite de aceleração cartesiana ou uma filtragem do controlador em
+        modo servo. \todo{ler no laboratório os limites de aceleração e de
+        \emph{jerk} configurados (\texttt{robot\_info.py}).}
   \item \textbf{O resultado é reprodutível.} Dois ensaios iguais dão o mesmo
         erro (Tabela~\ref{tab:exec}).
   \item \textbf{O método \texttt{pontos}} executou o swing completo com
@@ -877,8 +879,8 @@ mesa no modelo 3D); atualizar então os números e as figuras.}
 \begin{itemize}[itemsep=3pt]
   \item \textbf{À velocidade planeada o robô não segue o perfil}: erro médio
         de \SI{8}{\milli\meter} e máximo de \SI{28}{\milli\meter}, apesar de
-        a trajetória respeitar todos os limites publicados. A verificação de
-        viabilidade não inclui acelerações.
+        a trajetória respeitar todos os limites publicados, incluindo a
+        aceleração das juntas.
   \item \textbf{A causa do erro C31 não ficou identificada}; foi contornada
         encurtando o follow-through.
   \item \textbf{O swing é pequeno e lento} face ao do Lab~1: arco de
@@ -915,10 +917,19 @@ Cada um ficou responsável por uma área, sem deixar de participar nas restantes
 \begin{itemize}
   \item \textbf{Afonso Cruz:} verificação de contacto no modelo 3D e
         redação do relatório.
-  \item \textbf{Eduardo Batista:} \todo{área.}
+  \item \textbf{Eduardo Batista:} \todo{proposta} limites e
+        acelerações na verificação de viabilidade, leitura da configuração do
+        controlador no laboratório e revisão do relatório.
   \item \textbf{Henrique Póvoa:} código de cinemática, trajetória e execução
         no robô; ensaios no laboratório.
 \end{itemize}
+
+\section*{Declaração de uso de IA}
+\todo{texto a rever pelo grupo: tem de descrever com verdade todas as
+ferramentas usadas e para quê.}
+Usou-se o \emph{Claude} (Anthropic) como apoio na geração e revisão do código
+Python (\texttt{src/}). Todos os membros do grupo compreendem integralmente
+todos os componentes do trabalho entregue.
 
 % =============================================================================
 \bibliographystyle{IEEEtran}
