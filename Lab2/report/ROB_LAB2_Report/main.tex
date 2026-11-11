@@ -112,9 +112,10 @@
 Transpõe-se o swing do Laboratório~1 para um braço real, o UFactory Lite~6
 (6~juntas rotacionais). A cinemática direta é obtida pelo método de
 Denavit--Hartenberg modificado e validada contra uma segunda tabela do
-fabricante e contra o próprio controlador. A ponta da pinça faz de cabeça do
-taco: percorre um arco de \SI{150}{\milli\meter} que passa numa bola fixa, com
-as três fases e as leis de movimento do Lab~1.
+fabricante e contra o próprio controlador. O robô não segura um taco: a
+própria pinça faz de taco e a sua ponta, que bate numa bola fixa, percorre um
+arco de \SI{150}{\milli\meter} com as três fases e as leis de movimento do
+Lab~1.
 
 A trajetória usa no máximo \SI{44}{\percent} da velocidade cartesiana e
 \SI{53}{\percent} da velocidade das juntas admitidas pelo fabricante, e o
@@ -241,8 +242,9 @@ de $z_6$: $\T{0}{\text{ponta}} = \T{0}{6}\,T_z(L)$. Implementação em
 
 No Lab~1 o swing era um pêndulo duplo~\cite{cochran1968}: o braço roda em
 torno do ombro e o taco em torno do pulso, que fica armado no topo e só solta
-perto do impacto. Aqui a ponta da pinça faz de cabeça do taco e o movimento
-descreve-se com os mesmos dois ângulos: $\varphi(t)$, o \textbf{braço}, que
+perto do impacto. Aqui o robô não segura um taco: a própria pinça faz de
+taco, e a sua ponta é a parte que bate na bola. O movimento descreve-se com os
+mesmos dois ângulos: $\varphi(t)$, o \textbf{braço}, que
 dá a posição da ponta num arco vertical de raio $R_a = \SI{150}{\milli\meter}$
 centrado num ``ombro'' virtual por cima da bola ($\varphi = 0$ na bola); e
 $\psi(t)$, o \textbf{pulso}, uma inclinação adicional da pinça, armada no topo
@@ -577,9 +579,12 @@ final:
         gravidade com o braço esticado para o lado, onde o erro aparecia: é
         esta a causa}{Com a carga declarada, a causa mais provável é o cabo
         da pinça}.}
-  \item \textbf{Erro C24 (velocidade excedida)} no método \texttt{pontos} à
-        velocidade planeada: a concordância entre pontos pede às juntas mais
-        do que o plano, por isso o script recusa este método com $N < 2$.
+  \item \textbf{Erro C24 no método \texttt{pontos}.} À velocidade
+        planeada, a interpolação que o próprio controlador faz entre os pontos
+        enviados pedia às juntas mais velocidade do que a trajetória, e o
+        controlador interrompeu o movimento, como lhe compete. A trajetória
+        planeada respeita os limites (Tabela~\ref{tab:viab}); por isso o
+        método \texttt{pontos} só se usa a velocidade reduzida ($N \geq 2$).
 \end{itemize}
 
 A orientação final (Secção~\ref{sec:traj}) reduziu o erro de seguimento de
