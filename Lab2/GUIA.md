@@ -159,10 +159,10 @@ poder citar a fonte e para só haver um sítio a corrigir.
 | `TABLE_Z`, `TABLE_CLEARANCE` | 0 mm, 30 mm | a garra tem de ficar ≥ 30 mm acima da mesa |
 | `BASE_RADIUS` | 80 mm | cilindro à volta do eixo de J1 onde a garra não pode entrar |
 
-**Atenção:** os limites e velocidades acima foram escritos de memória e estão
-marcados `CONFIRMAR` — o PDF de parâmetros cinemáticos não os traz. Antes de
-entregar, confirmar na datasheet/manual oficial e corrigir aqui — tudo o resto
-se ajusta sozinho. (A tabela DH, essa, já está confirmada: secção 6.3.)
+Os limites e velocidades acima foram confirmados a 12/11/2026 nas
+especificações oficiais (docs.lite6.ufactory.cc, "Technical Specifications");
+o PDF de parâmetros cinemáticos não os traz. A tabela DH está confirmada na
+secção 6.3.
 
 Porquê a margem de 80 %: os limites do fabricante são máximos absolutos; uma
 trajetória que os toque exatamente pode disparar erros de proteção do
