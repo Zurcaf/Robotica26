@@ -2,9 +2,9 @@
 Configuração partilhada do Lab 2 — UFactory Lite 6.
 
 Tudo o que é "número do fabricante" está aqui, num só sítio, para o relatório
-poder citar a fonte. Os valores marcados CONFIRMAR vieram da datasheet /
-manual do Lite 6 e devem ser verificados no robô do laboratório
-(https://ufactory.cc/lite-6-collaborative-robot/).
+poder citar a fonte: especificações técnicas oficiais do Lite 6
+(https://docs.lite6.ufactory.cc/9.technical_specifications.html e
+https://www.ufactory.cc/lite-6-collaborative-robot/, consultadas a 12/11/2026).
 
 Unidades: mm e graus (as mesmas do xArm-Python-SDK com is_radian=False).
 """
@@ -15,7 +15,7 @@ import os
 # variável de ambiente LITE6_IP para não ter de editar o ficheiro.
 ROBOT_IP = os.environ.get("LITE6_IP", "192.168.1.158")   # Lite 6 do laboratório
 
-# --- Limites das juntas [graus] (CONFIRMAR) ----------------------------------
+# --- Limites das juntas [graus] (especificações oficiais) ---------------------
 JOINT_LIMITS = [
     (-360.0, 360.0),   # J1
     (-150.0, 150.0),   # J2
