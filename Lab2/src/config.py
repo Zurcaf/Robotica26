@@ -15,7 +15,9 @@ import os
 # variável de ambiente LITE6_IP para não ter de editar o ficheiro.
 ROBOT_IP = os.environ.get("LITE6_IP", "192.168.1.158")   # Lite 6 do laboratório
 
-# --- Limites das juntas [graus] (especificações oficiais) ---------------------
+# --- Limites das juntas [graus] ------------------------------------------------
+# Confirmados nas especificações oficiais do Lite 6 (UFACTORY, "Robot
+# specifications", docs.api.ufactory.cc/private_modbus_tcp/p04robot-specifications.html).
 JOINT_LIMITS = [
     (-360.0, 360.0),   # J1
     (-150.0, 150.0),   # J2
@@ -29,6 +31,7 @@ JOINT_LIMITS = [
 # técnicas): "Maximum Joint Speed 180°/s", "Maximum Speed of End-Effector 500mm/s".
 # Repetibilidade ±0.5 mm. O controlador do lab limitou o cartesiano a ~220 mm/s.
 JOINT_SPEED_MAX = 180.0     # graus/s, por junta
+JOINT_ACC_MAX = 1145.0      # graus/s², por junta (mesma página das especificações acima)
 TCP_SPEED_MAX = 500.0       # mm/s, velocidade linear do efetor final
 # Alcance: distância do eixo do ombro (J2) ao CENTRO DO PULSO (J5) nunca pode
 # passar o braço esticado: 200 + sqrt(87² + 227.6²) mm (tabela DH). Perto disso o
