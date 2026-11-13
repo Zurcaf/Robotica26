@@ -139,10 +139,10 @@ def main():
     args = ap.parse_args()
     if args.v3:
         v3()
-        v3("run_v3_lento2_125515.csv")
+        v3("run_v3_lento2_rep2.csv")
         return
     ens = [ensaio("run_servo_lento2_phi50.csv", 2), ensaio("run_servo_lento1_phi50.csv", 1)]
-    for nome, lento in (("run_servo_lento2_phi50_122804.csv", 2), ("run_servo_lento1_phi50_122842.csv", 1)):
+    for nome, lento in (("run_servo_lento2_phi50_rep2.csv", 2), ("run_servo_lento1_phi50_rep2.csv", 1)):
         ensaio(nome, lento)                                    # repetições: só estatísticas
     figura(ens, os.path.join(REPORT, "run_servo.png"))
 
