@@ -1,5 +1,10 @@
 # O que foi feito no branch `feature/swing-golfista` (6 a 9 nov 2026)
 
+> **Atualização de 13/11/2026.** Este documento é o registo de 6 a 9/11 e já não descreve o estado final.
+> Depois disto: o swing do relatório passou a ser o `GOLFISTA_PERTO` (ensaios e conclusões em
+> `data/LAB_2026-11-13.md`); o V3 foi abandonado e as opções `--v3`, `--dj2` e `--bola-demo` foram retiradas do
+> código; os pontos da secção 8 ("O que falta") ficaram fechados ou sem efeito. A entrega é a pasta `entrega/`.
+
 Para o Henrique e o Eduardo (e para mim daqui a uma semana). Resume o que
 mudou neste branch em relação ao `Henrique`, onde está cada coisa e o que
 falta. Tudo o que o Henrique fez está cá dentro: o branch já inclui os commits

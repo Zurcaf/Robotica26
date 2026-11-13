@@ -2,7 +2,8 @@
 
 Grupo 1: Afonso Cruz (102815), Eduardo Batista (99931), Henrique Póvoa (102109).
 
-O relatório é o `Relatorio_Lab2_Grupo1.pdf`. Esta pasta tem o código, o modelo
+O relatório é o `Relatorio_Lab2_Grupo1.pdf`. Vídeo da simulação e dos ensaios
+no robô: <https://youtu.be/F_t07cNw1qI>. Esta pasta tem o código, o modelo
 3D e os dados dos ensaios necessários para reproduzir todos os resultados e
 figuras do relatório.
 

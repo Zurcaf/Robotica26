@@ -10,7 +10,12 @@ um portátil de cada vez).
 - Robô: <https://ufactory.cc/lite-6-collaborative-robot/>
 - SDK: <http://github.com/xArm-Developer/xArm-Python-SDK>
 
-> Resumo do que mudou neste branch e do que falta: [O_QUE_FOI_FEITO.md](O_QUE_FOI_FEITO.md).
+> **Estado final (13/11/2026).** O swing do relatório é o `GOLFISTA_PERTO` (`--golfista --perto`): desenhado nas
+> juntas, bola a 347 mm, ensaios em `data/LAB_2026-11-13.md`. O que se entrega é a pasta [entrega/](entrega/), com README
+> próprio. Vídeo: <https://youtu.be/F_t07cNw1qI>. A primeira versão (arco cartesiano) é o que corre sem opções; o V3
+> foi abandonado e as opções `--v3` já não existem. O resto deste ficheiro é o registo de trabalho até 9/11.
+>
+> Resumo do que mudou no branch de 6-9/11: [O_QUE_FOI_FEITO.md](O_QUE_FOI_FEITO.md).
 > Relatório: [report/ROB_LAB2_Report/](report/ROB_LAB2_Report/); figuras: [report/README.md](report/README.md).
 
 ## Tarefas
@@ -57,13 +62,10 @@ python src/trajectory.py --t-down 3 --raio 180
 python src/mujoco_preview.py                  # swing no modelo 3D oficial: colisões elo a elo + FK vs URDF
 python src/mujoco_preview.py --view           # viewer interativo (swing em loop); --lento 2 --phi-end 50 etc.
 python src/mujoco_preview.py --fotos --strip  # 7 fases x 3 câmaras -> report/frames/mj_*.png e tiras report/mj_sequencia_*.png
-python src/mujoco_preview.py --golfista --fotos --strip --prefixo mjg_   # o mesmo para o GOLFISTA (mjg_*)
-python src/mujoco_preview.py --v3 --fotos --strip --prefixo mjv3_        # e para o V3 (mjv3_*)
 python src/robot_info.py                      # (com robô) lê a configuração do controlador, não mexe nada
 python src/mujoco_preview.py --folgas         # folga mínima vs t (mesa e entre elos) -> report/mj_folgas.png
 python src/plot_frames.py                     # figura dos referenciais D-H (Tarefa 1) -> report/referenciais.png
 python src/plot_run.py                        # Tarefa 3: pedido vs medido, atraso, erro por fase -> report/run_servo.png
-python src/plot_run.py --v3                   # idem para o swing V3 (juntas)
 python src/ajuste_dh.py                       # Tarefa 4: a diferença para o controlador é geométrica? (ajuste dos D-H)
 ```
 
@@ -157,10 +159,6 @@ tempos ajustados aos limites; enviado junta a junta. Testado no robô
 
 ```bash
 python src/ir_para_zero.py                     # começar no zero
-python src/swing_v3.py --plot                  # verifica + report/v3_*.png
-python src/run_robot_v3.py --go --lento 2      # aproximação por etapas + swing
-python src/run_robot_v3.py --go --lento 2 --bola-demo --dj2 -6   # ponta 16 mm mais alta: 33 mm de folga à mesa
-python src/mujoco_preview.py --v3 --view       # ver no modelo 3D (colisões elo a elo: 18.6 mm de folga)
 python src/gravar_demo.py --nome swing1        # gravar uma demonstração à mão (100 Hz)
 ```
 
