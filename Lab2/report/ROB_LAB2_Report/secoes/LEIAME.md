@@ -51,4 +51,5 @@ medir → comparar), fontes.
 | 2, com tampa | 107 mm/s | 0,56 / 1,07 mm | 10 ms |
 
 V1 a 6/11, para comparação: 0,54 / 2,5 mm a meia velocidade; 8,4 / 28 mm à
-planeada (flange a 298 mm/s).
+planeada, com o flange a apenas 170 mm/s (os 298 mm/s eram da 1.ª orientação,
+de 5/11, com 18,9 mm de erro).

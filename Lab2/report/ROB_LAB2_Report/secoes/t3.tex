@@ -7,18 +7,16 @@
 
 O script \texttt{src/run\_robot.py} usa só funções do SDK~\cite{xarm_sdk}:
 gera a trajetória e corre a verificação da Secção~\ref{sec:viab} (se alguma
-condição falhar, nada é enviado); liga ao robô, lê o desvio de ferramenta e
-converte as poses; aproxima-se da pose inicial junta a junta, a
-\SI{20}{\degree\per\second}; e executa o swing por um de dois métodos. No
-método \texttt{servo} (modo~1) envia uma pose a cada \SI{10}{\milli\second}
-com \texttt{set\_servo\_cartesian} (Listagem~\ref{lst:servo}): o controlador
-resolve a inversa em cada ponto e o perfil temporal é o nosso, incluindo a
-aceleração constante do downswing. No método \texttt{pontos} (modo~0) envia um
-ponto em cada dez com \texttt{set\_position} e o controlador interpola entre
-eles, impondo o seu próprio perfil de velocidade. O parâmetro
-\texttt{-{}-lento N} estica o tempo $N$ vezes, mantendo o caminho.
+condição falhar, nada é enviado); liga ao robô, lê o desvio de ferramenta
+configurado e converte as poses para o ponto que o controlador comanda (no
+laboratório, o flange); aproxima-se da pose inicial junta a junta, a
+\SI{20}{\degree\per\second}; e envia uma pose~\eqref{eq:pose} a cada
+\SI{10}{\milli\second} com \texttt{set\_servo\_cartesian}
+(Listagem~\ref{lst:servo}). O controlador resolve a inversa em cada ponto e o
+perfil temporal é o nosso. O parâmetro \texttt{-{}-lento N} estica o tempo $N$
+vezes, mantendo o caminho.
 
-\begin{lstlisting}[language=Python, caption={Ciclo do método \texttt{servo}
+\begin{lstlisting}[language=Python, caption={Ciclo de envio
 (simplificado de \texttt{src/run\_robot.py}).},
 label={lst:servo}, captionpos=b]
 arm.set_mode(1); arm.set_state(0)            # modo servo
@@ -35,84 +33,96 @@ arm.set_mode(0); arm.set_state(0)
 
 \subsection{Resultados}
 
-Os ensaios da versão final fizeram-se a 6/11/2026 (\emph{firmware} 2.7.1). O
-erro é a distância entre o flange medido e o pedido no mesmo instante; o
-atraso é o deslocamento temporal que minimiza esse erro
-(Tabela~\ref{tab:exec}, Figura~\ref{fig:exec}). O método \texttt{pontos}
-também executou o swing completo, com \texttt{-{}-lento 3}, mas não regista a
-pose medida.
+Os ensaios fizeram-se a 13/11/2026 (\emph{firmware} 2.7.1), a três
+velocidades: metade da planeada, a planeada e \SI{43}{\percent} acima dela. O
+erro é a distância entre o flange medido (\texttt{get\_position}) e o pedido
+no mesmo instante; o atraso é o deslocamento temporal que minimiza esse erro
+(Tabela~\ref{tab:exec}, Figura~\ref{fig:exec}). Os vídeos estão no fim do
+relatório.
 
 \begin{table}[H]
 \centering
-\caption{Seguimento em modo \texttt{servo} (flange); cada ensaio foi feito
-duas vezes e os dois dão o mesmo erro.}
+\caption{Seguimento da trajetória (posição do flange). Todos os ensaios
+correram até ao fim, sem erros do controlador.}
 \label{tab:exec}
 \small
 \begin{tabular}{lcccccc}
 \toprule
 \rowcolor{tabcab}
-Ensaio & Duração & Pontos & Erro médio & Erro máx. & Atraso & Erro sem o atraso \\
+Ensaio & Duração & Flange (máx.) & Erro médio & Erro máx. & Atraso & Erro sem o atraso \\
 \midrule
-\texttt{-{}-lento 2}, 1.º & \SI{10.8}{\second} & 1085/1085 & \SI{0.54}{\milli\meter} & \SI{2.5}{\milli\meter} & \SI{10}{\milli\second} & \SI{0.17}{\milli\meter} \\
-\texttt{-{}-lento 2}, 2.º & \SI{10.9}{\second} & 1085/1085 & \SI{0.57}{\milli\meter} & \SI{3.2}{\milli\meter} & \SI{10}{\milli\second} & \SI{0.27}{\milli\meter} \\
-\texttt{-{}-lento 1}, 1.º & \SI{5.4}{\second}  & 543/543   & \SI{8.4}{\milli\meter}  & \SI{28.0}{\milli\meter} & \SI{58}{\milli\second} & \SI{7.2}{\milli\meter} \\
-\texttt{-{}-lento 1}, 2.º & \SI{5.4}{\second}  & 543/543   & \SI{8.4}{\milli\meter}  & \SI{28.2}{\milli\meter} & \SI{55}{\milli\second} & \SI{7.2}{\milli\meter} \\
+\texttt{-{}-lento 2}, 1.º  & \SI{21.4}{\second} & \SI{108}{\milli\meter\per\second} & \SI{0.56}{\milli\meter} & \SI{1.08}{\milli\meter} & \SI{10}{\milli\second} & \SI{0.01}{\milli\meter} \\
+\texttt{-{}-lento 2}, 2.º  & \SI{21.4}{\second} & \SI{108}{\milli\meter\per\second} & \SI{0.56}{\milli\meter} & \SI{1.08}{\milli\meter} & \SI{10}{\milli\second} & \SI{0.01}{\milli\meter} \\
+\texttt{-{}-lento 1}, 1.º  & \SI{10.7}{\second} & \SI{215}{\milli\meter\per\second} & \SI{1.12}{\milli\meter} & \SI{2.16}{\milli\meter} & \SI{10}{\milli\second} & \SI{0.02}{\milli\meter} \\
+\texttt{-{}-lento 1}, 2.º  & \SI{10.7}{\second} & \SI{215}{\milli\meter\per\second} & \SI{1.10}{\milli\meter} & \SI{2.16}{\milli\meter} & \SI{10}{\milli\second} & \SI{0.04}{\milli\meter} \\
+\texttt{-{}-lento 0.7}     & \SI{7.5}{\second}  & \SI{306}{\milli\meter\per\second} & \SI{1.59}{\milli\meter} & \SI{3.09}{\milli\meter} & \SI{10}{\milli\second} & \SI{0.03}{\milli\meter} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{figure}[H]
 \centering
-\fig{Photos/run_servo.png}{0.92\textwidth}
-\caption{Posição do flange pedida (tracejado) e medida, e erro de posição, a
-metade da velocidade (esquerda) e à velocidade planeada (direita). As linhas
-verticais separam as três fases.}
+\fig{Photos/run_servo_golfista_perto.png}{\textwidth}
+\caption{Posição do flange pedida (tracejado) e medida, e erro de posição, às
+três velocidades. As linhas verticais separam as três fases.}
 \label{fig:exec}
 \end{figure}
 
 \begin{itemize}[itemsep=3pt]
-  \item \textbf{A metade da velocidade o robô segue a trajetória.} O erro
-        médio é de \SI{0.5}{\milli\meter}, da ordem da repetibilidade do robô
-        ($\pm\SI{0.5}{\milli\meter}$~\cite{ufactory_lite6}), e quase todo é
-        um atraso de um ciclo (\SI{10}{\milli\second}).
-  \item \textbf{À velocidade planeada o robô atrasa-se onde a velocidade
-        varia depressa}: no backswing (média \SI{11}{\milli\meter}) e no
-        follow-through (\SI{16}{\milli\meter}); no downswing, de aceleração
-        constante, o erro é de \SI{1.4}{\milli\meter}. Não é um atraso puro
-        (descontar \SI{58}{\milli\second} só baixa o erro para
-        \SI{7.2}{\milli\meter}), nem saturação de velocidade (a máxima
-        medida, \SI{173}{\milli\meter\per\second}, iguala a pedida), nem o
-        limite de aceleração das juntas (a trajetória pede no máximo
-        \SI{227}{\degree\per\second\squared}, um quinto do do fabricante).
-        É compatível com um limite de aceleração cartesiana ou com
-        uma filtragem do controlador em modo servo, que sem acesso à sua
-        configuração não foi possível distinguir.
-        
+  \item \textbf{O robô segue a trajetória às três velocidades}, incluindo
+        acima da planeada, e o resultado repete-se entre ensaios.
+  \item \textbf{O erro é um ciclo de atraso e nada mais.} O atraso é sempre
+        de \SI{10}{\milli\second}, o período de envio. Um atraso $\tau$ a uma
+        velocidade $v$ dá um erro $v\tau$: prevê-se um máximo de 1,1, 2,2 e
+        \SI{3.1}{\milli\meter} às três velocidades, e mediu-se 1,08, 2,16 e
+        \SI{3.09}{\milli\meter}. Descontado o atraso, o erro médio fica abaixo
+        de \SI{0.05}{\milli\meter}, muito abaixo da repetibilidade do robô
+        ($\pm\SI{0.5}{\milli\meter}$~\cite{ufactory_lite6}).
+  \item \textbf{A velocidade medida é a pedida}: 111, 215 e
+        \SI{306}{\milli\meter\per\second}.
 \end{itemize}
 
-\subsection{Ocorrências e correções}
+\paragraph{Uma bola a sério.} Para ver o impacto, pôs-se uma tampa de caneta
+em cima de um apagador e levou-se a pinça à mão até ela. As juntas lidas
+nessa pose passaram a ser o endereço (opção \texttt{-{}-enderecio}); o resto
+do swing vem de~\eqref{eq:juntas}. Para essas juntas a nossa cinemática
+direta dá o flange em $(-15{,}9;\,-339{,}0;\,133{,}1)$~mm e o controlador
+indicava $(-16{,}8;\,-340{,}1;\,133{,}0)$~mm, uma diferença de
+\SI{1.4}{\milli\meter}. No modelo 3D a folga à mesa é de
+\SI{51}{\milli\meter}. O robô acertou na tampa, e o ensaio com tampa é
+igual ao ensaio sem ela (erro médio \SI{0.56}{\milli\meter}, máximo
+\SI{1.07}{\milli\meter} em ambos): o impacto não perturbou o movimento.
 
-Na primeira sessão (5/11) o follow-through ia até $\varphi_{end} = \ang{70}$
-e a pinça ainda girava sobre si própria. Duas ocorrências levaram à versão
-final:
+\subsection{A primeira versão e o que se aprendeu com ela}
+\label{sec:v1}
+
+Nas sessões de 5 e 6/11 executou-se uma primeira trajetória, desenhada no
+espaço cartesiano: a ponta da pinça percorria um arco vertical de
+\SI{150}{\milli\meter} por cima da bola e a orientação rodava com o arco. Três
+resultados dessa versão orientaram a final:
 
 \begin{itemize}[itemsep=3pt]
-  \item \textbf{Erro C31 (deteção de colisão).} Com $\varphi_{end}=\ang{70}$
-        o robô parou sempre no mesmo ponto, quase parado e com o braço
-        esticado para o lado (junta~5 a \ang{110}). Não sendo um efeito
-        dinâmico, as hipóteses são o cabo da pinça a esticar ou a massa da
-        pinça não estar configurada no controlador. Encurtar o follow-through
-        para \ang{50} eliminou o erro.
-        
-  \item \textbf{Erro C24 no método \texttt{pontos}.} À velocidade
-        planeada, a interpolação que o próprio controlador faz entre os pontos
-        enviados pedia às juntas mais velocidade do que a trajetória, e o
-        controlador interrompeu o movimento, como lhe compete. A trajetória
-        planeada respeita os limites (Tabela~\ref{tab:viab}); por isso o
-        método \texttt{pontos} só se usa a velocidade reduzida ($N \geq 2$).
+  \item \textbf{À velocidade planeada o robô não seguia o perfil}: erro médio
+        de \SI{8.4}{\milli\meter} (máximo \SI{28}{\milli\meter}), com o flange
+        a apenas \SI{170}{\milli\meter\per\second}; a metade da velocidade
+        seguia com \SI{0.54}{\milli\meter}. A hipótese de um limite de
+        velocidade do controlador ficou refutada: a configuração lida do
+        controlador (\texttt{src/robot\_info.py}) tem os limites do
+        fabricante (\SI{500}{\milli\meter\per\second},
+        \SI{180}{\degree\per\second}), e a trajetória final foi seguida a
+        \SI{306}{\milli\meter\per\second}. A diferença está na forma do
+        movimento: no arco cartesiano o antebraço rodava \ang{121}, a
+        \SI{95}{\degree\per\second} e \SI{227}{\degree\per\second\squared};
+        na versão final nenhuma junta passa de
+        \SI{36}{\degree\per\second} e \SI{68}{\degree\per\second\squared}.
+  \item \textbf{Erro C31 (deteção de colisão)} com o follow-through até
+        \ang{70}: o robô parava sempre no mesmo ponto, quase parado e com o
+        braço esticado para o lado. A hipótese de a massa da pinça não estar
+        configurada também ficou refutada (o controlador tem
+        \SI{0.3}{\kilo\gram} declarados); a causa mais provável é o cabo da
+        pinça. Encurtar o follow-through para \ang{50} eliminou o erro, que
+        não voltou a aparecer.
+  \item \textbf{Singularidade do pulso.} Com a pinça a pique e as juntas 4 e
+        6 livres, a inversa pedia $\sim$\SI{1900}{\degree\per\second} a essas
+        juntas perto de $q_5 = 0$.
 \end{itemize}
-
-A orientação final (Secção~\ref{sec:traj}) reduziu o erro de seguimento de
-2,0 para \SI{0.5}{\milli\meter} a metade da velocidade e de 18,9 para
-\SI{8.4}{\milli\meter} à velocidade planeada. A verificação de viabilidade
-passou também a incluir a velocidade do flange, que é o ponto comandado.
