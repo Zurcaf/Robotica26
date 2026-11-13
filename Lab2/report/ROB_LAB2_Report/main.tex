@@ -86,19 +86,22 @@
 Transpõe-se o swing do Laboratório~1 para um braço real, o UFactory Lite~6
 (6~juntas rotacionais). A cinemática direta é obtida pelo método de
 Denavit--Hartenberg modificado e validada contra uma segunda tabela do
-fabricante e contra o próprio controlador. O robô não segura um taco: a
-própria pinça faz de taco e a sua ponta, que bate numa bola fixa, percorre um
-arco de \SI{150}{\milli\meter} com as três fases e as leis de movimento do
-Lab~1.
+fabricante, contra o modelo 3D do robô e contra o próprio controlador. O
+swing é desenhado nas juntas, como no Lab~1: a base faz de tronco, a junta~2
+de ombro e a junta~5 de pulso, e a pinça faz de taco, com a ponta a passar
+numa bola fixa à velocidade máxima.
 
 A trajetória usa no máximo \SI{44}{\percent} da velocidade cartesiana e
-\SI{53}{\percent} da velocidade das juntas admitidas pelo fabricante, e o
-modelo 3D do robô mostra folgas de pelo menos \SI{25}{\milli\meter} entre
-elos e \SI{75}{\milli\meter} à mesa. No robô, a metade da velocidade, o
-flange segue a referência com \SI{0.5}{\milli\meter} de erro médio. A
-cinemática inversa do controlador é exata face ao seu modelo interno; composta
-com a nossa cinemática direta dá \SI{1.4}{\milli\meter}, diferença que vem dos
-parâmetros geométricos e não da inversa.
+\SI{20}{\percent} da velocidade das juntas admitidas pelo fabricante. Antes
+de ir ao robô foi simulada no MuJoCo, com folgas de pelo menos
+\SI{25}{\milli\meter} entre elos e \SI{82}{\milli\meter} à mesa. No robô foi
+seguida a três velocidades, até \SI{306}{\milli\meter\per\second}, com um
+erro que é só um ciclo de atraso (\SI{10}{\milli\second};
+\SI{1.1}{\milli\meter} em média à velocidade planeada), e acertou num objeto
+colocado na posição da bola. A cinemática inversa do controlador é exata face
+ao seu modelo interno; composta com a nossa cinemática direta dá
+\SI{1.2}{\milli\meter}, diferença que vem da calibração do robô e não da
+inversa.
 \end{caixaresumo}
 \end{abstract}
 
