@@ -2,7 +2,7 @@
 //
 // A peça SUBSTITUI UM DEDO da pinça: prende-se à corrediça com os 2 parafusos
 // M2,5 desse dedo, e o kit aparafusa-se à parede vertical pelos furos do
-// Arduino Uno (M3, os dos espaçadores).
+// Arduino Uno, com os MESMOS parafusos M3 que já lá estão (os dos espaçadores).
 //
 // Medidas da pinça: ficheiro STEP do fabricante (../gripper_lite/MEDIDAS.md).
 // Eixos (os da pinça): X = largura do dedo, Y = direção em que os dedos abrem
@@ -34,7 +34,9 @@ placa_topo     = 10;     // Z onde começa a placa do Arduino (aresta de cima)
 folga_corpo    = 0.6;    // folga entre a parede e a face do corpo da pinça
 m3_passagem    = 3.4;
 m3_cabeca      = 6.6;    // caixa para a cabeça do M3, do lado de dentro
-m3_caixa       = 2.0;
+m3_sob_cabeca  = 1.6;    // plástico entre a cabeça do parafuso e o acrílico: é o que os
+                         // parafusos que já estão no kit perdem de rosca no espaçador
+m3_caixa       = parede_esp - m3_sob_cabeca;
 
 /* [Reforços e cabo] */
 nervura_esp    = 3;
