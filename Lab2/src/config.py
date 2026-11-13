@@ -2,9 +2,9 @@
 Configuração partilhada do Lab 2 — UFactory Lite 6.
 
 Tudo o que é "número do fabricante" está aqui, num só sítio, para o relatório
-poder citar a fonte. Os valores marcados CONFIRMAR vieram da datasheet /
-manual do Lite 6 e devem ser verificados no robô do laboratório
-(https://ufactory.cc/lite-6-collaborative-robot/).
+poder citar a fonte: especificações técnicas oficiais do Lite 6
+(https://docs.lite6.ufactory.cc/9.technical_specifications.html e
+https://www.ufactory.cc/lite-6-collaborative-robot/, consultadas a 12/11/2026).
 
 Unidades: mm e graus (as mesmas do xArm-Python-SDK com is_radian=False).
 """

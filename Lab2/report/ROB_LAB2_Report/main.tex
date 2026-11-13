@@ -458,8 +458,10 @@ endereço e no impacto. Entre elos, a menor distância é de
 \SI{25}{\milli\meter} (corpo da pinça e elo~4) e é praticamente a distância
 construtiva entre os dois; o par seguinte (elos 2 e 4) nunca fica a menos de
 \SI{34}{\milli\meter}. O modelo 3D e a nossa cinemática coincidem a menos de
-\SI{2}{\milli\meter}. A bola é o único objeto na zona de trabalho e o contacto
-com ela é o pretendido.
+\SI{2}{\milli\meter}. A bola é um ponto fixo no espaço de trabalho, como o
+enunciado permite; não há nenhum objeto na mesa, que está livre à volta do
+robô. A ponta da pinça passa nesse ponto a \SI{214}{\milli\meter\per\second},
+a \SI{80}{\milli\meter} do tampo.
 
 
 % =============================================================================
@@ -704,7 +706,7 @@ Uma primeira execução, a 6/11, seguiu a referência com \ang{0.05} de erro
 médio nas juntas e \SI{1.0}{\milli\meter} na ponta, mas os dedos da pinça
 passavam a \SI{17}{\milli\meter} da mesa, abaixo dos \SI{30}{\milli\meter}
 exigidos ao primeiro swing. Por isso o ombro chega ao impacto \ang{6} mais
-acima: a ponta passa a \SI{61}{\milli\meter} da mesa, com a bola a essa
+acima: a ponta passa a \SI{61}{\milli\meter} da mesa, com o ponto da bola a essa
 altura, e a folga mínima no modelo 3D sobe para \SI{33}{\milli\meter} à mesa
 (\SI{21}{\milli\meter} entre elos). No robô, a metade da velocidade
 (\SI{20.4}{\second}, \XX{} ensaios), o erro médio das juntas foi de

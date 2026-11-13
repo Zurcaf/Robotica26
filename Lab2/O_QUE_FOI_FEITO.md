@@ -146,7 +146,8 @@ No laboratório:
 
 Fora do laboratório:
 
-4. Confirmar no manual os limites das juntas (`config.py` ainda diz CONFIRMAR).
-5. Escrever no relatório o que fez de bola e rever as contribuições (a do
-   Eduardo está em branco).
-6. Rever o texto do relatório e apagar os `\todo`.
+4. Rever as contribuições no relatório (a do Eduardo está em branco).
+5. Rever o texto do relatório e apagar os `\todo`.
+
+Feito a 12/11: limites das juntas confirmados nas especificações oficiais; a
+bola é um ponto fixo no espaço (não houve objeto na mesa), e o relatório diz-o.

@@ -169,7 +169,7 @@ python src/gravar_demo.py --nome swing1        # gravar uma demonstração à m�
 ```
 lab2.ipynb  notebook com tudo (teoria + código + resultados); GUIA.md explica em texto
 EXPLICACAO.md  versão final passo a passo: todas as contas e a linha de código de cada uma
-src/      config.py       IP, limites do fabricante, mesa/base (CONFIRMAR limites)
+src/      config.py       IP, limites do fabricante (especificações oficiais), mesa/base
           kinematics.py   Tarefa 1: DH do PDF oficial, fk(), validação, rpy, IK numérica
           trajectory.py   Tarefa 2: swing (arco cartesiano V1; GOLFISTA nas juntas com --golfista), viabilidade, gráficos
           swing_v3.py / run_robot_v3.py   swing V3 (poses da demonstração à mão, junta a junta)
@@ -208,8 +208,8 @@ scripts_curso/  scripts de exemplo da página da cadeira
 
 ## A confirmar no laboratório
 
-- Limites e velocidades em `config.py` (datasheet/manual do Lite 6). A tabela
-  DH já está confirmada com o PDF oficial
+- Limites e velocidades em `config.py`: confirmados nas especificações oficiais
+  (12/11/2026). A tabela DH está confirmada com o PDF oficial
   (`ufactory-lite-6-Kinematic-and-Dynamic-Parameters.pdf`).
 - IP do robô e se a pinça montada é a Gripper Lite (o `tcp_offset` do
   controlador é lido automaticamente).
