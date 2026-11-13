@@ -236,6 +236,8 @@ def main():
     ap.add_argument("--k-phi", type=float, default=DEFAULTS["k_phi"], help="0..1, quanto do arco roda a pinça")
     ap.add_argument("--golfista", action="store_true", help="modo juntas com o preset trajectory.GOLFISTA")
     ap.add_argument("--perto", action="store_true", help="com --golfista: GOLFISTA_PERTO (cotovelo dobrado, bola a 347 mm)")
+    ap.add_argument("--enderecio", type=float, nargs=6, metavar="J", default=None,
+                    help="com --golfista: pose de endereço [graus] lida do Studio com a ponta na bola (J4 e J6 passam a 0)")
     ap.add_argument("--v3", action="store_true", help="swing V3 de swing_v3.py (bola marcada no lab)")
     ap.add_argument("--bola-demo", action="store_true", help="com --v3: bola da demonstração em vez da do lab")
     ap.add_argument("--dj2", type=float, default=None, help="com --v3: graus a somar a J2 no impacto (ver swing_v3.py)")
@@ -254,6 +256,9 @@ def main():
              t_back=DEFAULTS["t_back"] * args.lento, t_down=args.t_down * args.lento)
     if args.golfista:
         g = GOLFISTA_PERTO if args.perto else GOLFISTA
+        if args.enderecio is not None:
+            q0 = [args.enderecio[0], args.enderecio[1], args.enderecio[2], 0.0, args.enderecio[4], 0.0]
+            g = dict(g, juntas=dict(g["juntas"], q_enderecio=tuple(q0)))
         p = {**p, **g, "t_back": g["t_back"] * args.lento, "t_down": g["t_down"] * args.lento}
     if args.v3:
         # swing_v3 é desenhado nas juntas: os ângulos vêm de lá, não há IK; só o

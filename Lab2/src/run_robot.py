@@ -98,6 +98,8 @@ def main():
     ap.add_argument("--k-phi", type=float, default=DEFAULTS["k_phi"], help="0..1, quanto do arco roda a pinça")
     ap.add_argument("--golfista", action="store_true", help="modo juntas com o preset trajectory.GOLFISTA")
     ap.add_argument("--perto", action="store_true", help="com --golfista: GOLFISTA_PERTO (cotovelo dobrado, bola a 347 mm)")
+    ap.add_argument("--enderecio", type=float, nargs=6, metavar="J", default=None,
+                    help="com --golfista: pose de endereço [graus] lida do Studio com a ponta na bola (J4 e J6 passam a 0)")
     ap.add_argument("--ip", default=None)
     args = ap.parse_args()
 
@@ -109,6 +111,9 @@ def main():
     p = dict(p, garra=args.garra, phi_end=args.phi_end, k_phi=args.k_phi)
     if args.golfista:
         g = GOLFISTA_PERTO if args.perto else GOLFISTA
+        if args.enderecio is not None:
+            q0 = [args.enderecio[0], args.enderecio[1], args.enderecio[2], 0.0, args.enderecio[4], 0.0]
+            g = dict(g, juntas=dict(g["juntas"], q_enderecio=tuple(q0)))
         p = {**p, **g, "t_back": g["t_back"] * args.lento, "t_down": g["t_down"] * args.lento}
     traj = swing_trajectory(p)
     qs, conv = joint_trajectory(traj)
@@ -145,6 +150,8 @@ def main():
             run_pontos(arm, traj, cmds, every=10)
         else:
             tag = ("golfista_perto" if args.perto else "golfista") if args.golfista else f"phi{args.phi_end:g}"
+            if args.enderecio is not None:
+                tag += "_tampa"
             if args.k_phi != 1.0:
                 tag += f"_kphi{args.k_phi:g}"
             nome = f"run_servo_lento{args.lento:g}_{tag}"
