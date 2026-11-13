@@ -3,7 +3,7 @@ Tarefa 3 — Referência vs pose medida nos ensaios em servo (dados do laborató
 
 Uso (a partir de Lab2/):
     python src/plot_run.py            # estatísticas + report/run_servo.png
-    python src/plot_run.py --golfista-perto   # ensaios de 13/11 (relatório) -> report/run_servo_golfista_perto.png
+    python src/plot_run.py --golfista-perto   # ensaios do relatório -> report/run_servo_golfista_perto.png
 
 Lê data/run_servo_lento<N>_phi50.csv (colunas: t, pose pedida ao controlador,
 pose medida com get_position(); com tcp_offset = 0 ambas são do FLANGE) e, para
@@ -136,7 +136,7 @@ def v3(nome="run_v3_lento2.csv"):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--v3", action="store_true")
-    ap.add_argument("--golfista-perto", action="store_true", help="ensaios do GOLFISTA_PERTO (13/11) -> report/run_servo_golfista_perto.png")
+    ap.add_argument("--golfista-perto", action="store_true", help="ensaios do GOLFISTA_PERTO -> report/run_servo_golfista_perto.png")
     args = ap.parse_args()
     if args.v3:
         v3()

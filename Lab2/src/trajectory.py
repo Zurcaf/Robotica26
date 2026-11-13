@@ -134,7 +134,7 @@ GOLFISTA = dict(
 # 347 mm: postura mais "ergonómica", menos alcance (343 de 421) e menos
 # velocidade (218 mm/s). O pulso arma no sentido contrário (a_pulso = +1):
 # com a_pulso = -1 o J5 partia de 29.5 e passava por 0 (singularidade do
-# pulso) no topo do backswing; assim fica entre 30 e 60 deg. (lab 13/11)
+# pulso) no topo do backswing; assim fica entre 30 e 60 deg.
 GOLFISTA_PERTO = dict(
     GOLFISTA,
     juntas=dict(GOLFISTA["juntas"], q_enderecio=(0.0, 48.8, 80.0, 0.0, 29.5, 0.0), a_pulso=1.0),

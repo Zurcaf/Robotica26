@@ -13,7 +13,7 @@ Relatorio_Lab2_Grupo1.pdf   relatório
 README.md                   este ficheiro
 requirements.txt            dependências Python
 src/                        código (um script por tarefa + módulos partilhados)
-data/                       dados medidos no robô (5, 6 e 13/11/2026)
+data/                       dados medidos no robô
 models/lite6/               modelo 3D oficial do Lite 6 com pinça (MuJoCo)
 report/                     onde os scripts gravam as figuras
 ```
@@ -40,9 +40,9 @@ report/                     onde os scripts gravam as figuras
 | Ficheiro | Usado em |
 |---|---|
 | `robot_info.txt` | configuração lida do controlador (Tarefas 3 e 4) |
-| `run_servo_lento{2,1,0.7}_golfista_perto*.csv` | Tarefa 3: ensaios de 13/11 (Tabela 5, Figura 7) |
-| `ik_compare_golfista_perto.csv` | Tarefa 4: 100 pontos de 13/11 (Tabela 6, Figura 8) |
-| `run_servo_lento{2,1}_phi50*.csv`, `ik_compare.csv` | primeira versão da trajetória (5–6/11) |
+| `run_servo_lento{2,1,0.7}_golfista_perto*.csv` | Tarefa 3: ensaios da trajetória final (Tabela 5, Figura 7) |
+| `ik_compare_golfista_perto.csv` | Tarefa 4: 100 pontos da trajetória final (Tabela 6, Figura 8) |
+| `run_servo_lento{2,1}_phi50*.csv`, `ik_compare.csv` | primeira versão da trajetória |
 | `run_v3_lento2.csv` | dados de validação do ajuste dos parâmetros D-H (`ajuste_dh.py`) |
 
 Colunas dos `run_servo_*`: `t`, pose pedida ao controlador e pose medida com

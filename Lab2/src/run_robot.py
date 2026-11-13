@@ -1,7 +1,7 @@
 """
 Tarefa 3 — O Lite 6 segue a trajetória de swing da Tarefa 2.
 
-Comando usado no relatório (trajetória final, 13/11):
+Comando usado no relatório (trajetória final):
     python src/run_robot.py --go --metodo servo --lento 2 --golfista --perto   # metade da velocidade
     python src/run_robot.py --go --metodo servo --lento 1 --golfista --perto   # velocidade planeada
 
