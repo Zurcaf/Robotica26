@@ -19,7 +19,7 @@ import numpy as np
 
 import config as C
 from kinematics import fk, tool_transform
-from trajectory import DEFAULTS
+from trajectory import DEFAULTS, GOLFISTA_PERTO
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "..", "data")
@@ -45,12 +45,12 @@ def fases(t, lento, t_back=DEFAULTS["t_back"], t_down=DEFAULTS["t_down"]):
     return {"backswing": t <= tb, "downswing": (t > tb) & (t <= tb + td), "follow-through": t > tb + td}, (tb, tb + td)
 
 
-def ensaio(nome, lento):
+def ensaio(nome, lento, preset=DEFAULTS):
     d = np.loadtxt(os.path.join(DATA, nome), delimiter=",")
     t, ref, med = d[:, 0], d[:, 1:4], d[:, 7:10]
     e = np.linalg.norm(med - ref, axis=1)
     tau, e_tau = atraso(t, ref, med)
-    f, cortes = fases(t, lento)
+    f, cortes = fases(t, lento, preset["t_back"], preset["t_down"])
     w = 5                                                    # janela de 0.1 s: os instantes gravados têm jitter
     vel = lambda p: np.linalg.norm(p[2 * w:] - p[:-2 * w], axis=1) / (t[2 * w:] - t[:-2 * w])
     v_ref, v_med = vel(ref), vel(med)
@@ -136,10 +136,19 @@ def v3(nome="run_v3_lento2.csv"):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--v3", action="store_true")
+    ap.add_argument("--golfista-perto", action="store_true", help="ensaios do GOLFISTA_PERTO (13/11) -> report/run_servo_golfista_perto.png")
     args = ap.parse_args()
     if args.v3:
         v3()
         v3("run_v3_lento2_rep2.csv")
+        return
+    if args.golfista_perto:
+        G = GOLFISTA_PERTO
+        ens = [ensaio(f"run_servo_lento{l:g}_golfista_perto.csv", l, G) for l in (2, 1, 0.7)]
+        for nome, l in (("run_servo_lento2_golfista_perto_rep2.csv", 2), ("run_servo_lento1_golfista_perto_rep2.csv", 1),
+                        ("run_servo_lento2_golfista_perto_sem_tampa.csv", 2), ("run_servo_lento2_golfista_perto_tampa.csv", 2)):
+            ensaio(nome, l, G)
+        figura(ens, os.path.join(REPORT, "run_servo_golfista_perto.png"))
         return
     ens = [ensaio("run_servo_lento2_phi50.csv", 2), ensaio("run_servo_lento1_phi50.csv", 1)]
     for nome, lento in (("run_servo_lento2_phi50_rep2.csv", 2), ("run_servo_lento1_phi50_rep2.csv", 1)):
