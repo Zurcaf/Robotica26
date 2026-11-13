@@ -119,6 +119,23 @@ os valores de `b` da tarefa 2, antes de medir.
 3. O mesmo com e sem calibração, e com e sem pôr a velocidade a zero quando o
    sensor pára.
 
+## Extra: filtro de Kalman, como comparação
+
+O enunciado pede a fusão com CI ("for example"); o Kalman foi referido pelo
+professor na aula e fica como extra, a confirmar com ele.
+
+- Tarefas 3 e 4 são as duas metades de um Kalman: o giroscópio faz a previsão
+  (rápida, deriva) e o acelerómetro a correção (lenta, não deriva); as
+  variâncias da tarefa 2 dão os pesos.
+- A CI não assume que os erros das duas fontes são independentes; o Kalman
+  assume, e fica confiante de mais quando o erro do acelerómetro dura várias
+  amostras (desvio mal calibrado, mão a acelerar).
+- A mostrar, nos mesmos dados e contra a referência do robô: só giroscópio, só
+  acelerómetro, CI com o melhor ω, e Kalman com o desvio do giroscópio no
+  estado. Uma figura e uma tabela, meia página.
+- No ensaio G: a posição com um Kalman que recebe "velocidade zero" quando o
+  sensor pára, ou a pose do robô de vez em quando.
+
 ## Extra: controlar o robô com a mão
 
 Demonstração da tarefa 5 em tempo real. Kit preso às costas da mão com
