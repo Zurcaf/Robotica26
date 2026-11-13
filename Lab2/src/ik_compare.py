@@ -25,7 +25,7 @@ import numpy as np
 
 from kinematics import R_from_rpy, fk_pose, orientation_error_deg
 from robot import check, connect, controller_tcp
-from trajectory import command_poses, swing_trajectory
+from trajectory import GOLFISTA, GOLFISTA_PERTO, command_poses, swing_trajectory
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CSV = os.path.join(HERE, "..", "data", "ik_compare.csv")
@@ -35,8 +35,8 @@ HEADER = ("t,x,y,z,roll,pitch,yaw,q1,q2,q3,q4,q5,q6,"
           "tcp_x,tcp_y,tcp_z,tcp_roll,tcp_pitch,tcp_yaw")
 
 
-def collect(n, ip):
-    traj = swing_trajectory()
+def collect(n, ip, preset=None, csv=CSV):
+    traj = swing_trajectory(preset)
     idx = np.linspace(0, len(traj["t"]) - 1, n).astype(int)
     arm = connect(ip, enable_motion=False)
     rows = []
@@ -54,13 +54,13 @@ def collect(n, ip):
             rows.append([traj["t"][k], *ref, *q[:6], *fk_pose(q[:6], T_ctrl), *sdk[:6], *tcp])
     finally:
         arm.disconnect()
-    os.makedirs(os.path.dirname(CSV), exist_ok=True)
-    np.savetxt(CSV, np.array(rows), delimiter=",", fmt="%.6f", header=HEADER)
-    print(f"  {len(rows)} pontos gravados em {os.path.normpath(CSV)}")
+    os.makedirs(os.path.dirname(csv), exist_ok=True)
+    np.savetxt(csv, np.array(rows), delimiter=",", fmt="%.6f", header=HEADER)
+    print(f"  {len(rows)} pontos gravados em {os.path.normpath(csv)}")
     return np.array(rows)
 
 
-def analyse(rows):
+def analyse(rows, sufixo=""):
     import matplotlib.pyplot as plt
 
     t, ref, q, pfk, psdk = rows[:, 0], rows[:, 1:7], rows[:, 7:13], rows[:, 13:19], rows[:, 19:25]
@@ -99,7 +99,7 @@ def analyse(rows):
         a.grid(alpha=0.25, lw=0.5)
         a.spines[["top", "right"]].set_visible(False)
     fig.tight_layout()
-    out = os.path.join(REPORT, "ik_erros.png")
+    out = os.path.join(REPORT, f"ik_erros{sufixo}.png")
     fig.savefig(out, dpi=170)
     print(f"  gráfico em {os.path.normpath(out)}")
 
@@ -108,10 +108,15 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--n", type=int, default=60, help="número de pontos da trajetória")
     ap.add_argument("--from-csv", action="store_true")
+    ap.add_argument("--golfista", action="store_true", help="trajetória GOLFISTA em vez da V1")
+    ap.add_argument("--perto", action="store_true", help="com --golfista: GOLFISTA_PERTO")
     ap.add_argument("--ip", default=None)
     args = ap.parse_args()
-    rows = np.loadtxt(CSV, delimiter=",") if args.from_csv else collect(args.n, args.ip)
-    analyse(rows)
+    preset = (GOLFISTA_PERTO if args.perto else GOLFISTA) if args.golfista else None
+    sufixo = ("_golfista_perto" if args.perto else "_golfista") if args.golfista else ""
+    csv = CSV.replace(".csv", f"{sufixo}.csv")
+    rows = np.loadtxt(csv, delimiter=",") if args.from_csv else collect(args.n, args.ip, preset, csv)
+    analyse(rows, sufixo)
 
 
 if __name__ == "__main__":

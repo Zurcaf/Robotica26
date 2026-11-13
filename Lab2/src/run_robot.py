@@ -36,7 +36,7 @@ import time
 import numpy as np
 
 from robot import check, connect, controller_tcp
-from trajectory import DEFAULTS, GOLFISTA, check_feasibility, command_poses, joint_trajectory, swing_trajectory
+from trajectory import DEFAULTS, GOLFISTA, GOLFISTA_PERTO, check_feasibility, command_poses, joint_trajectory, swing_trajectory
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "..", "data")
@@ -97,6 +97,7 @@ def main():
                     help="graus, fim do follow-through (no lab o C31 aparecia em phi ~69)")
     ap.add_argument("--k-phi", type=float, default=DEFAULTS["k_phi"], help="0..1, quanto do arco roda a pinça")
     ap.add_argument("--golfista", action="store_true", help="modo juntas com o preset trajectory.GOLFISTA")
+    ap.add_argument("--perto", action="store_true", help="com --golfista: GOLFISTA_PERTO (cotovelo dobrado, bola a 347 mm)")
     ap.add_argument("--ip", default=None)
     args = ap.parse_args()
 
@@ -107,7 +108,8 @@ def main():
     p = {k: DEFAULTS[k] * args.lento for k in ("t_back", "t_down")}
     p = dict(p, garra=args.garra, phi_end=args.phi_end, k_phi=args.k_phi)
     if args.golfista:
-        p = {**p, **GOLFISTA, "t_back": GOLFISTA["t_back"] * args.lento, "t_down": GOLFISTA["t_down"] * args.lento}
+        g = GOLFISTA_PERTO if args.perto else GOLFISTA
+        p = {**p, **g, "t_back": g["t_back"] * args.lento, "t_down": g["t_down"] * args.lento}
     traj = swing_trajectory(p)
     qs, conv = joint_trajectory(traj)
     ok, _ = check_feasibility(traj, qs)
@@ -142,7 +144,7 @@ def main():
         if args.metodo == "pontos":
             run_pontos(arm, traj, cmds, every=10)
         else:
-            tag = "golfista" if args.golfista else f"phi{args.phi_end:g}"
+            tag = ("golfista_perto" if args.perto else "golfista") if args.golfista else f"phi{args.phi_end:g}"
             if args.k_phi != 1.0:
                 tag += f"_kphi{args.k_phi:g}"
             nome = f"run_servo_lento{args.lento:g}_{tag}"

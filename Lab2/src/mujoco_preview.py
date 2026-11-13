@@ -33,7 +33,7 @@ import numpy as np
 
 import config as C
 from kinematics import fk
-from trajectory import DEFAULTS, GOLFISTA, joint_trajectory, swing_trajectory
+from trajectory import DEFAULTS, GOLFISTA, GOLFISTA_PERTO, joint_trajectory, swing_trajectory
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 MODEL = os.path.join(HERE, "..", "models", "lite6", "swing_scene.xml")
@@ -235,6 +235,7 @@ def main():
     ap.add_argument("--garra", type=float, default=DEFAULTS["garra"])
     ap.add_argument("--k-phi", type=float, default=DEFAULTS["k_phi"], help="0..1, quanto do arco roda a pinça")
     ap.add_argument("--golfista", action="store_true", help="modo juntas com o preset trajectory.GOLFISTA")
+    ap.add_argument("--perto", action="store_true", help="com --golfista: GOLFISTA_PERTO (cotovelo dobrado, bola a 347 mm)")
     ap.add_argument("--v3", action="store_true", help="swing V3 de swing_v3.py (bola marcada no lab)")
     ap.add_argument("--bola-demo", action="store_true", help="com --v3: bola da demonstração em vez da do lab")
     ap.add_argument("--dj2", type=float, default=None, help="com --v3: graus a somar a J2 no impacto (ver swing_v3.py)")
@@ -252,7 +253,8 @@ def main():
     p = dict(phi_end=args.phi_end, phi_top=args.phi_top, raio=args.raio, garra=args.garra, k_phi=args.k_phi,
              t_back=DEFAULTS["t_back"] * args.lento, t_down=args.t_down * args.lento)
     if args.golfista:
-        p = {**p, **GOLFISTA, "t_back": GOLFISTA["t_back"] * args.lento, "t_down": GOLFISTA["t_down"] * args.lento}
+        g = GOLFISTA_PERTO if args.perto else GOLFISTA
+        p = {**p, **g, "t_back": g["t_back"] * args.lento, "t_down": g["t_down"] * args.lento}
     if args.v3:
         # swing_v3 é desenhado nas juntas: os ângulos vêm de lá, não há IK; só o
         # tempo escala com --lento (as poses são as mesmas)

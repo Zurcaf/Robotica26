@@ -1,0 +1,19 @@
+# Lite 6 — configuração lida em 2026-11-13 08:49
+firmware / versão                   : 6,9,LI1006,DL1000,v2.7.1
+número de série                     : LI1006
+modo / estado                       : 0 / 5
+erro / aviso                        : 0 / 0
+tcp_offset [mm, deg]                : [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+tcp_load [kg, mm]                   : [0.3, [0.0, 0.0, 30.0]]
+limite vel. TCP [mm/s] (min, max)   : [0.10000000149011612, 500.0]
+limite acel. TCP [mm/s2]            : [1.0, 5000.0]
+limite vel. juntas [deg/s]          : [0.05729578223448582, 180.00001866933468]
+limite acel. juntas [deg/s2]        : [0.5729577823242186, 1145.9155902616465]
+tcp_jerk / joint_jerk               : 7000.0 / 11459.155902616465
+sensibilidade colisão (0-5)         : 3
+sensibilidade teach                 : 3
+direção gravidade                   : [0.0, 0.0, -1.0]
+modo reduzido                       : (indisponível: AttributeError)
+juntas atuais [deg]                 : [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+pose atual [mm, deg]                : [86.819, -0.612, 154.32, -179.99486322768666, 0.00034377467707849394, -0.0021772396214971286]
+DH do controlador (code 0)          : [0.0, 243.3000030517578, 0.0, 0.0, -1.5707963705062866, 0.0, -1.5707963705062866, 0.0, -1.5707963705062866, 0.0, 3.1415927410125732, 200.0, 0.0, 227.60000610351562, 1.5707963705062866, 87.0, 0.0, 0.0, 1.5707963705062866, 0.0, 0.0, 61.5, -1.5707963705062866, 0.0, 0.0, 0.0, 0.0, 0.0]

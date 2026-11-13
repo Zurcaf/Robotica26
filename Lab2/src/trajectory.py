@@ -124,6 +124,16 @@ GOLFISTA = dict(
     t_back=4.5, t_down=4.0,            # backswing mais lento que o downswing: pico de |v| na bola
 )
 
+# GOLFISTA com o cotovelo mais dobrado (J3 = 80 deg) e a bola mais perto, a
+# 347 mm: postura mais "ergonómica", menos alcance (343 de 421) e menos
+# velocidade (218 mm/s). O pulso arma no sentido contrário (a_pulso = +1):
+# com a_pulso = -1 o J5 partia de 29.5 e passava por 0 (singularidade do
+# pulso) no topo do backswing; assim fica entre 30 e 60 deg. (lab 13/11)
+GOLFISTA_PERTO = dict(
+    GOLFISTA,
+    juntas=dict(GOLFISTA["juntas"], q_enderecio=(0.0, 48.8, 80.0, 0.0, 29.5, 0.0), a_pulso=1.0),
+)
+
 # Variante híbrida (ponta num arco cartesiano inclinado, pulso fixo como no
 # vídeo de 6 nov: J4 ~ -228 = taco para fora). Fica para comparação.
 GOLFISTA_HIBRIDO = dict(
@@ -474,17 +484,19 @@ def main():
     ap.add_argument("--phi-end", type=float, default=DEFAULTS["phi_end"])
     ap.add_argument("--k-phi", type=float, default=DEFAULTS["k_phi"], help="0..1, quanto do arco roda a pinça")
     ap.add_argument("--golfista", action="store_true", help="modo juntas com o preset GOLFISTA")
+    ap.add_argument("--perto", action="store_true", help="com --golfista: GOLFISTA_PERTO (cotovelo dobrado, bola a 347 mm)")
     ap.add_argument("--plot", action="store_true")
     args = ap.parse_args()
 
     p = dict(t_down=args.t_down, raio=args.raio, garra=args.garra, phi_end=args.phi_end, k_phi=args.k_phi)
-    traj = swing_trajectory({**p, **GOLFISTA} if args.golfista else p)
+    preset = GOLFISTA_PERTO if args.perto else GOLFISTA
+    traj = swing_trajectory({**p, **preset} if args.golfista else p)
     qs, conv = joint_trajectory(traj)
     print(f"  {len(traj['t'])} pontos, {traj['t'][-1]:.2f} s, IK numérica {'convergiu' if conv else 'NÃO convergiu em todos os pontos'}")
     ok, extra = check_feasibility(traj, qs)
     print(f"  => trajetória {'VIÁVEL' if ok and conv else 'NÃO VIÁVEL'}")
     if args.plot:
-        plot(traj, qs, extra, "_golfista" if args.golfista else "")
+        plot(traj, qs, extra, ("_golfista_perto" if args.perto else "_golfista") if args.golfista else "")
 
 
 if __name__ == "__main__":
