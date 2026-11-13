@@ -28,7 +28,7 @@ def controller_tcp(arm):
     Flange -> TCP que o controlador está a usar (arm.tcp_offset, configurável no
     UFactory Studio). set_position / get_position / IK / FK do SDK referem-se a
     este ponto, por isso as poses enviadas têm de ser convertidas para ele.
-    O código lê-o mas NUNCA o altera (o robô é partilhado).
+    O código lê-o mas não o altera, porque o robô é partilhado.
     """
     from kinematics import T_from_pose
 

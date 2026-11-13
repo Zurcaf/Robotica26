@@ -1,24 +1,20 @@
 """
-Tarefa 4 — Precisão da IK do robô: IK do SDK -> a nossa FK (Tarefa 1) -> erro.
+Tarefa 4 — Precisão da cinemática inversa do robô.
 
-Uso (a partir de Lab2/):
-    python src/ik_compare.py --n 60          # precisa do robô ligado (a IK corre no controlador)
-    python src/ik_compare.py --from-csv      # refaz gráficos a partir de data/ik_compare.csv
-    python src/ik_compare.py --golfista --perto --n 100          # relatório, com o robô
-    python src/ik_compare.py --golfista --perto --from-csv       # idem, a partir do CSV gravado
+Uso (a partir da pasta acima de src/):
+    python src/ik_compare.py --golfista --perto --n 100       # com o robô ligado (não se mexe)
+    python src/ik_compare.py --golfista --perto --from-csv    # refaz a análise a partir do CSV gravado
 
-Para N pontos espalhados por toda a trajetória da Tarefa 2:
-  1. q_sdk   = arm.get_inverse_kinematics(pose_ref)        (IK do robô)
-  2. pose_fk = fk_pose(q_sdk)                               (a nossa FK)
-  3. erro de posição |p_fk - p_ref| [mm] e de orientação [deg]
-Também se pede arm.get_forward_kinematics(q_sdk) — se coincidir com a nossa FK,
-a tabela DH da Tarefa 1 fica validada contra o controlador.
+Para n pontos espalhados pela trajetória da Tarefa 2:
+  1. q = arm.get_inverse_kinematics(pose pedida)       inversa do robô
+  2. pose = fk_pose(q)                                  a nossa cinemática direta
+  3. erro de posição [mm] e de orientação [graus] face à pose pedida
+Pede-se também arm.get_forward_kinematics(q), para separar o erro da inversa
+do erro do nosso modelo.
 
-As poses referem-se ao TCP que o controlador está a usar (arm.tcp_offset, p.ex.
-a ponta da pinça): a nossa FK compõe-se com esse mesmo offset (fk(q)·T_tcp),
-para comparar o mesmo ponto. O offset fica gravado nas últimas colunas do CSV.
-
-Não mexe o robô (não ativa os motores).
+As poses referem-se ao ponto que o controlador comanda (arm.tcp_offset); a
+nossa direta compõe-se com esse mesmo desvio para comparar o mesmo ponto, e o
+desvio fica gravado nas últimas colunas do CSV. Os motores não são ativados.
 """
 import argparse
 import os
@@ -38,6 +34,7 @@ HEADER = ("t,x,y,z,roll,pitch,yaw,q1,q2,q3,q4,q5,q6,"
 
 
 def collect(n, ip, preset=None, csv=CSV):
+    """Pede ao robô a inversa e a direta em n pontos da trajetória e grava tudo em csv."""
     traj = swing_trajectory(preset)
     idx = np.linspace(0, len(traj["t"]) - 1, n).astype(int)
     arm = connect(ip, enable_motion=False)
@@ -63,6 +60,7 @@ def collect(n, ip, preset=None, csv=CSV):
 
 
 def analyse(rows, sufixo=""):
+    """Estatísticas no terminal e figura report/ik_erros<sufixo>.png."""
     import matplotlib.pyplot as plt
 
     t, ref, q, pfk, psdk = rows[:, 0], rows[:, 1:7], rows[:, 7:13], rows[:, 13:19], rows[:, 19:25]
@@ -110,8 +108,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--n", type=int, default=60, help="número de pontos da trajetória")
     ap.add_argument("--from-csv", action="store_true")
-    ap.add_argument("--golfista", action="store_true", help="trajetória GOLFISTA em vez da V1")
-    ap.add_argument("--perto", action="store_true", help="com --golfista: GOLFISTA_PERTO")
+    ap.add_argument("--golfista", action="store_true", help="swing desenhado nas juntas (preset GOLFISTA)")
+    ap.add_argument("--perto", action="store_true", help="com --golfista: preset GOLFISTA_PERTO, o do relatório")
     ap.add_argument("--ip", default=None)
     args = ap.parse_args()
     preset = (GOLFISTA_PERTO if args.perto else GOLFISTA) if args.golfista else None

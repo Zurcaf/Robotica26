@@ -1,7 +1,7 @@
 """
 Tarefa 1 — Cinemática direta do UFactory Lite 6.
 
-Uso (a partir de Lab2/):
+Uso (a partir da pasta acima de src/):
     python src/kinematics.py                       # pose com todas as juntas a 0
     python src/kinematics.py --q 0 30 60 0 30 0    # pose para um q qualquer [graus]
     python src/kinematics.py --frames              # imprime os 7 referenciais
@@ -12,22 +12,20 @@ D-H MODIFICADO (Craig): o referencial i está na junta i, e
 
     {i-1}T{i} = Rx(alpha_{i-1}) · Tx(a_{i-1}) · Rz(theta_i) · Tz(d_i)
 
-com theta_i = q_i + offset_i. A tabela DH abaixo é a do documento oficial
-"Kinematic and Dynamic Parameters of UFACTORY Lite 6", tabela (1) D-H
-modificado (../ufactory-lite-6-Kinematic-and-Dynamic-Parameters.pdf, pág. 1).
-É essa a convenção que o controlador usa, por isso a pose devolvida aqui deve
-bater com arm.get_position() / arm.get_forward_kinematics() no robô real.
+com theta_i = q_i + offset_i. A tabela é a (1) do documento do fabricante
+"Kinematic and Dynamic Parameters of UFACTORY Lite 6", que usa a mesma
+convenção que o controlador.
 
-VALIDAÇÃO (--validar): o mesmo documento dá a tabela (2) em D-H CLÁSSICO, com
-outros referenciais. fk_standard() implementa-a à parte; as duas FK têm de dar
-a mesma pose para qualquer q (diferença ~1e-13 mm = arredondamento).
+Validação (--validar): o mesmo documento dá a tabela (2) em D-H clássico, com
+outros referenciais. fk_standard() implementa-a à parte e as duas têm de dar a
+mesma pose para qualquer q (a diferença é só de arredondamento, ~1e-13 mm).
 
-Orientação em roll/pitch/yaw como no SDK do xArm:
+A orientação usa roll/pitch/yaw como o SDK do robô:
     R = Rz(yaw) · Ry(pitch) · Rx(roll)
 
-Também está aqui uma IK numérica (mínimos quadrados amortecidos) — NÃO é a
-do enunciado (a Tarefa 4 pede a IK do robô); serve só para verificar
-offline, na Tarefa 2, se a trajetória respeita os limites das juntas.
+Há também uma IK numérica (mínimos quadrados amortecidos). Não é a inversa
+avaliada na Tarefa 4 (essa é a do robô): serve só para obter as juntas da
+primeira versão da trajetória, que foi desenhada no espaço cartesiano.
 """
 import argparse
 
@@ -204,36 +202,6 @@ def ik_numeric(T_target, q0_deg, iters=200, tol_mm=1e-3, tol_rad=1e-5, lam=1.0, 
             J[:, j] = -(err(q + dq)[0] - e) / h
         dq = J.T @ np.linalg.solve(J @ J.T + lam ** 2 * np.eye(6), e)
         q = np.clip(q + dq, lo, hi)
-    return q, False
-
-
-def ik_pos3(p_target, q_pulso_deg, q0_deg, tool_z=0.0, iters=100, tol_mm=1e-3, lam=1.0):
-    """
-    IK de POSIÇÃO só com J1, J2, J3 (3 equações, 3 incógnitas): leva o TCP
-    (flange + tool_z ao longo de z) a p_target [mm] com J4, J5, J6 fixos em
-    q_pulso_deg. A orientação fica a que resultar. Devolve (q_deg (6), convergiu).
-    """
-    q = np.asarray(q0_deg, dtype=float).copy()
-    q[3:] = q_pulso_deg
-    lo = np.array([l for l, _ in JOINT_LIMITS])[:3]
-    hi = np.array([h for _, h in JOINT_LIMITS])[:3]
-    Tg = tool_transform(tool_z)
-
-    def err(qq):
-        return p_target - (fk(qq) @ Tg)[:3, 3]
-
-    for _ in range(iters):
-        e = err(q)
-        if np.linalg.norm(e) < tol_mm:
-            return q, True
-        J = np.zeros((3, 3))
-        h = 1e-4
-        for j in range(3):
-            dq = np.zeros(6)
-            dq[j] = h
-            J[:, j] = -(err(q + dq) - e) / h
-        dq3 = J.T @ np.linalg.solve(J @ J.T + lam ** 2 * np.eye(3), e)
-        q[:3] = np.clip(q[:3] + dq3, lo, hi)
     return q, False
 
 

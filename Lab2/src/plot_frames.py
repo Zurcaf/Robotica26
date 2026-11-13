@@ -1,7 +1,7 @@
 """
 Tarefa 1 — Figura dos referenciais D-H (modificado) do Lite 6, com q = 0.
 
-Uso (a partir de Lab2/):
+Uso (a partir da pasta acima de src/):
     python src/plot_frames.py        # -> report/referenciais.png
 
 Vista lateral (plano x0-z0; y0 entra na folha). Em q = 0 todos os eixos x_i e

@@ -1,21 +1,21 @@
 """
 Tarefa 4 (discussão) — A diferença entre a nossa FK e a do controlador é geométrica?
 
-Uso (a partir de Lab2/):
+Uso (a partir da pasta acima de src/):
     python src/ajuste_dh.py
 
 Ajusta, por mínimos quadrados amortecidos, pequenas correções aos 23 parâmetros
 D-H (tudo menos o offset de J1, que é só a escolha do zero) de modo a que a
 nossa FK reproduza a FK do controlador nos 60 pontos de data/ik_compare.csv.
-Depois testa os parâmetros ajustados em dados INDEPENDENTES: as juntas e a pose
-medidas durante o swing V3 (data/run_v3_lento2.csv), que cobre outra zona do
-espaço de trabalho.
+Depois testa os parâmetros ajustados em dados que não entraram no ajuste: as
+juntas e a pose medidas durante um segundo swing executado no robô
+(data/run_v3_lento2.csv), noutra zona do espaço de trabalho.
 
 Se o erro desce nos dois conjuntos, a diferença vem de o controlador usar
 parâmetros geométricos ligeiramente diferentes dos nominais do PDF (calibração),
-e não de imprecisão da IK. Os valores ajustados NÃO são a calibração do robô:
-com poses de uma só trajetória vários parâmetros não se distinguem uns dos
-outros (o ajuste é mal condicionado); só o resíduo é que interessa.
+e não de imprecisão da IK. Os valores ajustados não são a calibração do robô:
+com poses de uma só trajetória vários parâmetros compensam-se uns aos outros
+(o ajuste é mal condicionado), por isso só o resíduo interessa.
 """
 import os
 
@@ -67,10 +67,10 @@ def main():
     r = np.loadtxt(os.path.join(DATA, "ik_compare.csv"), delimiter=",")
     Q4, P4 = r[:, 7:13], r[:, 19:25]                         # IK do robô, FK do robô (tcp_offset = 0)
     v = np.loadtxt(os.path.join(DATA, "run_v3_lento2.csv"), delimiter=",")[::10]
-    Q3, P3 = v[:, 7:13], v[:, 13:19]                         # juntas e pose medidas no swing V3
+    Q3, P3 = v[:, 7:13], v[:, 13:19]                         # juntas e pose medidas no segundo swing
     dh = ajustar(Q4, P4)
     print("  nossa FK vs FK do controlador [mm]        média   máx")
-    for nome, Q, P in (("Tarefa 4 (60 pontos, usados no ajuste)", Q4, P4), ("swing V3 (205 poses, independentes) ", Q3, P3)):
+    for nome, Q, P in (("Tarefa 4 (60 pontos, usados no ajuste)  ", Q4, P4), ("segundo swing (205 poses, fora do ajuste)", Q3, P3)):
         a, b = erro(DH, Q, P), erro(dh, Q, P)
         print(f"  {nome}: D-H nominal {a[0]:.2f} / {a[1]:.2f}   ->   D-H ajustado {b[0]:.2f} / {b[1]:.2f}")
     print("  correções ajustadas (colunas: offset [deg], d [mm], alpha [deg], a [mm]) — só indicativas:")

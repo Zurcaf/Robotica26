@@ -1,53 +1,36 @@
 """
 Tarefa 2 — Trajetória de swing para o Lite 6.
 
-TRAJETÓRIA DO RELATÓRIO: preset GOLFISTA_PERTO (swing desenhado nas juntas:
-J1 = tronco, J2 = ombro, J5 = pulso; bola a 347 mm). Correr com
-    python src/trajectory.py --golfista --perto --plot
-Sem opções corre a primeira versão (arco cartesiano, descrita abaixo), que o
-relatório só refere como "primeira versão".
+Uso (a partir da pasta acima de src/):
+    python src/trajectory.py --golfista --perto          # trajetória do relatório
+    python src/trajectory.py --golfista --perto --plot   # + gráficos em report/
+    python src/trajectory.py                             # primeira versão (arco cartesiano)
 
-Uso (a partir de Lab2/):
-    python src/trajectory.py            # gera, verifica viabilidade e imprime o resumo
-    python src/trajectory.py --plot     # + gráficos em report/traj_*.png
-    python src/trajectory.py --plot --golfista   # swing GOLFISTA (juntas) -> report/traj_golfista_*.png
-    python src/trajectory.py --t-down 1.0 --raio 180
+Em todos os casos a trajetória é gerada, verificada (velocidades, aceleração das
+juntas, alcance, limites das juntas, mesa e base) e resumida no terminal.
 
-ANALOGIA COM O LAB 1
---------------------
-No Lab 1 o swing era um pêndulo duplo: braço (ombro) + pulso. Aqui a garra faz
-de cabeça do taco:
+Trajetória do relatório (preset GOLFISTA_PERTO)
+-----------------------------------------------
+O swing é desenhado nas juntas, como o golfista do Lab 1: a base (J1) faz de
+tronco, o ombro (J2) levanta o braço e J5 faz de pulso. O cotovelo fica fixo e
+J4 = J6 = 0. A posição e a orientação da pinça em função do tempo, que é o que
+o enunciado pede, saem da cinemática direta destes ângulos.
 
-  * "braço"  -> a garra percorre um ARCO de raio R num plano vertical, centrado
-                num "ombro" virtual por cima da bola; phi = 0 na bola.
-  * "pulso"  -> a garra INCLINA phi + psi no plano do swing, como um taco;
-                psi é o "lag" do pulso, armado no topo e solto tarde
-                (f_release), como no Lab 1.
+Primeira versão (DEFAULTS, sem opções)
+--------------------------------------
+A ponta da pinça percorre um arco vertical por cima da bola e a pinça inclina
+em torno de um eixo perpendicular a si própria e à direção do swing, para não
+girar sobre si mesma. As juntas obtêm-se com a IK numérica de kinematics.py.
 
-ORIENTAÇÃO SEM PIÃO
--------------------
-A rotação é feita em torno de n2 = z0 x d (perpendicular ao eixo da pinça z0 e
-à direção do swing d). Como n2 é perpendicular ao eixo da pinça, a pinça
-inclina para o lado sem girar sobre si própria. A 1.ª versão rodava em torno da
-normal ao plano (eixo x); com a pinça inclinada 45 deg, cos 45 = 71 % dessa
-rotação era a pinça a girar como um pião (J6 a fazer 124 deg). Agora J6 ~39 deg,
-o antebraço (J4) faz a inclinação lateral, e o flange anda mais devagar.
+Nos dois casos as fases e as leis de movimento são as do Lab 1, com phi o
+ângulo do "braço" (0 na bola) e psi o "pulso", que arma no topo e solta tarde:
+  1. backswing       phi: 0 -> phi_top, polinómio de grau 5 (parte e chega parado)
+  2. downswing       phi: phi_top -> 0 com aceleração constante,
+                     phi(u) = phi_top (1 - (u/T)^2), velocidade máxima na bola
+  3. follow-through  desaceleração constante até parar em phi_end
 
-PINÇA
------
-A "cabeça do taco" é a PONTA DA PINÇA (TCP), não o flange: traj["pos"] é a
-ponta, que passa exatamente na bola. O flange fica `garra` mm atrás, ao longo
-do z da ferramenta (traj["pos_flange"]) — é o flange que a IK resolve e é a
-ponta + o flange que se verificam contra a mesa e a base.
-
-Fases (iguais ao Lab 1):
-  1. backswing   phi: 0 -> phi_top (quíntico, parte e chega parado)
-  2. downswing   phi: phi_top -> 0 com aceleração constante,
-                 phi(u) = phi_top (1 - (u/T)^2)  => velocidade máxima na bola
-  3. follow-thr. desaceleração constante até parar em phi_end
-
-Parâmetros por omissão em DEFAULTS. Ajusta-os até check_feasibility() passar
-com folga (velocidades, alcance, limites das juntas, mesa e base).
+A ponta da pinça (traj["pos"]) é que passa na bola; o flange fica `garra` mm
+atrás, ao longo do z da ferramenta (traj["pos_flange"]).
 """
 import argparse
 import os
@@ -55,137 +38,61 @@ import os
 import numpy as np
 
 import config as C
-from kinematics import R_from_rpy, fk, ik_numeric, ik_pos3, pose_from_T, rpy_from_R, tool_transform
+from kinematics import R_from_rpy, fk, ik_numeric, pose_from_T, rpy_from_R, tool_transform
 from robot import pose_sdk
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPORT = os.path.join(HERE, "..", "report")
 
+# Parâmetros da primeira versão (arco cartesiano). Os presets GOLFISTA abaixo
+# substituem só o que muda.
 DEFAULTS = dict(
-    # bola a 190 mm (e não 250): com a pinça o flange fica ~60 mm mais longe da
-    # base e a 250 mm o topo do swing saía do alcance.
+    # Bola a 190 mm da base: com a pinça montada, o topo do swing saía do
+    # alcance com a bola mais longe.
     bola=(190.0, 0.0, 80.0),     # mm, posição fixa da bola (referencial da base)
-    direcao=(0.0, 1.0, 0.0),     # direção do alvo (horizontal)
-    raio=150.0,                  # mm, raio do arco ("comprimento do braço+taco"); ignorado com ombro
-    # Centro do arco ("ombro" do golfista). None = por cima da bola (bola + raio·ẑ,
-    # plano vertical). Com um ponto, o plano do swing é o que contém o ombro, a
-    # bola e a direção do alvo (inclinado, como num swing real), o raio é a
-    # distância ombro-bola e o golfista "é" o robô (o ombro J2 está em (0,0,243)).
-    ombro=None,
-    # topo/fim limitados por J5 (limite 124 deg): com -100/80 e pinça, J5 chegava a 124
+    direcao=(0.0, 1.0, 0.0),     # direção do swing (horizontal)
+    raio=150.0,                  # mm, raio do arco, centrado por cima da bola
     phi_top=-90.0,               # graus, ângulo no topo do backswing
-    # fim do follow-through: com 70 deg o robô parava SEMPRE com C31 (deteção de
-    # colisão) em phi ~69 deg, braço esticado para o lado (lab 5/11); com 50 deg
-    # correu completo a lento 1, 1.5 e 2 (data/LAB_2026-11-05.md)
-    phi_end=50.0,                # graus, ângulo final do follow-through
-    psi_top=30.0,                # graus, "pulso armado" no topo
+    # Com 70 graus o controlador parava no fim do follow-through com um erro de
+    # deteção de colisão (C31); com 50 nunca aconteceu.
+    phi_end=50.0,                # graus, fim do follow-through
+    psi_top=30.0,                # graus, pulso armado no topo
     f_release=0.6,               # fração do downswing em que o pulso solta
-    # Quanto da rotação do arco (phi) entra na orientação da pinça. A pinça é a
-    # CABEÇA do taco, sem cabo: não tem de rodar com o arco. k_phi = 1 roda
-    # phi + psi (até 120 deg => J6 enrola 124 deg e J5 abana 56 deg); k_phi = 0
-    # só roda com o "pulso" psi e percorre o arco quase em translação.
+    # Quanto da rotação do arco entra na orientação da pinça (1 = toda).
     k_phi=1.0,
-    # --- modo "juntas": o golfista É o robô. O swing desenha-se nas juntas e a
-    # trajetória da pinça (posição + orientação em função do tempo, o que a
-    # Tarefa 2 pede) sai da FK. Sem IK numérica, sem pulso a enrolar.
-    # `keyframes` são poses de junta (J1..J6, graus) gravadas ao mexer o robô à
-    # mão no UFactory Studio (vídeo de 6 nov). O tronco J1 faz de coordenada do
-    # arco: phi = -J1 (backswing para +y, J1 > 0). Cada outra junta é um
-    # polinómio de grau `grau` em phi ajustado aos keyframes; J1 = -phi exato.
-    #   J5 = polinómio(phi) + a_pulso·psi   (lag do pulso do Lab 1, opcional)
-    # A bola fica onde a ponta da pinça está em phi = 0. None = modo cartesiano.
-    juntas=None,
-    # --- modo "híbrido": a ponta segue o arco cartesiano (bola, direcao, ombro)
-    # e a orientação vem do pulso, como no vídeo de 6 nov: J4 e J6 fixos,
-    # J5 = j5 + a_pulso·psi. J1-J3 por IK de posição. None = desligado.
-    pulso=None,                  # ex.: dict(j4=-228, j5=62, j6=150, a_pulso=0.5)
+    juntas=None,                 # modo "juntas" (presets GOLFISTA); None = arco cartesiano
     t_back=2.0,                  # s, duração do backswing
-    t_down=2.2,                  # s, duração do downswing (limitado pela vel. de J6)
-    # orientação da garra na bola: para baixo, inclinada 45 deg. A pique
-    # (180, 0, 0) põe J5 = 0 => singularidade do pulso, J4/J6 a ~1900 deg/s.
-    # None = "cabo radial": o eixo da pinça aponta da bola para o ombro.
+    t_down=2.2,                  # s, duração do downswing
+    # Orientação da pinça na bola: para baixo e inclinada 45 graus. A pique
+    # (180, 0, 0) J5 ficaria a 0, que é uma singularidade do pulso.
     rpy_enderecio=(180.0, 45.0, 0.0),
     garra=C.GRIPPER_TCP_Z,       # mm, flange -> ponta da pinça (0 = sem pinça)
     dt=0.01,                     # s, período de amostragem (100 Hz)
 )
 
-
-# Preset "golfista": modo juntas com o endereço e os ganhos escolhidos com o
-# mujoco_preview (sem colisão, J5 longe de 0, braço a levantar nos dois lados).
-# Preset "golfista": modo juntas, como o V17 do Lab 1 (tronco = J1, ombro = J2,
-# pulso = J5), com o robô DIREITO: braço quase esticado (J3 = 110 deg = 91 % da
-# extensão; a 150 fica todo esticado = singularidade do cotovelo) e a pinça a pique
-# no endereço. A trajetória da pinça (Tarefa 2) é a FK destes perfis.
+# Modo "juntas", com o braço quase esticado (J3 = 110 graus) e a bola a 390 mm.
+# Cada junta segue um ganho sobre phi, a partir da pose de endereço:
+#   J1 = q1 + a_tronco·phi,   J2 = q2 - b_ombro·(1 - cos phi),   J5 = q5 + a_pulso·psi
 GOLFISTA = dict(
     juntas=dict(
         q_enderecio=(0.0, 65.5, 110.0, 0.0, 50.0, 0.0),   # ponta em (390, 0, 80), pinça vertical
-        a_tronco=-0.8,     # J1 = -0.8·phi: backswing para +y (alvo -y)
-        b_ombro=35.0,      # J2 levanta o braço 35·(1-cos phi): topo a z ~ 400
+        a_tronco=-0.8,     # backswing para +y, impacto ao longo de -y
+        b_ombro=35.0,      # o braço sobe no backswing e no follow-through
         b_cotovelo=0.0,
-        a_pulso=-1.0,      # J5 arma 30 deg no backswing, solta aos 60 % do downswing
+        a_pulso=-1.0,
     ),
     phi_top=-90.0, phi_end=50.0,
-    # ponta a ~390 mm da base: t_down 4 s dá ~290 mm/s (limite 0.8 x 500); o
-    # robô só fez ~220 a 5 nov => começar com --lento 2
-    t_back=4.5, t_down=4.0,            # backswing mais lento que o downswing: pico de |v| na bola
+    t_back=4.5, t_down=4.0,      # backswing mais lento: a velocidade máxima fica no impacto
 )
 
-# GOLFISTA com o cotovelo mais dobrado (J3 = 80 deg) e a bola mais perto, a
-# 347 mm: postura mais "ergonómica", menos alcance (343 de 421) e menos
-# velocidade (218 mm/s). O pulso arma no sentido contrário (a_pulso = +1):
-# com a_pulso = -1 o J5 partia de 29.5 e passava por 0 (singularidade do
-# pulso) no topo do backswing; assim fica entre 30 e 60 deg.
+# Trajetória do relatório: cotovelo mais dobrado (J3 = 80 graus) e bola a 347 mm,
+# longe da singularidade do braço esticado. O pulso arma no sentido que afasta J5
+# de zero (fica entre 29.5 e 59.5 graus); com a_pulso = -1 passava pela
+# singularidade do pulso no topo do backswing.
 GOLFISTA_PERTO = dict(
     GOLFISTA,
     juntas=dict(GOLFISTA["juntas"], q_enderecio=(0.0, 48.8, 80.0, 0.0, 29.5, 0.0), a_pulso=1.0),
 )
-
-# Variante híbrida (ponta num arco cartesiano inclinado, pulso fixo como no
-# vídeo de 6 nov: J4 ~ -228 = taco para fora). Fica para comparação.
-GOLFISTA_HIBRIDO = dict(
-    bola=(350.0, 0.0, 80.0), direcao=(0.0, -1.0, 0.0), ombro=(150.0, 0.0, 350.0),
-    pulso=dict(j4=-228.0, j5=62.0, j6=150.0, a_pulso=0.5),
-    phi_top=-90.0, phi_end=50.0, t_back=4.5, t_down=4.0,
-)
-
-# O mesmo swing "copiado" do vídeo (modo juntas, keyframes do Studio), para
-# comparação; o J4 ~ -228 e o J5/J6 do GOLFISTA vêm daqui.
-GOLFISTA_VIDEO = dict(
-    juntas=dict(
-        # (J1, J2, J3, J4, J5, J6) lidos do Studio, do topo do backswing ao fim
-        # do follow-through. J4 ~ -228 deg é o que põe o "taco para fora".
-        keyframes=[
-            (74.1, 14.5, 65.3, -227.9, 95.0, 176.5),
-            (70.6, 16.5, 65.3, -228.3, 85.8, 171.1),
-            (64.6, 22.7, 64.9, -227.0, 85.9, 170.6),
-            (56.7, 30.3, 64.4, -228.7, 84.6, 169.1),
-            (48.9, 36.7, 64.4, -228.0, 82.5, 167.2),
-            (31.9, 49.0, 64.4, -224.3, 75.2, 164.5),
-            (23.6, 54.5, 64.4, -223.2, 72.0, 161.7),
-            (13.2, 59.0, 64.4, -224.5, 69.1, 157.6),
-            (0.6, 62.5, 64.4, -230.5, 62.3, 151.6),
-            (-22.8, 63.7, 67.7, -229.2, 49.7, 135.0),
-            (-37.9, 63.6, 85.1, -222.9, 40.1, 127.7),
-            (-43.5, 62.5, 95.3, -225.2, 39.0, 126.8),
-            (-47.4, 59.7, 103.9, -225.8, 40.6, 126.9),
-            (-49.1, 56.8, 110.0, -225.0, 41.7, 126.9),
-            (-50.4, 54.6, 112.3, -225.3, 41.8, 126.9),
-        ],
-        grau=3,
-        dq=(0.0, -10.0, 0.0, 0.0, 0.0, 0.0),   # ombro 10 deg mais alto: ponta a >= 75 mm da mesa
-        j1_impacto=None,                       # fundo do arco (sai J1 ~ -20)
-        a_pulso=0.0,
-    ),
-    # phi = -(J1 - j1_impacto): do topo (J1 = 74) ao fim (J1 = -50)
-    phi_top=-94.0, phi_end=30.0,
-    # arco grande (~400 mm da base): t_down 6.5 s dá ~370 mm/s na ponta, dentro
-    # dos 0.8 x 500 mm/s; o robô mostrou a 5 nov que só faz ~220 => usar --lento 2
-    t_back=5.0, t_down=6.5,
-)
-
-# Por omissão todos os scripts usam o arco cartesiano (V1, a que tem dados do
-# robô). O GOLFISTA ativa-se com --golfista (trajectory, run_robot,
-# mujoco_preview) ou com swing_trajectory(GOLFISTA).
 
 
 def quintic(s):
@@ -232,9 +139,9 @@ def swing_angles(p):
 
 def swing_trajectory(p=None):
     """
-    Trajetória da ponta da pinça no espaço cartesiano.
-    Devolve dict com t [s], pos (N,3) [mm] da ponta, pos_flange (N,3) [mm],
-    rpy (N,3) [graus], R (N,3,3), phi, psi.
+    Trajetória da pinça. p são alterações aos DEFAULTS (por exemplo um preset).
+    Devolve um dict com t [s], pos e pos_flange (N,3) [mm], R (N,3,3),
+    rpy (N,3) [graus], phi, psi e, no modo juntas, qs (N,6) [graus].
     """
     p = {**DEFAULTS, **(p or {})}
     t, phi, psi = swing_angles(p)
@@ -243,31 +150,13 @@ def swing_trajectory(p=None):
     B = np.asarray(p["bola"], float)
     d = np.asarray(p["direcao"], float)
     d /= np.linalg.norm(d)
-    ez = np.array([0.0, 0.0, 1.0])
-    if p["ombro"] is None:
-        centro, raio = B + p["raio"] * ez, p["raio"]
-    else:
-        centro = np.asarray(p["ombro"], float)
-        raio = np.linalg.norm(B - centro)
-    u = (B - centro) / raio                      # do ombro para a bola ("cabo" no endereço)
-    u -= d * (u @ d)                             # garante plano (d, u) ortogonal
-    u /= np.linalg.norm(u)
-    n = np.cross(d, -u)                          # normal ao plano do swing (= d x ẑ no caso vertical)
+    centro, raio = B + p["raio"] * np.array([0.0, 0.0, 1.0]), p["raio"]
+    u = (B - centro) / raio                      # do centro do arco para a bola (para baixo)
 
     pos = centro + raio * (np.sin(phi)[:, None] * d + np.cos(phi)[:, None] * u)
-    if p["pulso"] is not None:
-        return _swing_hibrido(p, t, phi, psi, pos, centro, raio)
-    if p["rpy_enderecio"] is None:
-        # eixo z da pinça (flange -> ponta) ao longo de u: a pinça "pendurada" do ombro
-        ex = np.cross(d, u)                      # = -n: eixo x da pinça perpendicular ao plano
-        R0 = np.column_stack([ex, np.cross(u, ex), u])
-    else:
-        R0 = R_from_rpy(*p["rpy_enderecio"])
-    # eixo perpendicular ao eixo da pinça e à direção do swing: a pinça inclina
-    # para o lado sem girar sobre si própria (ver ORIENTAÇÃO SEM PIÃO no topo).
-    # Com phi < 0 (backswing) a ponta inclina para -d, como a cabeça de um taco.
-    # (No caso "pendurada" n2 = u x d = normal ao plano: a pinça fica alinhada
-    # com o "cabo" ombro -> ponta.)
+    R0 = R_from_rpy(*p["rpy_enderecio"])
+    # A pinça roda em torno de um eixo perpendicular a si própria e à direção do
+    # swing: inclina para o lado, como um taco, sem girar sobre o seu eixo.
     n2 = np.cross(R0[:, 2], d)
     n2 /= np.linalg.norm(n2)
     R = np.array([axis_rotation(n2, p["k_phi"] * ph + ps) @ R0 for ph, ps in zip(phi, psi)])
@@ -294,78 +183,32 @@ def command_poses(traj, T_ctrl=None):
     return out
 
 
-def _swing_hibrido(p, t, phi, psi, pos, centro, raio):
-    """
-    Modo "híbrido": a PONTA segue o arco (pos, dado), a orientação vem do pulso:
-    J4 e J6 fixos, J5 = j5 + a_pulso·psi (lag do Lab 1); J1-J3 por IK de posição
-    (kinematics.ik_pos3, semente = ponto anterior). Sem torção do pulso, porque
-    o pulso não tem de compensar a rotação do tronco.
-    """
-    w = p["pulso"]
-    q = np.asarray(w.get("q0", (0.0, 45.0, 60.0, w["j4"], w["j5"], w["j6"])), float)
-    qs, ok = [], True
-    for pt, ps in zip(pos, psi):
-        q_pulso = (w["j4"], w["j5"] + w.get("a_pulso", 0.0) * np.degrees(ps), w["j6"])
-        q, conv = ik_pos3(pt, q_pulso, q, tool_z=p["garra"])
-        ok &= conv
-        qs.append(q.copy())
-    qs = np.array(qs)
-    Tf = np.array([fk(qq) for qq in qs])
-    R = Tf[:, :3, :3]
-    rpy = np.array([rpy_from_R(Ri) for Ri in R])
-    return dict(t=t, pos=pos, pos_flange=Tf[:, :3, 3], R=R, centro=centro, raio=raio, qs=qs, ik_ok=ok,
-                rpy=np.unwrap(rpy, period=360.0, axis=0), phi=phi, psi=psi, params=p)
-
-
-def joint_fits(j):
-    """
-    Polinómios q_j(phi) [graus] ajustados aos keyframes, com phi = -(J1 - j1_impacto):
-    J1 = j1_impacto - phi exato, as outras juntas por mínimos quadrados de grau `grau`.
-    `dq` (6 valores) soma-se a todos os keyframes (ex.: levantar o ombro uns graus).
-    j1_impacto = None => o J1 em que a ponta da pinça passa mais baixo (fundo do arco).
-    """
-    K = np.asarray(j["keyframes"], float) + np.asarray(j.get("dq", np.zeros(6)), float)
-    j1_imp = j.get("j1_impacto")
-    if j1_imp is None:
-        fits0 = [np.poly1d(np.polyfit(-K[:, 0], K[:, i], j.get("grau", 3))) for i in range(1, 6)]
-        j1 = np.linspace(K[:, 0].min(), K[:, 0].max(), 400)
-        Tg = tool_transform(j.get("garra", C.GRIPPER_TCP_Z))
-        z = [(fk([a, *[f(-a) for f in fits0]]) @ Tg)[2, 3] for a in j1]
-        j1_imp = float(j1[int(np.argmin(z))])
-    ph = -(K[:, 0] - j1_imp)
-    return [np.poly1d([-1.0, j1_imp])] + [np.poly1d(np.polyfit(ph, K[:, i], j.get("grau", 3))) for i in range(1, 6)]
-
-
 def _swing_juntas(p, t, phi, psi):
-    """Modo "juntas": perfis nas juntas -> FK -> trajetória da pinça (ver DEFAULTS)."""
+    """Modo "juntas": ângulos das juntas a partir de phi e psi -> FK -> trajetória da pinça."""
     j = p["juntas"]
     phd = np.degrees(phi)
-    if "keyframes" in j:
-        fits = joint_fits(j)
-        qs = np.column_stack([f(phd) for f in fits])
-    else:
-        # ganhos, como o V17 do Lab 1: tronco = J1, ombro = J2 (+ cotovelo J3), pulso = J5
-        #   J1 = q1 + a_tronco·phi          J2 = q2 - b_ombro·(1 - cos phi)
-        #   J3 = q3 - b_cotovelo·(1 - cos phi)
-        qs = np.tile(np.asarray(j["q_enderecio"], float), (len(t), 1))
-        qs[:, 0] += j["a_tronco"] * phd
-        qs[:, 1] -= j["b_ombro"] * (1.0 - np.cos(phi))
-        qs[:, 2] -= j.get("b_cotovelo", 0.0) * (1.0 - np.cos(phi))
-    qs[:, 4] += j.get("a_pulso", 0.0) * np.degrees(psi)
+    qs = np.tile(np.asarray(j["q_enderecio"], float), (len(t), 1))
+    qs[:, 0] += j["a_tronco"] * phd                               # tronco
+    qs[:, 1] -= j["b_ombro"] * (1.0 - np.cos(phi))                # ombro
+    qs[:, 2] -= j.get("b_cotovelo", 0.0) * (1.0 - np.cos(phi))    # cotovelo (0 nos presets)
+    qs[:, 4] += j.get("a_pulso", 0.0) * np.degrees(psi)           # pulso
     Tg = tool_transform(p["garra"])
     Tf = np.array([fk(q) for q in qs])
     Tp = Tf @ Tg
     pos, pos_flange, R = Tp[:, :3, 3], Tf[:, :3, 3], Tp[:, :3, :3]
     rpy = np.array([rpy_from_R(Ri) for Ri in R])
-    k0 = int(np.argmin(np.abs(phi)))               # phi = 0 => bola
+    k0 = int(np.argmin(np.abs(phi)))               # phi = 0 é a bola
     p = dict(p, bola=tuple(pos[k0]))
     return dict(t=t, pos=pos, pos_flange=pos_flange, R=R, centro=None, raio=None, qs=qs,
                 rpy=np.unwrap(rpy, period=360.0, axis=0), phi=phi, psi=psi, params=p)
 
 
 def joint_trajectory(traj, q0=None):
-    """IK numérica do FLANGE ponto a ponto (semente = ponto anterior => continuidade).
-    No modo "juntas" os q já são conhecidos: devolve-os sem IK."""
+    """
+    Juntas ao longo da trajetória. No modo juntas já são conhecidas; na primeira
+    versão resolve-se a IK numérica do flange ponto a ponto, partindo sempre da
+    solução anterior para as juntas variarem de forma contínua.
+    """
     if traj.get("qs") is not None:
         return traj["qs"].copy(), bool(traj.get("ik_ok", True))
     q = np.zeros(6) if q0 is None else np.asarray(q0, float)
@@ -381,14 +224,16 @@ def joint_trajectory(traj, q0=None):
 
 def check_feasibility(traj, qs, verbose=True):
     """
-    Verifica (i) velocidades, (ii) alcance, (iii) limites das juntas + colisões.
-    Mesa e base: verifica a ponta da pinça, o flange e todas as juntas de J2 em diante.
+    As três condições do enunciado: (i) velocidades (e aceleração das juntas),
+    (ii) alcance e (iii) limites das juntas, mais a distância à mesa e à base
+    (ponta, flange e origens dos referenciais de J2 em diante). As derivadas
+    calculam-se por diferenças centrais.
     """
     t, pos, flange = traj["t"], traj["pos"], traj["pos_flange"]
     sf = C.SAFETY_FACTOR
     v_tcp = np.linalg.norm(np.gradient(pos, t, axis=0), axis=1)
-    # com tcp_offset = 0 (o robô do lab) o controlador comanda o FLANGE, que roda
-    # com a garra e anda mais depressa do que a ponta: no lab deu C24 (velocidade)
+    # Sem desvio de ferramenta configurado, o controlador comanda o flange, que
+    # pode andar mais depressa do que a ponta; verificam-se os dois.
     v_flange = np.linalg.norm(np.gradient(flange, t, axis=0), axis=1)
     qd = np.gradient(qs, t, axis=0)
     qdd = np.gradient(qd, t, axis=0)
@@ -424,15 +269,11 @@ def check_feasibility(traj, qs, verbose=True):
         print(f"  {'acima da mesa':<16}: z min {z_min:.1f} mm (ponta {pos[:, 2].min():.1f}, flange "
               f"{flange[:, 2].min():.1f}, juntas {z_juntas:.1f})  {'OK' if res['acima da mesa'] else 'FALHA'}")
         print(f"  {'fora da base':<16}: r min {r_xy:.1f} mm  {'OK' if res['fora da base'] else 'FALHA'}")
-        if v_flange.max() > C.CART_SPEED_OBSERVED:
-            print(f"  AVISO: o flange chega a {v_flange.max():.0f} mm/s; no lab o controlador não passou de "
-                  f"~{C.CART_SPEED_OBSERVED:.0f} mm/s em modo servo cartesiano -> o robô vai ficar para trás "
-                  f"(usar --lento >= {v_flange.max() / C.CART_SPEED_OBSERVED:.1f} para seguir à risca)")
     return all(res.values()), dict(v_tcp=v_tcp, v_flange=v_flange, qd=qd, qdd=qdd, alcance=alcance)
 
 
 def plot(traj, qs, extra, sufixo=""):
-    """Gráficos em report/traj{sufixo}_*.png (sufixo="_golfista" com --golfista)."""
+    """Gráficos da trajetória em report/traj{sufixo}_*.png."""
     import matplotlib.pyplot as plt
 
     os.makedirs(REPORT, exist_ok=True)
@@ -491,8 +332,8 @@ def main():
     ap.add_argument("--garra", type=float, default=DEFAULTS["garra"], help="mm, flange -> ponta (0 = sem pinça)")
     ap.add_argument("--phi-end", type=float, default=DEFAULTS["phi_end"])
     ap.add_argument("--k-phi", type=float, default=DEFAULTS["k_phi"], help="0..1, quanto do arco roda a pinça")
-    ap.add_argument("--golfista", action="store_true", help="modo juntas com o preset GOLFISTA")
-    ap.add_argument("--perto", action="store_true", help="com --golfista: GOLFISTA_PERTO (cotovelo dobrado, bola a 347 mm)")
+    ap.add_argument("--golfista", action="store_true", help="swing desenhado nas juntas (preset GOLFISTA)")
+    ap.add_argument("--perto", action="store_true", help="com --golfista: preset GOLFISTA_PERTO, o do relatório")
     ap.add_argument("--plot", action="store_true")
     args = ap.parse_args()
 
@@ -500,7 +341,7 @@ def main():
     preset = GOLFISTA_PERTO if args.perto else GOLFISTA
     traj = swing_trajectory({**p, **preset} if args.golfista else p)
     qs, conv = joint_trajectory(traj)
-    print(f"  {len(traj['t'])} pontos, {traj['t'][-1]:.2f} s, IK numérica {'convergiu' if conv else 'NÃO convergiu em todos os pontos'}")
+    print(f"  {len(traj['t'])} pontos, {traj['t'][-1]:.2f} s, juntas {'obtidas' if conv else 'NÃO obtidas em todos os pontos'}")
     ok, extra = check_feasibility(traj, qs)
     print(f"  => trajetória {'VIÁVEL' if ok and conv else 'NÃO VIÁVEL'}")
     if args.plot:

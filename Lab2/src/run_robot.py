@@ -1,37 +1,28 @@
 """
 Tarefa 3 — O Lite 6 segue a trajetória de swing da Tarefa 2.
 
-Comando usado no relatório (trajetória final):
+Uso (a partir da pasta acima de src/):
+    python src/run_robot.py --metodo servo --lento 2 --golfista --perto        # só verifica, não mexe
     python src/run_robot.py --go --metodo servo --lento 2 --golfista --perto   # metade da velocidade
     python src/run_robot.py --go --metodo servo --lento 1 --golfista --perto   # velocidade planeada
 
-Uso (a partir de Lab2/):
-    python src/run_robot.py                    # ENSAIO: verifica e mostra o que faria, não mexe
-    python src/run_robot.py --go               # executa no robô (pede confirmação)
-    python src/run_robot.py --go --metodo servo --lento 2
-    python src/run_robot.py --go --metodo servo --lento 2 --golfista   # swing GOLFISTA (juntas)
+Sem --go o script gera e verifica a trajetória e mostra o que enviaria, sem se
+ligar ao robô. Com --go liga-se, pede confirmação, leva o robô à pose inicial
+junta a junta e executa o swing.
 
-Métodos (ambos com as funções do SDK):
-  pontos  set_position() com blending (radius) em modo 0: o controlador
-          interpola entre waypoints subamostrados. Mais robusto.
-  servo   set_servo_cartesian() em modo 1, um ponto a cada dt: segue o perfil
-          temporal à risca (é o que preserva a aceleração do downswing).
+Métodos (ambos só com funções do SDK):
+  servo   set_servo_cartesian() em modo 1, uma pose a cada 10 ms. O perfil
+          temporal é o nosso, incluindo a aceleração constante do downswing.
+          É o método usado no relatório.
+  pontos  set_position() em modo 0, um ponto em cada dez, com concordância
+          entre eles; o controlador interpola e impõe o seu próprio perfil.
 
---lento N estica o tempo N vezes (velocidades / N) — começar SEMPRE com N >= 3.
-Em servo grava-se a pose medida em data/run_servo_lento<N>_phi<fim>.csv (ou
-..._golfista.csv; nunca escreve por cima: se já existir, acrescenta a hora),
-para comparar com a de referência no relatório.
+--lento N estica o tempo N vezes, mantendo o caminho. Convém começar com N >= 2.
+Em modo servo a pose medida em cada ciclo (get_position) é gravada em
+data/run_servo_lento<N>_<trajetória>.csv, sem nunca escrever por cima de um
+ensaio anterior.
 
-Lições do lab (5/11, data/LAB_2026-11-05.md):
-  - C31 (deteção de colisão) no fim do follow-through com phi_end = 70 ->
-    phi_end passou a 50 por omissão;
-  - C24 (velocidade acima do limite) com `pontos` a --lento 1: o blending entre
-    waypoints pede mais às juntas do que o plano -> `pontos` só com --lento >= 2;
-  - na primeira versão o robô atrasava-se à velocidade planeada; não era um
-    limite do controlador (robot_info.py: limites = fabricante) mas a forma da
-    trajetória. A final (--golfista --perto) foi seguida até 306 mm/s.
-
-SEGURANÇA: a trajetória só é enviada se check_feasibility() passar. Ter sempre
+Segurança: a trajetória só é enviada se check_feasibility() passar. Ter sempre
 a mão no botão de emergência.
 """
 import argparse
@@ -45,12 +36,15 @@ from trajectory import DEFAULTS, GOLFISTA, GOLFISTA_PERTO, check_feasibility, co
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "..", "data")
-APPROACH_SPEED = 50.0  # mm/s, velocidade do último ponto (fim da trajetória)
-APPROACH_JOINT_SPEED = 20.0  # deg/s, aproximação junta a junta ao início
-PONTOS_LENTO_MIN = 2.0       # abaixo disto o método pontos deu C24 no lab
+APPROACH_SPEED = 50.0        # mm/s, velocidade do último ponto (fim da trajetória)
+APPROACH_JOINT_SPEED = 20.0  # graus/s, aproximação junta a junta à pose inicial
+# Com o método pontos à velocidade planeada, a concordância entre pontos pedia
+# às juntas mais velocidade do que a trajetória e o controlador parava (C24).
+PONTOS_LENTO_MIN = 2.0
 
 
 def run_pontos(arm, traj, cmds, every):
+    """Envia um ponto em cada `every`, com a velocidade média do troço até ele."""
     idx = list(range(0, len(traj["t"]), every)) + [len(traj["t"]) - 1]
     t, pos = traj["t"], traj["pos"]
     for a, b in zip(idx[:-1], idx[1:]):
@@ -60,6 +54,7 @@ def run_pontos(arm, traj, cmds, every):
 
 
 def run_servo(arm, traj, cmds, nome="run_servo"):
+    """Envia uma pose a cada dt e grava, em cada ciclo, a pose pedida e a medida."""
     arm.set_mode(1)
     arm.set_state(0)
     time.sleep(0.5)
@@ -79,7 +74,7 @@ def run_servo(arm, traj, cmds, nome="run_servo"):
             code, meas = arm.get_position()
             log.append([time.perf_counter() - t0, *cmd, *meas])
             while time.perf_counter() - t0 < (k + 1) * dt:
-                pass
+                pass                    # espera ativa até ao instante seguinte
     finally:
         # grava sempre o que foi recolhido, mesmo que o robô pare a meio
         if log:
@@ -98,19 +93,18 @@ def main():
     ap.add_argument("--metodo", choices=["pontos", "servo"], default="pontos")
     ap.add_argument("--lento", type=float, default=3.0, help="fator de abrandamento (>= 1)")
     ap.add_argument("--garra", type=float, default=DEFAULTS["garra"], help="mm, flange -> ponta (0 = sem pinça)")
-    ap.add_argument("--phi-end", type=float, default=DEFAULTS["phi_end"],
-                    help="graus, fim do follow-through (no lab o C31 aparecia em phi ~69)")
+    ap.add_argument("--phi-end", type=float, default=DEFAULTS["phi_end"], help="graus, fim do follow-through")
     ap.add_argument("--k-phi", type=float, default=DEFAULTS["k_phi"], help="0..1, quanto do arco roda a pinça")
-    ap.add_argument("--golfista", action="store_true", help="modo juntas com o preset trajectory.GOLFISTA")
-    ap.add_argument("--perto", action="store_true", help="com --golfista: GOLFISTA_PERTO (cotovelo dobrado, bola a 347 mm)")
+    ap.add_argument("--golfista", action="store_true", help="swing desenhado nas juntas (preset GOLFISTA)")
+    ap.add_argument("--perto", action="store_true", help="com --golfista: preset GOLFISTA_PERTO, o do relatório")
     ap.add_argument("--enderecio", type=float, nargs=6, metavar="J", default=None,
-                    help="com --golfista: pose de endereço [graus] lida do Studio com a ponta na bola (J4 e J6 passam a 0)")
+                    help="com --golfista: pose de endereço [graus] lida no robô com a ponta na bola (J4 e J6 passam a 0)")
     ap.add_argument("--ip", default=None)
     args = ap.parse_args()
 
     if args.metodo == "pontos" and args.lento < PONTOS_LENTO_MIN:
-        raise SystemExit(f"  o método pontos deu C24 (velocidade) a --lento 1 no lab: usa --lento >= "
-                         f"{PONTOS_LENTO_MIN:g}, ou --metodo servo para a velocidade máxima")
+        raise SystemExit(f"  o método pontos só é seguro com --lento >= {PONTOS_LENTO_MIN:g}; "
+                         "para a velocidade planeada usa --metodo servo")
 
     p = {k: DEFAULTS[k] * args.lento for k in ("t_back", "t_down")}
     p = dict(p, garra=args.garra, phi_end=args.phi_end, k_phi=args.k_phi)
@@ -147,8 +141,8 @@ def main():
         print(f"  aproximação junta a junta a {APPROACH_JOINT_SPEED:.0f} deg/s até q = {np.round(qs[0], 1)}")
         if input("  Robô livre e emergência à mão? Escreve 'sim': ").strip().lower() != "sim":
             return
-        # o robô pode estar em qualquer pose: ir em linha reta no espaço pode passar
-        # por sítios estranhos, por isso a aproximação é no espaço das juntas
+        # O robô pode estar numa pose qualquer e uma reta no espaço cartesiano pode
+        # passar por sítios imprevistos; a aproximação faz-se no espaço das juntas.
         check(arm.set_servo_angle(angle=list(qs[0]), speed=APPROACH_JOINT_SPEED, wait=True), "set_servo_angle (aproximação)")
         check(arm.set_position(*cmds[0], speed=10.0, wait=True), "set_position (início)")
         if args.metodo == "pontos":
@@ -160,7 +154,7 @@ def main():
             if args.k_phi != 1.0:
                 tag += f"_kphi{args.k_phi:g}"
             nome = f"run_servo_lento{args.lento:g}_{tag}"
-            if os.path.exists(os.path.join(DATA, f"{nome}.csv")):   # nunca escrever por cima
+            if os.path.exists(os.path.join(DATA, f"{nome}.csv")):   # não escrever por cima
                 nome += time.strftime("_%H%M%S")
             run_servo(arm, traj, cmds, nome=nome)
     finally:

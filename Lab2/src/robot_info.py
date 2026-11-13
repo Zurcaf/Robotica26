@@ -1,12 +1,14 @@
 """
-Lê e imprime a configuração do controlador do Lite 6 — NÃO mexe o robô.
+Lê e imprime a configuração do controlador do Lite 6, sem mexer o robô.
 
-Uso (a partir de Lab2/):
+Uso (a partir da pasta acima de src/):
     python src/robot_info.py            # imprime no terminal e grava data/robot_info.txt
 
-Serve para o relatório (versão de firmware, tcp_offset, carga configurada,
-limites de velocidade do controlador, sensibilidade de colisão) e para perceber
-o C31 (carga da pinça) e o limite de ~220 mm/s visto a 5 nov.
+Regista a versão do firmware, o desvio de ferramenta (tcp_offset), a carga
+declarada, os limites de velocidade e aceleração configurados, a sensibilidade
+de colisão e os parâmetros D-H guardados no controlador. Foi o que permitiu,
+nas Tarefas 3 e 4, pôr de parte um limite de velocidade escondido e uma carga
+mal configurada, e explicar a diferença para a nossa cinemática.
 """
 import argparse
 import os

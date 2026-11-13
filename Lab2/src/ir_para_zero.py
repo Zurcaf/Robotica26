@@ -2,12 +2,12 @@
 Leva o braço à posição zero (todas as juntas a 0) por etapas, para evitar o
 erro C22 (autocolisão) que o move_gohome dá quando parte de certas poses.
 
-Uso (a partir de Lab2/):
+Uso (a partir da pasta acima de src/):
     python src/ir_para_zero.py           # mostra o plano e pede confirmação
     python src/ir_para_zero.py --ip 192.168.1.158
 
 Porquê: move_gohome roda as 6 juntas ao mesmo tempo, em linha reta no espaço
-das juntas. A pose zero tem o braço DOBRADO (antebraço encostado ao braço,
+das juntas. A pose zero tem o braço dobrado (antebraço encostado ao braço,
 pinça ao lado da base); a meio do caminho a pinça/antebraço podem passar pelo
 próprio robô e o controlador recusa (C22). Por etapas:
   1. esticar o antebraço   (J3 >= 60 deg, o resto parado)
