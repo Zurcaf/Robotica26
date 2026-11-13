@@ -63,6 +63,8 @@ Cada ensaio é um ficheiro de dados e um vídeo. Nome sugerido:
 | A | Parado, longo | sensor pousado na mesa, sem tocar | 10 a 30 min | desvio e ruído do giroscópio; ruído do acelerómetro; deriva ao aquecer (ligar e gravar logo) |
 | B | Seis posições | sensor preso a uma caixa ou esquadro; cada face para baixo, 30 s parado em cada (±x, ±y, ±z) | 5 min | desvio e escala do acelerómetro: desvio = média das duas leituras opostas; escala = metade da diferença, a dividir por g |
 | C | Rotação conhecida | rodar a caixa encostada a uma régua: 90° e 360° em torno de cada eixo, nos dois sentidos, 3 vezes | 10 min | escala do giroscópio: ângulo integrado a dividir pelo ângulo real |
+| B2 | Posições ao acaso | 15 a 20 posições bem espalhadas, parado 10 s em cada, sem alinhar nada | 5 min | o mesmo que B por outro método: procurar o desvio e a escala que fazem o tamanho da aceleração dar 1 g em todas. Comparar com B e com o robô. As mesmas paragens dão o desvio do giroscópio |
+| T | Temperatura | sensor parado, a começar frio (acabado de ligar, ou vindo do frigorífico num saco) até estabilizar, a gravar a temperatura do chip | 20 a 30 min | desvio do giroscópio e do acelerómetro em função da temperatura; pode ser o mesmo registo do ensaio A |
 | D | Inclinações conhecidas | inclinar a 0, 15, 30, 45, 60, 90° em rolamento e em arfagem, parando 5 s em cada, e voltar a 0; referência: transferidor ou inclinómetro do telemóvel | 5 min, 3 vezes | inclinómetro (T3), giroscópio (T4) e fusão (T5) sobre os mesmos dados, com valor de referência |
 | D2 | Inclinar a abanar | o mesmo que D, mas a meio dar pequenos abanões laterais | 2 min | mostrar onde o acelerómetro falha e o giroscópio não: é o que justifica a fusão |
 | E | Parado depois de mexer | mexer 20 s e pousar na posição inicial; 2 min parado | 3 min, 3 vezes | deriva do giroscópio; erro ao voltar ao ponto de partida |
@@ -76,6 +78,18 @@ acabar parado permite corrigir a deriva da integração.
 Levar: caixa ou esquadro rígido, fita-cola, transferidor, régua, tripé ou
 apoio para o telemóvel, **adaptador USB-C → USB-A** (o Arduino Uno liga por
 USB-A), portátil com o Arduino IDE e as bibliotecas do sketch já instaladas.
+
+Notas sobre a calibração:
+
+- O método das posições ao acaso (B2) corrige o desvio e a escala do
+  acelerómetro sem precisar de alinhar o sensor, mas não diz como o chip está
+  montado em relação ao suporte: isso só o robô dá.
+- O desvio do giroscópio muda cada vez que se liga o sensor e com a
+  temperatura (fichas técnicas: da ordem de 0,02 °/s por °C no ICM-20600, a
+  confirmar na ficha da TDK). Mede-se no início de cada sessão, com o sensor
+  já quente. Todos os ensaios começam e acabam com 5 a 10 s parado.
+- Gravar sempre os dados em bruto e, se a biblioteca a der, a temperatura do
+  chip **(a confirmar no sketch)**.
 
 ## O robô como referência (proposta do professor)
 
