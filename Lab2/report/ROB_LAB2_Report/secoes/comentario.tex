@@ -1,0 +1,64 @@
+% =============================================================================
+\section{Comentário aos resultados}
+\label{sec:comentario}
+% =============================================================================
+
+\subsection*{\textcolor{bom}{Pontos bons}}
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{Cinemática direta validada de três formas}: pose de
+        referência, segunda tabela do fabricante e controlador.
+  \item \textbf{Trajetória com folga em todos os limites} (no máximo
+        \SI{53}{\percent} de um limite) e \textbf{sem contacto} verificado
+        com o volume real do robô.
+  \item \textbf{Seguimento de \SI{0.5}{\milli\meter}} a metade da velocidade,
+        reprodutível, depois de a escolha do eixo de rotação da pinça ter
+        reduzido o erro quatro vezes.
+  
+\end{itemize}
+
+\subsection*{\textcolor{mau}{O que não correu tão bem}}
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{À velocidade planeada o robô não segue o perfil} (erro médio
+        de \SI{8}{\milli\meter}), apesar de respeitar todos os limites
+        publicados.
+  \item \textbf{As causas do erro C31 e da diferença de
+        \SI{1.4}{\milli\meter}} ficaram por confirmar: exigem ler a
+        configuração do controlador.
+  
+  \item \textbf{O swing é pequeno e lento} face ao do Lab~1
+        (\SI{0.21}{\meter\per\second} no impacto), consequência das dimensões
+        do robô e do limite de \SI{500}{\milli\meter\per\second}.
+\end{itemize}
+
+\subsection*{\textcolor{azul}{O que podíamos melhorar}}
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{Limitar a aceleração e o \emph{jerk}} no desenho dos perfis,
+        para o robô seguir a trajetória à velocidade planeada.
+  \item \textbf{Calibrar a cinemática} com poses medidas em todo o espaço de
+        trabalho.
+  \item \textbf{Desenhar o swing nas juntas}, com a base a fazer de tronco,
+        para um movimento mais amplo, como num jogador.
+\end{itemize}
+
+\newpage
+% =============================================================================
+\section*{Contribuição dos membros}
+Todos os membros contribuíram de forma igual para a realização do projeto.
+Cada um ficou responsável por uma área, sem deixar de participar nas restantes:
+\begin{itemize}
+  \item \textbf{Afonso Cruz:} modelação: cinemática direta e modelo 3D com
+        verificação de contacto.
+  \item \textbf{Eduardo Batista:} planeamento: trajetória de swing, limites e
+        segundo swing.
+  \item \textbf{Henrique Póvoa:} execução: scripts do robô e comparação com a
+        inversa do controlador.
+\end{itemize}
+As sessões de laboratório e a redação do relatório foram feitas por todos.
+
+\section*{Declaração de uso de IA}
+Foi usada uma LLM como apoio na geração de código Python e
+na revisão do texto. Todos os membros compreendem integralmente o trabalho
+entregue.

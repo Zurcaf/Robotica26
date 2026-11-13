@@ -1,0 +1,101 @@
+% =============================================================================
+\section{Tarefa 1 --- Cinemática direta}
+% =============================================================================
+
+O Lite~6 é um manipulador série com seis juntas rotacionais. As três primeiras
+(base, ombro e cotovelo) posicionam o pulso; as três últimas têm eixos que se
+cruzam num ponto e formam um pulso esférico, que orienta a ferramenta. A
+cinemática direta~\cite{sequeira2024,siciliano2009} dá a pose do flange
+(posição $p$ e orientação $R$) em função de $q = (q_1,\dots,q_6)$.
+
+\subsection{Método e atribuição de referenciais}
+
+Usou-se a convenção de Denavit--Hartenberg \emph{modificada}~\cite{craig2005},
+que é a do documento do fabricante~\cite{ufactory_dh} e a do controlador. A
+cada elo $i$ fixa-se um referencial $\{i\}$ com $z_i$ sobre o eixo da junta
+$i$, $x_i$ sobre a normal comum a $z_i$ e $z_{i+1}$ (perpendicular aos dois,
+se se cruzam) e $y_i$ a completar o referencial direto. A base $\{0\}$ está
+fixa à mesa, com $z_0$ vertical e a origem no tampo, sobre o eixo da junta~1.
+Os referenciais estão na Figura~\ref{fig:frames}: $\{1\}$ e $\{2\}$ têm a
+mesma origem no ombro, porque os eixos das juntas 1 e 2 se cruzam, e $\{4\}$ e
+$\{5\}$ no centro do pulso.
+
+\begin{figure}[tbp]
+\centering
+\fig{Photos/referenciais.png}{0.5\textwidth}
+\caption{Referenciais D-H modificados com todas as juntas a zero, em vista
+lateral (plano $x_0z_0$). Azul: $z_i$, eixo da junta $i$; vermelho: $x_i$.
+$\{2\}$ e $\{5\}$ estão desenhados ao lado da sua origem (tracejado), que é a
+mesma de $\{1\}$ e de $\{4\}$. Cotas em mm.}
+\label{fig:frames}
+\end{figure}
+
+\subsection{Tabela D-H e transformações}
+
+Nesta convenção, passa-se de $\{i-1\}$ para $\{i\}$ com quatro movimentos
+elementares, e a pose do flange é o produto das seis transformações:
+\begin{equation}
+\T{i-1}{i} = R_x(\alpha_{i-1})\,T_x(a_{i-1})\,R_z(\theta_i)\,T_z(d_i),
+\ \ \theta_i = q_i + \text{offset}_i;
+\qquad
+\T{0}{6}(q) = \T{0}{1}\cdots\T{5}{6}
+= \left[\begin{smallmatrix} R(q) & p(q)\\ 0 & 1\end{smallmatrix}\right],
+\label{eq:fk}
+\end{equation}
+com os parâmetros da Tabela~\ref{tab:dh}.
+
+\begin{table}[H]
+\centering
+\caption{Parâmetros D-H modificados do Lite~6~\cite{ufactory_dh}.}
+\label{tab:dh}
+\small
+\begin{tabular}{ccccc}
+\toprule
+\rowcolor{tabcab}
+Junta $i$ & offset de $\theta_i$ & $d_i$ [mm] & $\alpha_{i-1}$ & $a_{i-1}$ [mm] \\
+\midrule
+1 & \ang{0}   & 243,3 & \ang{0}   & 0 \\
+2 & \ang{-90} & 0     & \ang{-90} & 0 \\
+3 & \ang{-90} & 0     & \ang{180} & 200 \\
+4 & \ang{0}   & 227,6 & \ang{90}  & 87 \\
+5 & \ang{0}   & 0     & \ang{90}  & 0 \\
+6 & \ang{0}   & 61,5  & \ang{-90} & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Como o pulso é esférico, a posição separa-se da orientação. O centro do pulso
+(origem de $\{4\}$ e $\{5\}$) só depende das três primeiras juntas:
+\begin{equation}
+p_w = \begin{bmatrix} r\cos q_1\\ r\sin q_1\\ h \end{bmatrix},\qquad
+\begin{aligned}
+r &= 200\sin q_2 + 87\cos(q_3-q_2) + 227{,}6\,\sin(q_3-q_2),\\
+h &= 243{,}3 + 200\cos q_2 + 87\sin(q_3-q_2) - 227{,}6\,\cos(q_3-q_2),
+\end{aligned}
+\label{eq:pulso}
+\end{equation}
+e o flange fica \SI{61.5}{\milli\meter} à frente, ao longo do eixo da
+ferramenta: $p = p_w + 61{,}5\,R\,\hat e_z$. A orientação exprime-se em
+\emph{roll}, \emph{pitch} e \emph{yaw},
+$R = R_z(\text{yaw})\,R_y(\text{pitch})\,R_x(\text{roll})$, a convenção do
+SDK~\cite{xarm_sdk}. A pinça (Gripper Lite) não tem desvio nem rotação em
+relação ao flange e a sua ponta está a $L = \SI{83.6}{\milli\meter}$ ao longo
+de $z_6$: $\T{0}{\text{ponta}} = \T{0}{6}\,T_z(L)$. Implementação em
+\texttt{src/kinematics.py}.
+
+\subsection{Verificação}
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{Pose de referência.} Com $q=0$, a equação~\eqref{eq:pulso} dá
+        $p_w = (87;\,0;\,215{,}7)$ e $p = (87;\,0;\,154{,}2)$~mm, com
+        \emph{roll} de \ang{180} (ferramenta a apontar para baixo), como na
+        Figura~\ref{fig:frames}.
+  \item \textbf{Segunda tabela do fabricante.} O mesmo documento dá os
+        parâmetros na convenção D-H clássica, com outros referenciais.
+        Comparada em \num{10000} configurações aleatórias, a maior diferença
+        de posição é \SI{2e-13}{\milli\meter} (arredondamento).
+  \item \textbf{Controlador do robô.} Nos 60 pontos da Tarefa~4, a nossa
+        cinemática difere da do controlador em média \SI{1.4}{\milli\meter}
+        (máximo \SI{2.0}{\milli\meter}) e \ang{0.03}; discute-se na
+        Secção~\ref{sec:ik}.
+\end{itemize}

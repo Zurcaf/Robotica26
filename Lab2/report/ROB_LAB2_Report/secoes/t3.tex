@@ -1,0 +1,118 @@
+% =============================================================================
+\section{Tarefa 3 --- Execução no robô}
+\label{sec:exec}
+% =============================================================================
+
+\subsection{Script}
+
+O script \texttt{src/run\_robot.py} usa só funções do SDK~\cite{xarm_sdk}:
+gera a trajetória e corre a verificação da Secção~\ref{sec:viab} (se alguma
+condição falhar, nada é enviado); liga ao robô, lê o desvio de ferramenta e
+converte as poses; aproxima-se da pose inicial junta a junta, a
+\SI{20}{\degree\per\second}; e executa o swing por um de dois métodos. No
+método \texttt{servo} (modo~1) envia uma pose a cada \SI{10}{\milli\second}
+com \texttt{set\_servo\_cartesian} (Listagem~\ref{lst:servo}): o controlador
+resolve a inversa em cada ponto e o perfil temporal é o nosso, incluindo a
+aceleração constante do downswing. No método \texttt{pontos} (modo~0) envia um
+ponto em cada dez com \texttt{set\_position} e o controlador interpola entre
+eles, impondo o seu próprio perfil de velocidade. O parâmetro
+\texttt{-{}-lento N} estica o tempo $N$ vezes, mantendo o caminho.
+
+\begin{lstlisting}[language=Python, caption={Ciclo do método \texttt{servo}
+(simplificado de \texttt{src/run\_robot.py}).},
+label={lst:servo}, captionpos=b]
+arm.set_mode(1); arm.set_state(0)            # modo servo
+t0 = time.perf_counter()
+for k, pose in enumerate(poses):             # [x, y, z, roll, pitch, yaw]
+    if arm.set_servo_cartesian(pose) != 0:   # erro do controlador: parar
+        break
+    _, medida = arm.get_position()
+    registo.append([time.perf_counter() - t0, *pose, *medida])
+    while time.perf_counter() - t0 < (k + 1) * dt:
+        pass                                 # espera até ao instante seguinte
+arm.set_mode(0); arm.set_state(0)
+\end{lstlisting}
+
+\subsection{Resultados}
+
+Os ensaios da versão final fizeram-se a 6/11/2026 (\emph{firmware} 2.7.1). O
+erro é a distância entre o flange medido e o pedido no mesmo instante; o
+atraso é o deslocamento temporal que minimiza esse erro
+(Tabela~\ref{tab:exec}, Figura~\ref{fig:exec}). O método \texttt{pontos}
+também executou o swing completo, com \texttt{-{}-lento 3}, mas não regista a
+pose medida.
+
+\begin{table}[H]
+\centering
+\caption{Seguimento em modo \texttt{servo} (flange); cada ensaio foi feito
+duas vezes e os dois dão o mesmo erro.}
+\label{tab:exec}
+\small
+\begin{tabular}{lcccccc}
+\toprule
+\rowcolor{tabcab}
+Ensaio & Duração & Pontos & Erro médio & Erro máx. & Atraso & Erro sem o atraso \\
+\midrule
+\texttt{-{}-lento 2}, 1.º & \SI{10.8}{\second} & 1085/1085 & \SI{0.54}{\milli\meter} & \SI{2.5}{\milli\meter} & \SI{10}{\milli\second} & \SI{0.17}{\milli\meter} \\
+\texttt{-{}-lento 2}, 2.º & \SI{10.9}{\second} & 1085/1085 & \SI{0.57}{\milli\meter} & \SI{3.2}{\milli\meter} & \SI{10}{\milli\second} & \SI{0.27}{\milli\meter} \\
+\texttt{-{}-lento 1}, 1.º & \SI{5.4}{\second}  & 543/543   & \SI{8.4}{\milli\meter}  & \SI{28.0}{\milli\meter} & \SI{58}{\milli\second} & \SI{7.2}{\milli\meter} \\
+\texttt{-{}-lento 1}, 2.º & \SI{5.4}{\second}  & 543/543   & \SI{8.4}{\milli\meter}  & \SI{28.2}{\milli\meter} & \SI{55}{\milli\second} & \SI{7.2}{\milli\meter} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\fig{Photos/run_servo.png}{0.92\textwidth}
+\caption{Posição do flange pedida (tracejado) e medida, e erro de posição, a
+metade da velocidade (esquerda) e à velocidade planeada (direita). As linhas
+verticais separam as três fases.}
+\label{fig:exec}
+\end{figure}
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{A metade da velocidade o robô segue a trajetória.} O erro
+        médio é de \SI{0.5}{\milli\meter}, da ordem da repetibilidade do robô
+        ($\pm\SI{0.5}{\milli\meter}$~\cite{ufactory_lite6}), e quase todo é
+        um atraso de um ciclo (\SI{10}{\milli\second}).
+  \item \textbf{À velocidade planeada o robô atrasa-se onde a velocidade
+        varia depressa}: no backswing (média \SI{11}{\milli\meter}) e no
+        follow-through (\SI{16}{\milli\meter}); no downswing, de aceleração
+        constante, o erro é de \SI{1.4}{\milli\meter}. Não é um atraso puro
+        (descontar \SI{58}{\milli\second} só baixa o erro para
+        \SI{7.2}{\milli\meter}), nem saturação de velocidade (a máxima
+        medida, \SI{173}{\milli\meter\per\second}, iguala a pedida), nem o
+        limite de aceleração das juntas (a trajetória pede no máximo
+        \SI{227}{\degree\per\second\squared}, um quinto do do fabricante).
+        É compatível com um limite de aceleração cartesiana ou com
+        uma filtragem do controlador em modo servo, que sem acesso à sua
+        configuração não foi possível distinguir.
+        
+\end{itemize}
+
+\subsection{Ocorrências e correções}
+
+Na primeira sessão (5/11) o follow-through ia até $\varphi_{end} = \ang{70}$
+e a pinça ainda girava sobre si própria. Duas ocorrências levaram à versão
+final:
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{Erro C31 (deteção de colisão).} Com $\varphi_{end}=\ang{70}$
+        o robô parou sempre no mesmo ponto, quase parado e com o braço
+        esticado para o lado (junta~5 a \ang{110}). Não sendo um efeito
+        dinâmico, as hipóteses são o cabo da pinça a esticar ou a massa da
+        pinça não estar configurada no controlador. Encurtar o follow-through
+        para \ang{50} eliminou o erro.
+        
+  \item \textbf{Erro C24 no método \texttt{pontos}.} À velocidade
+        planeada, a interpolação que o próprio controlador faz entre os pontos
+        enviados pedia às juntas mais velocidade do que a trajetória, e o
+        controlador interrompeu o movimento, como lhe compete. A trajetória
+        planeada respeita os limites (Tabela~\ref{tab:viab}); por isso o
+        método \texttt{pontos} só se usa a velocidade reduzida ($N \geq 2$).
+\end{itemize}
+
+A orientação final (Secção~\ref{sec:traj}) reduziu o erro de seguimento de
+2,0 para \SI{0.5}{\milli\meter} a metade da velocidade e de 18,9 para
+\SI{8.4}{\milli\meter} à velocidade planeada. A verificação de viabilidade
+passou também a incluir a velocidade do flange, que é o ponto comandado.

@@ -1,0 +1,230 @@
+% =============================================================================
+\section{Tarefa 2 --- Trajetória de swing}
+\label{sec:traj}
+% =============================================================================
+
+\subsection{Analogia com o Laboratório 1 e perfis temporais}
+\label{sec:perfis}
+
+No Lab~1 o swing era um pêndulo duplo~\cite{cochran1968}: o braço roda em
+torno do ombro e o taco em torno do pulso, que fica armado no topo e só solta
+perto do impacto. Aqui o robô não segura um taco: a própria pinça faz de
+taco, e a sua ponta é a parte que bate na bola. O movimento descreve-se com os
+mesmos dois ângulos: $\varphi(t)$, o \textbf{braço}, que
+dá a posição da ponta num arco vertical de raio $R_a = \SI{150}{\milli\meter}$
+centrado num ``ombro'' virtual por cima da bola ($\varphi = 0$ na bola); e
+$\psi(t)$, o \textbf{pulso}, uma inclinação adicional da pinça, armada no topo
+e solta tarde. A bola está fixa em $b = (190;\,0;\,80)$~mm, à frente do robô,
+e o swing faz-se para o lado, na direção $\hat d = \hat y_0$; com estas
+dimensões todo o arco fica dentro do espaço de trabalho com a pinça montada.
+
+As fases e as leis de movimento são as do Lab~1 (Tabela~\ref{tab:fases}), com
+$s(\tau) = 10\tau^3 - 15\tau^4 + 6\tau^5$, o polinómio de grau 5 com
+velocidade e aceleração nulas nos extremos.
+
+\begin{table}[H]
+\centering
+\caption{Fases do swing. $\varphi_{top} = \ang{-90}$,
+$\varphi_{end} = \ang{50}$, $\psi_{top} = \ang{30}$; $u$ é o tempo contado
+desde o início de cada fase.}
+\label{tab:fases}
+\small
+\begin{tabularx}{\textwidth}{@{}lcLL@{}}
+\toprule
+\rowcolor{tabcab}
+Fase & Duração & Braço $\varphi$ & Pulso $\psi$ \\
+\midrule
+Backswing & $T_b = \SI{2.0}{\second}$ &
+  $\varphi_{top}\,s(u/T_b)$: parte e chega parado &
+  $\psi_{top}\,s(u/T_b)$: arma \\
+Downswing & $T_d = \SI{2.2}{\second}$ &
+  $\varphi_{top}\bigl(1-(u/T_d)^2\bigr)$: aceleração constante, velocidade máxima na bola &
+  armado até $0{,}6\,T_d$; depois solta com $s$ e chega a 0 no impacto \\
+Follow-through & $T_f = \SI{1.22}{\second}$ &
+  $\omega_{imp}\,u - \tfrac12 (\omega_{imp}/T_f)\,u^2$: desaceleração constante até $\varphi_{end}$ &
+  0 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+No impacto, $\omega_{imp} = -2\varphi_{top}/T_d = \SI{1.43}{\radian\per\second}$,
+ou seja \SI{214}{\milli\meter\per\second} na ponta da pinça. O swing dura
+\SI{5.42}{\second} e é amostrado a \SI{100}{\hertz} (543 pontos). Os tempos
+foram escolhidos para respeitar os limites do robô e não para imitar um
+jogador, por isso o backswing não é mais lento do que o downswing.
+
+\subsection{Posição e orientação da pinça}
+
+\paragraph{Posição.} Com o centro do arco em
+$c = b + R_a\,\hat z_0 = (190;\,0;\,230)$~mm,
+\begin{equation}
+p(t) = c + R_a\bigl(\sin\varphi(t)\,\hat d - \cos\varphi(t)\,\hat z_0\bigr)
+     = \bigl(190;\ 150\sin\varphi;\ 230 - 150\cos\varphi\bigr)\ \text{mm}.
+\label{eq:pos}
+\end{equation}
+
+\paragraph{Orientação.} Na bola, a pinça aponta para baixo, inclinada
+\ang{45} para o lado da base:
+$R_0 = R(\text{roll}=\ang{180},\,\text{pitch}=\ang{45},\,\text{yaw}=0)$, com
+eixo $z_t = (-0{,}707;\,0;\,-0{,}707)$. Durante o swing roda-se $R_0$ em torno
+de um eixo fixo $\hat n$, perpendicular ao eixo da pinça e à direção do swing:
+\begin{equation}
+R(t) = \operatorname{Rot}\bigl(\hat n,\ \varphi(t)+\psi(t)\bigr)\,R_0,
+\qquad
+\hat n = \frac{z_t\times\hat d}{\lVert z_t\times\hat d\rVert}
+       = (0{,}707;\ 0;\ -0{,}707),
+\label{eq:ori}
+\end{equation}
+com $\operatorname{Rot}(\hat n,\theta) = I + \sin\theta\,K +
+(1-\cos\theta)K^2$ (Rodrigues, $K$ a matriz do produto externo por $\hat n$).
+As equações~\eqref{eq:pos} e~\eqref{eq:ori} são as funções do tempo pedidas.
+Duas escolhas justificam-se:
+
+\begin{itemize}[itemsep=3pt]
+  \item \textbf{Inclinação de \ang{45}.} Com a pinça a pique, a junta~5
+        ficaria em \ang{0}: os eixos das juntas 4 e 6 alinham-se
+        (singularidade do pulso) e as suas velocidades disparam
+        ($\sim$\SI{1900}{\degree\per\second} no primeiro teste). Com
+        \ang{45}, a junta~5 fica entre \ang{61} e \ang{80}.
+  \item \textbf{Eixo $\hat n$ perpendicular à pinça.} A velocidade angular
+        não tem componente ao longo de $z_t$: a pinça inclina-se como um
+        taco, sem girar sobre si própria. Na primeira versão, rodando em torno
+        da normal ao plano do swing, a junta~6 fazia \ang{124} e o flange
+        andava a \SI{298}{\milli\meter\per\second}; agora são \ang{39} e
+        \SI{170}{\milli\meter\per\second}.
+\end{itemize}
+
+\paragraph{Flange.} O controlador do laboratório tem o desvio de ferramenta a
+zero e comanda o flange, por isso envia-se
+$p_f(t) = p(t) - L\,R(t)\,\hat e_z$, com a mesma orientação. O código lê o
+desvio configurado e converte as poses, pelo que a ponta passa na bola com
+qualquer configuração. As Figuras~\ref{fig:cart} e~\ref{fig:3d} mostram a
+trajetória.
+
+\begin{figure}[H]
+\centering
+\begin{minipage}[b]{0.56\textwidth}
+\centering
+\fig{Photos/traj_cartesiana.png}{\textwidth}
+\caption{Posição, orientação e velocidade da ponta da pinça e do flange, com
+o limite do fabricante.}
+\label{fig:cart}
+\end{minipage}\hfill
+\begin{minipage}[b]{0.42\textwidth}
+\centering
+\fig{Photos/traj_3d.png}{\textwidth}
+\caption{Caminho da ponta e do flange; a cinzento, a pinça em instantes
+sucessivos; os círculos marcam o cilindro da base.}
+\label{fig:3d}
+\end{minipage}
+\end{figure}
+
+\subsection{Viabilidade}
+\label{sec:viab}
+
+Para verificar as juntas obteve-se $q(t)$ com uma cinemática inversa numérica
+própria (mínimos quadrados amortecidos~\cite{buss2004}), ponto a ponto e
+partindo da solução anterior, para as juntas variarem de forma contínua;
+velocidades e acelerações por diferenças centrais. A Tabela~\ref{tab:viab}
+resume as três condições do enunciado, com \SI{20}{\percent} de margem sobre
+os limites do fabricante~\cite{ufactory_lite6,ufactory_specs}. O alcance
+mede-se do ombro ao centro do pulso, que não pode passar o braço esticado,
+$200 + \sqrt{87^2 + 227{,}6^2} = \SI{443.7}{\milli\meter}$; perto desse valor
+o cotovelo entra em singularidade, por isso só se aceita até
+\SI{95}{\percent}.
+
+\begin{table}[H]
+\centering
+\caption{Verificação de viabilidade (\texttt{check\_feasibility} em
+\texttt{src/trajectory.py}).}
+\label{tab:viab}
+\small
+\begin{tabularx}{\textwidth}{@{}lLccc@{}}
+\toprule
+\rowcolor{tabcab}
+Condição & O que se mede & Limite & Aceite até & Trajetória \\
+\midrule
+\rowcolor{tabgrupo}\multicolumn{5}{@{}l}{\emph{(i) Velocidade e aceleração}} \\
+Ponta da pinça & $\max\lVert\dot p\rVert$ & \SI{500}{\milli\meter\per\second} & 400 & \textbf{221} \\
+Flange         & $\max\lVert\dot p_f\rVert$ & \SI{500}{\milli\meter\per\second} & 400 & \textbf{170} \\
+Juntas         & $\max_i\lvert\dot q_i\rvert$ & \SI{180}{\degree\per\second} & 144 & \textbf{95} (junta 4) \\
+Acel.\ das juntas & $\max_i\lvert\ddot q_i\rvert$ & \SI{1145}{\degree\per\second\squared} & 916 & \textbf{227} (junta 4) \\
+\midrule
+\rowcolor{tabgrupo}\multicolumn{5}{@{}l}{\emph{(ii) Alcance}} \\
+Ombro ao centro do pulso & $\max\lVert p_w - p_{\{2\}}\rVert$ & \SI{443.7}{\milli\meter} & 421,5 & \textbf{299} \\
+\midrule
+\rowcolor{tabgrupo}\multicolumn{5}{@{}l}{\emph{(iii) Limites das juntas}} \\
+Folga ao limite mais próximo & $\min_i$ (Tabela~\ref{tab:juntas}) & --- & $\geq\ang{5}$ & \textbf{\ang{44}} (junta 5) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\begin{minipage}[c]{0.42\textwidth}
+\centering
+\small
+\captionof{table}{Limites das juntas~\cite{ufactory_specs} e gama usada.}
+\label{tab:juntas}
+\begin{tabular}{@{}ccc@{}}
+\toprule
+\rowcolor{tabcab}
+Junta & Limites & Gama usada \\
+\midrule
+1 & $\pm\ang{360}$         & \ang{-12} a \ang{1}  \\
+2 & $\pm\ang{150}$         & \ang{16} a \ang{48}  \\
+3 & \ang{-3.5} a \ang{300} & \ang{45} a \ang{63}  \\
+4 & $\pm\ang{360}$         & \ang{-66} a \ang{55} \\
+5 & $\pm\ang{124}$         & \ang{61} a \ang{80}  \\
+6 & $\pm\ang{360}$         & \ang{-26} a \ang{14} \\
+\bottomrule
+\end{tabular}
+\end{minipage}\hfill
+\begin{minipage}[c]{0.55\textwidth}
+\centering
+\fig{Photos/traj_juntas.png}{\textwidth}
+\captionof{figure}{Ângulos e velocidades das juntas; a tracejado, o limite
+de \SI{180}{\degree\per\second}. A junta~4 faz a inclinação lateral da
+pinça.}
+\label{fig:juntas}
+\end{minipage}
+\end{figure}
+
+\subsection{Ausência de contacto perigoso}
+\label{sec:contacto}
+
+A verificação anterior garante que a ponta, o flange e as origens de todos os
+referenciais ficam a mais de \SI{30}{\milli\meter} da mesa (mínimo:
+\SI{80}{\milli\meter}, a própria bola) e a mais de \SI{80}{\milli\meter} do
+eixo da base (mínimo: \SI{190}{\milli\meter}). Como isto só olha para pontos,
+reproduziu-se também a trajetória das juntas no MuJoCo~\cite{todorov2012}, com
+o modelo oficial do Lite~6 com pinça~\cite{menagerie2022}, e mediu-se em cada
+instante a distância entre as malhas de colisão (invólucros convexos, logo
+conservadoras) de todos os pares de elos e entre o robô e a mesa
+(\texttt{src/mujoco\_preview.py}; Figuras~\ref{fig:seq} e~\ref{fig:folgas}).
+
+\begin{figure}[H]
+\centering
+\fig{Photos/mj_sequencia_down_the_line.png}{\textwidth}
+\caption{O swing no modelo 3D do robô, visto de trás da linha de jogo. A
+vermelho, o caminho da ponta da pinça; a esfera é a bola.}
+\label{fig:seq}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\fig{Photos/mj_folgas.png}{0.6\textwidth}
+\caption{Folga mínima ao longo do swing: robô (com pinça) à mesa e entre elos
+não adjacentes. As linhas verticais marcam o topo do backswing e o impacto.}
+\label{fig:folgas}
+\end{figure}
+
+O ponto mais baixo do robô é a pinça, a \SI{75}{\milli\meter} da mesa no
+endereço e no impacto. Entre elos, a menor distância é de
+\SI{25}{\milli\meter} (corpo da pinça e elo~4) e é praticamente a distância
+construtiva entre os dois; o par seguinte (elos 2 e 4) nunca fica a menos de
+\SI{34}{\milli\meter}. O modelo 3D e a nossa cinemática coincidem a menos de
+\SI{2}{\milli\meter}. A bola é um ponto fixo no espaço de trabalho, como o
+enunciado permite; não há nenhum objeto na mesa, que está livre à volta do
+robô. A ponta da pinça passa nesse ponto a \SI{214}{\milli\meter\per\second},
+a \SI{80}{\milli\meter} do tampo.
