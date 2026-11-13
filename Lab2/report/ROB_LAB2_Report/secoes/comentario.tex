@@ -6,41 +6,46 @@
 \subsection*{\textcolor{bom}{Pontos bons}}
 
 \begin{itemize}[itemsep=3pt]
-  \item \textbf{Cinemática direta validada de três formas}: pose de
-        referência, segunda tabela do fabricante e controlador.
+  \item \textbf{Cinemática direta validada de quatro formas}: pose de
+        referência, segunda tabela do fabricante, modelo 3D do robô e
+        controlador.
   \item \textbf{Trajetória com folga em todos os limites} (no máximo
-        \SI{53}{\percent} de um limite) e \textbf{sem contacto} verificado
-        com o volume real do robô.
-  \item \textbf{Seguimento de \SI{0.5}{\milli\meter}} a metade da velocidade,
-        reprodutível, depois de a escolha do eixo de rotação da pinça ter
-        reduzido o erro quatro vezes.
-  
+        \SI{44}{\percent} de um limite) e \textbf{sem contacto}, verificado
+        em simulação com o volume real do robô antes de o mover.
+  \item \textbf{Seguimento previsto e medido coincidem}: o erro é um ciclo
+        de atraso (\SI{1.1}{\milli\meter} em média à velocidade planeada),
+        reprodutível, até \SI{43}{\percent} acima da velocidade planeada.
+  \item \textbf{As dúvidas da primeira versão foram resolvidas com dados}: a
+        configuração lida do controlador refutou as hipóteses de um limite de
+        velocidade e de carga mal configurada, e identificou a calibração como
+        origem da diferença para a nossa cinemática.
 \end{itemize}
 
 \subsection*{\textcolor{mau}{O que não correu tão bem}}
 
 \begin{itemize}[itemsep=3pt]
-  \item \textbf{À velocidade planeada o robô não segue o perfil} (erro médio
-        de \SI{8}{\milli\meter}), apesar de respeitar todos os limites
-        publicados.
-  \item \textbf{As causas do erro C31 e da diferença de
-        \SI{1.4}{\milli\meter}} ficaram por confirmar: exigem ler a
-        configuração do controlador.
-  
-  \item \textbf{O swing é pequeno e lento} face ao do Lab~1
-        (\SI{0.21}{\meter\per\second} no impacto), consequência das dimensões
+  \item \textbf{A primeira versão, no espaço cartesiano, não era seguida à
+        velocidade planeada} (erro médio de \SI{8}{\milli\meter}), apesar de
+        respeitar os limites publicados; só o redesenho nas juntas o resolveu,
+        e a causa exata não foi isolada.
+  \item \textbf{Sem medição externa.} O erro de seguimento é relativo à pose
+        que o controlador reporta; a posição real da ponta só é conhecida a
+        menos da calibração e da repetibilidade do robô.
+  \item \textbf{O swing é lento} face ao do Lab~1
+        (\SI{0.22}{\meter\per\second} no impacto), consequência das dimensões
         do robô e do limite de \SI{500}{\milli\meter\per\second}.
 \end{itemize}
 
 \subsection*{\textcolor{azul}{O que podíamos melhorar}}
 
 \begin{itemize}[itemsep=3pt]
-  \item \textbf{Limitar a aceleração e o \emph{jerk}} no desenho dos perfis,
-        para o robô seguir a trajetória à velocidade planeada.
+  \item \textbf{Medir a ponta com um instrumento externo}, para separar o
+        erro de seguimento do erro do modelo.
   \item \textbf{Calibrar a cinemática} com poses medidas em todo o espaço de
         trabalho.
-  \item \textbf{Desenhar o swing nas juntas}, com a base a fazer de tronco,
-        para um movimento mais amplo, como num jogador.
+  \item \textbf{Aproximar a velocidade do limite do robô}: a trajetória foi
+        seguida sem degradação a \SI{306}{\milli\meter\per\second}, pelo que
+        há margem para um downswing mais curto.
 \end{itemize}
 
 \newpage
@@ -51,8 +56,7 @@ Cada um ficou responsável por uma área, sem deixar de participar nas restantes
 \begin{itemize}
   \item \textbf{Afonso Cruz:} modelação: cinemática direta e modelo 3D com
         verificação de contacto.
-  \item \textbf{Eduardo Batista:} planeamento: trajetória de swing, limites e
-        segundo swing.
+  \item \textbf{Eduardo Batista:} planeamento: trajetória de swing e limites.
   \item \textbf{Henrique Póvoa:} execução: scripts do robô e comparação com a
         inversa do controlador.
 \end{itemize}
