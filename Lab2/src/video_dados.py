@@ -54,7 +54,7 @@ def sincronizar(video, t, v):
     return c.argmax() / fps, c.max()
 
 
-def painel_base(titulo, t, q, v, e, cortes):
+def painel_base(titulo, t, q, v, e, cortes, e_tau=None, sub=""):
     """Imagem do painel (sem cursor) e a função t -> x em píxeis de cada gráfico."""
     import matplotlib
     matplotlib.use("Agg")
@@ -62,14 +62,19 @@ def painel_base(titulo, t, q, v, e, cortes):
 
     fig, ax = plt.subplots(3, 1, figsize=(PW / 100, H / 100), dpi=100, sharex=True,
                            gridspec_kw=dict(left=0.09, right=0.74, top=0.86, bottom=0.07, hspace=0.16))
-    fig.text(0.045, 0.945, titulo, fontsize=25, fontweight="bold", va="center")
+    fig.text(0.045, 0.955, titulo, fontsize=25, fontweight="bold", va="center")
+    fig.text(0.045, 0.912, sub, fontsize=14, color="#52514e", va="center")
     for nome, i in (("J1", 0), ("J2", 1), ("J5", 4)):
         ax[0].plot(t, q[:, i], color=COR[nome], lw=2.5)
-    ax[0].set_ylabel("juntas planeadas [°]", fontsize=13)
+    ax[0].set_ylabel("planned joints [°]", fontsize=13)
     ax[1].plot(t, v, color=COR["v"], lw=2.5)
-    ax[1].set_ylabel("velocidade do flange\nmedida [mm/s]", fontsize=13)
-    ax[2].plot(t, e, color=COR["e"], lw=2.5)
-    ax[2].set_ylabel("erro de posição\n(medido − pedido) [mm]", fontsize=13)
+    ax[1].set_ylabel("measured flange\nspeed [mm/s]", fontsize=13)
+    ax[2].plot(t, e, color=COR["e"], lw=2.5, label="measured")
+    ax[2].plot(t, v * 0.010, color="k", lw=1.3, ls=(0, (4, 3)), label="predicted: speed × 10 ms")
+    if e_tau is not None:
+        ax[2].plot(t, e_tau, color=COR["J5"], lw=2, label="measured, 10 ms lag removed")
+    ax[2].legend(fontsize=10, frameon=False, loc="upper left", ncol=3, bbox_to_anchor=(0.0, 1.13))
+    ax[2].set_ylabel("position error\n(measured − commanded) [mm]", fontsize=13)
     ax[2].set_xlabel("t [s]", fontsize=13)
     ax[2].set_ylim(0, max(1.2, e.max() * 1.15))
     for a in ax:
@@ -97,6 +102,7 @@ def main():
     ap.add_argument("--titulo", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--inicio", type=float, default=None, help="instante do vídeo em que o swing começa [s]")
+    ap.add_argument("--sub", default="", help="linha por baixo do título")
     ap.add_argument("--enderecio", type=float, nargs=6, default=None, help="pose de endereço usada no ensaio (como em run_robot.py)")
     args = ap.parse_args()
     from PIL import Image, ImageDraw, ImageFont
@@ -105,6 +111,9 @@ def main():
     t, ref, med = d[:, 0], d[:, 1:4], d[:, 7:10]
     e = np.linalg.norm(med - ref, axis=1)
     e[2:-2] = np.median(np.column_stack([e[i:len(e) - 4 + i] for i in range(5)]), axis=1)   # tira amostras isoladas
+    from plot_run import atraso
+    e_tau = atraso(t, ref, med)[1]
+    e_tau[2:-2] = np.median(np.column_stack([e_tau[i:len(e) - 4 + i] for i in range(5)]), axis=1)
     w = 5
     v = np.zeros_like(t)
     v[w:-w] = np.linalg.norm(med[2 * w:] - med[:-2 * w], axis=1) / (t[2 * w:] - t[:-2 * w])
@@ -124,7 +133,7 @@ def main():
     print(f"  swing começa aos {t0:.2f} s do vídeo" + ("" if corr is None else f" (correlação {corr:.2f})") +
           f"; corte {a:.2f}-{b:.2f} s de {dur:.1f} s")
 
-    base, caixas = painel_base(args.titulo, t, np.column_stack([np.interp(t, tq, q[:, i]) for i in range(6)]), v, e, cortes)
+    base, caixas = painel_base(args.titulo, t, np.column_stack([np.interp(t, tq, q[:, i]) for i in range(6)]), v, e, cortes, e_tau, args.sub)
     fonte = lambda s: ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", s)
     f_g, f_p = fonte(30), fonte(19)
     n = int(round((b - a) * FPS))
@@ -150,7 +159,7 @@ def main():
         dr.text((x_txt, 60), f"t = {ts:5.2f} s", font=f_g, fill=(11, 11, 11))
         dr.text((x_txt, 100), fase, font=f_p, fill=(82, 81, 78))
         y = H - caixas[0].y1 + 20
-        for nome, j, papel in (("J1", 0, "tronco"), ("J2", 1, "ombro"), ("J5", 4, "pulso")):
+        for nome, j, papel in (("J1", 0, "torso"), ("J2", 1, "shoulder"), ("J5", 4, "wrist")):
             dr.rectangle([x_txt, y + 8, x_txt + 22, y + 26], fill=COR[nome])
             dr.text((x_txt + 32, y), f"{nome} {np.interp(ts, tq, q[:, j]):6.1f}°", font=f_g, fill=(11, 11, 11))
             dr.text((x_txt + 32, y + 36), papel, font=f_p, fill=(82, 81, 78))
@@ -159,6 +168,7 @@ def main():
         dr.text((x_txt, y), f"{v[i]:5.0f} mm/s", font=f_g, fill=(11, 11, 11))
         y = H - caixas[2].y1 + 40
         dr.text((x_txt, y), f"{e[i]:5.2f} mm", font=f_g, fill=(11, 11, 11))
+        dr.text((x_txt, y + 38), f"lag removed: {e_tau[i]:.2f} mm", font=f_p, fill=(82, 81, 78))
         ff.stdin.write(np.asarray(img).tobytes())
     ff.stdin.close()
     ff.wait()
