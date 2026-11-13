@@ -94,8 +94,10 @@ de $z_6$: $\T{0}{\text{ponta}} = \T{0}{6}\,T_z(L)$. Implementação em
         parâmetros na convenção D-H clássica, com outros referenciais.
         Comparada em \num{10000} configurações aleatórias, a maior diferença
         de posição é \SI{2e-13}{\milli\meter} (arredondamento).
-  \item \textbf{Controlador do robô.} Nos 60 pontos da Tarefa~4, a nossa
-        cinemática difere da do controlador em média \SI{1.4}{\milli\meter}
-        (máximo \SI{2.0}{\milli\meter}) e \ang{0.03}; discute-se na
-        Secção~\ref{sec:ik}.
+  \item \textbf{Controlador do robô.} Nos 100 pontos da Tarefa~4, a nossa
+        cinemática difere da do controlador em média \SI{1.2}{\milli\meter}
+        (máximo \SI{2.0}{\milli\meter}) e \ang{0.08}. Com $q=0$, o
+        controlador indica o flange em $(86{,}82;\,-0{,}61;\,154{,}32)$~mm,
+        a \SI{0.6}{\milli\meter} do nosso: aplica uma calibração própria por
+        cima da tabela nominal (Secção~\ref{sec:ik}).
 \end{itemize}
