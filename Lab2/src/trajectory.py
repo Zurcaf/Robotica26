@@ -1,6 +1,12 @@
 """
 Tarefa 2 — Trajetória de swing para o Lite 6.
 
+TRAJETÓRIA DO RELATÓRIO: preset GOLFISTA_PERTO (swing desenhado nas juntas:
+J1 = tronco, J2 = ombro, J5 = pulso; bola a 347 mm). Correr com
+    python src/trajectory.py --golfista --perto --plot
+Sem opções corre a primeira versão (arco cartesiano, descrita abaixo), que o
+relatório só refere como "primeira versão".
+
 Uso (a partir de Lab2/):
     python src/trajectory.py            # gera, verifica viabilidade e imprime o resumo
     python src/trajectory.py --plot     # + gráficos em report/traj_*.png

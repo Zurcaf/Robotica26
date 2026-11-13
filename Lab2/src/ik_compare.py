@@ -4,6 +4,8 @@ Tarefa 4 — Precisão da IK do robô: IK do SDK -> a nossa FK (Tarefa 1) -> err
 Uso (a partir de Lab2/):
     python src/ik_compare.py --n 60          # precisa do robô ligado (a IK corre no controlador)
     python src/ik_compare.py --from-csv      # refaz gráficos a partir de data/ik_compare.csv
+    python src/ik_compare.py --golfista --perto --n 100          # relatório (13/11), com o robô
+    python src/ik_compare.py --golfista --perto --from-csv       # idem, a partir do CSV gravado
 
 Para N pontos espalhados por toda a trajetória da Tarefa 2:
   1. q_sdk   = arm.get_inverse_kinematics(pose_ref)        (IK do robô)

@@ -1,0 +1,5 @@
+# Python >= 3.10
+numpy>=2.0
+matplotlib>=3.8
+xarm-python-sdk>=1.18     # só para falar com o robô (Tarefas 3 e 4)
+mujoco>=3.1               # só para src/mujoco_preview.py

@@ -18,6 +18,8 @@ Uso (a partir de Lab2/):
     python src/mujoco_preview.py --fotos --strip # + tiras report/mj_sequencia_<câmara>.png
     python src/mujoco_preview.py --folgas        # folga mínima vs t -> report/mj_folgas.png
     python src/mujoco_preview.py --lento 2 --phi-end 50 --view
+    python src/mujoco_preview.py --golfista --perto --folgas                       # relatório: folgas
+    python src/mujoco_preview.py --golfista --perto --fotos --strip --prefixo mjgp_ # relatório: tiras
     python src/mujoco_preview.py --golfista --fotos --strip --prefixo mjg_   # swing GOLFISTA
     python src/mujoco_preview.py --v3 --fotos --strip --prefixo mjv3_        # swing V3 (swing_v3.py)
 

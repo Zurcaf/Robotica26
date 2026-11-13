@@ -3,7 +3,7 @@ Tarefa 3 — Referência vs pose medida nos ensaios em servo (dados do laborató
 
 Uso (a partir de Lab2/):
     python src/plot_run.py            # estatísticas + report/run_servo.png
-    python src/plot_run.py --v3       # idem para o swing V3 (juntas) -> report/run_v3.png
+    python src/plot_run.py --golfista-perto   # ensaios de 13/11 (relatório) -> report/run_servo_golfista_perto.png
 
 Lê data/run_servo_lento<N>_phi50.csv (colunas: t, pose pedida ao controlador,
 pose medida com get_position(); com tcp_offset = 0 ambas são do FLANGE) e, para

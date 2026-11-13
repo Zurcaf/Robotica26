@@ -1,6 +1,10 @@
 """
 Tarefa 3 — O Lite 6 segue a trajetória de swing da Tarefa 2.
 
+Comando usado no relatório (trajetória final, 13/11):
+    python src/run_robot.py --go --metodo servo --lento 2 --golfista --perto   # metade da velocidade
+    python src/run_robot.py --go --metodo servo --lento 1 --golfista --perto   # velocidade planeada
+
 Uso (a partir de Lab2/):
     python src/run_robot.py                    # ENSAIO: verifica e mostra o que faria, não mexe
     python src/run_robot.py --go               # executa no robô (pede confirmação)
@@ -23,8 +27,9 @@ Lições do lab (5/11, data/LAB_2026-11-05.md):
     phi_end passou a 50 por omissão;
   - C24 (velocidade acima do limite) com `pontos` a --lento 1: o blending entre
     waypoints pede mais às juntas do que o plano -> `pontos` só com --lento >= 2;
-  - em servo cartesiano o flange não passou de ~220 mm/s -> a --lento 1 o robô
-    fica ~90 ms para trás (aviso na verificação).
+  - na primeira versão o robô atrasava-se à velocidade planeada; não era um
+    limite do controlador (robot_info.py: limites = fabricante) mas a forma da
+    trajetória. A final (--golfista --perto) foi seguida até 306 mm/s.
 
 SEGURANÇA: a trajetória só é enviada se check_feasibility() passar. Ter sempre
 a mão no botão de emergência.
