@@ -111,3 +111,7 @@ Lab1/report/v17_[0-9]_*.png
 
 # ===== Lab2: poses soltas do MuJoCo (regeneram-se com src/mujoco_preview.py --fotos; só as tiras vão para o git) =====
 Lab2/report/frames/
+
+# ===== Lab2: vídeos originais e montados (grandes; o vídeo final está no YouTube) e zips de entrega =====
+Lab2/video/media/
+Lab2/*.zip

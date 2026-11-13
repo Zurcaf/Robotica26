@@ -2,7 +2,7 @@
 Cartões de texto (separadores) para o vídeo dos ensaios: 1920x1080, alguns segundos cada.
 
 Uso (a partir de Lab2/):
-    python src/video_cartoes.py PASTA      # escreve PASTA/k0.mp4 ... k5.mp4
+    python video/video_cartoes.py PASTA      # escreve PASTA/k0.mp4 ... k5.mp4
 """
 import os
 import subprocess
@@ -63,7 +63,7 @@ def cartao(titulo, sub, linhas):
     return img
 
 
-FOTO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "report", "video_endereco.jpg")
+FOTO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "video_endereco.jpg")
 # (texto, explicação, ponto na fotografia [px da foto de 880x940])
 LEGENDA = [
     ("Joint 3 = elbow", "fixed at 80°", (330, 220)),

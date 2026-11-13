@@ -2,7 +2,7 @@
 Banda sonora do vídeo dos ensaios gerada a partir dos dados (sem som da sala).
 
 Uso (a partir de Lab2/):
-    python src/video_som.py PASTA VIDEO_SEM_SOM.mp4 VIDEO_COM_SOM.mp4
+    python video/video_som.py PASTA VIDEO_SEM_SOM.mp4 VIDEO_COM_SOM.mp4
 
 Em cada ensaio ouve-se um zumbido de motor cuja frequência e volume seguem a
 velocidade do flange MEDIDA pelo robô nesse ensaio (parado = silêncio; mais
@@ -14,6 +14,10 @@ import os
 import subprocess
 import sys
 import wave
+
+import sys as _sys
+import os as _os
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "src"))   # módulos do Lab 2
 
 import numpy as np
 

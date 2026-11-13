@@ -7,7 +7,7 @@ aqui="$(cd "$(dirname "$0")" && pwd)"
 mkdir -p "$aqui/Photos"
 for f in referenciais.png traj_golfista_perto_cartesiana.png traj_golfista_perto_3d.png \
          traj_golfista_perto_juntas.png mjgp_sequencia_face_on.png mjgp_folgas.png \
-         run_servo_golfista_perto.png ik_erros_golfista_perto.png ik_erros.png; do
+         run_servo_golfista_perto.png ik_erros_golfista_perto.png; do
   cp "$aqui/../$f" "$aqui/Photos/$f"
   echo "  Photos/$f"
 done

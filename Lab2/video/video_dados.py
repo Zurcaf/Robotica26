@@ -2,7 +2,7 @@
 Junta o vídeo de um ensaio com os dados gravados nesse ensaio (painel ao lado).
 
 Uso (a partir de Lab2/):
-    python src/video_dados.py VIDEO.mov data/run_servo_lento2_golfista_perto_rep2.csv \
+    python video/video_dados.py VIDEO.mov data/run_servo_lento2_golfista_perto_rep2.csv \
         --lento 2 --titulo "Metade da velocidade" --out videos/lento2.mp4
 
 Sincronização: o instante em que o swing começa no vídeo é o que maximiza a
@@ -16,6 +16,10 @@ Precisa de ffmpeg no PATH.
 import argparse
 import os
 import subprocess
+
+import sys as _sys
+import os as _os
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "src"))   # módulos do Lab 2
 
 import numpy as np
 

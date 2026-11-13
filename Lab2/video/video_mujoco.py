@@ -2,7 +2,7 @@
 Clip da simulação no MuJoCo do swing GOLFISTA_PERTO, para o vídeo dos ensaios.
 
 Uso (a partir de Lab2/):
-    python src/video_mujoco.py SAIDA.mp4
+    python video/video_mujoco.py SAIDA.mp4
 
 Duas câmaras lado a lado (face_on e cima), o swing à velocidade planeada, com a
 folga mínima à mesa e entre elos em cada instante (mesmas contas de
@@ -12,6 +12,10 @@ import subprocess
 import sys
 
 import mujoco
+import sys as _sys
+import os as _os
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..", "src"))   # módulos do Lab 2
+
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
