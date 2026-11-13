@@ -15,12 +15,6 @@ VERDE, AZUL, CINZA = (27, 127, 59), (31, 58, 95), (82, 81, 78)
 F = "/System/Library/Fonts/Helvetica.ttc"
 
 CARTOES = [
-    ("k0", 6, "Golf swing with the UFactory Lite 6", "Robotics — Lab assignment 2 — Group 1 (IST)",
-     ["The robot plays the golfer and the gripper plays the club.",
-      "Base = torso      Joint 2 = shoulder      Joint 5 = wrist",
-      "",
-      "The swing was planned and simulated before going to the robot.",
-      "The question in every run: does the robot do what was predicted?"]),
     ("k1", 5, "1. Slow first", "Half the planned speed",
      ["Does the robot follow the trajectory?",
       "On the right: what was planned for the joints and what the robot measured.",
@@ -64,12 +58,52 @@ def cartao(titulo, sub, linhas):
     return img
 
 
+FOTO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "report", "video_endereco.jpg")
+# (texto, explicação, ponto na fotografia [px da foto de 880x940])
+LEGENDA = [
+    ("Joint 3 = elbow", "fixed at 80°", (330, 220)),
+    ("Joint 5 = wrist", "cocks on the way up, releases before impact", (190, 430)),
+    ("Joint 2 = shoulder", "raises and lowers the arm", (590, 505)),
+    ("Gripper tip = club head", "passes through the ball at top speed", (206, 560)),
+    ("Joint 1 (base) = torso", "turns the whole arm: the engine of the swing", (564, 620)),
+]
+
+
+def cartao_intro():
+    """Cartão inicial: fotografia do robô no endereço com legendas ligadas a cada junta."""
+    img = Image.new("RGB", (W, H), (255, 255, 255))
+    d = ImageDraw.Draw(img)
+    d.rectangle([0, 0, 28, H], fill=VERDE)
+    foto = Image.open(FOTO)
+    fx, fy = 80, 70
+    img.paste(foto, (fx, fy))
+    x0 = fx + foto.width + 110
+    d.text((x0, 70), "Golf swing with the", font=ImageFont.truetype(F, 62), fill=VERDE)
+    d.text((x0, 140), "UFactory Lite 6", font=ImageFont.truetype(F, 62), fill=VERDE)
+    d.text((x0, 222), "Robotics — Lab assignment 2 — Group 1 (IST)", font=ImageFont.truetype(F, 30), fill=AZUL)
+    d.line([(x0, 275), (W - 90, 275)], fill=VERDE, width=4)
+    y = 330
+    for texto, expl, (px, py) in LEGENDA:
+        alvo = (fx + px, fy + py)
+        d.line([alvo, (x0 - 24, y + 24)], fill=(255, 255, 255), width=7)
+        d.line([alvo, (x0 - 24, y + 24)], fill=AZUL, width=3)
+        d.ellipse([alvo[0] - 11, alvo[1] - 11, alvo[0] + 11, alvo[1] + 11], fill=AZUL, outline=(255, 255, 255), width=3)
+        d.ellipse([x0 - 32, y + 16, x0 - 16, y + 32], fill=AZUL)
+        d.text((x0, y), texto, font=ImageFont.truetype(F, 40), fill=(11, 11, 11))
+        d.text((x0, y + 50), expl, font=ImageFont.truetype(F, 27), fill=CINZA)
+        y += 118
+    d.text((x0, 930), "Planned and simulated first.", font=ImageFont.truetype(F, 30), fill=AZUL)
+    d.text((x0, 972), "Then: does the robot do what was predicted?", font=ImageFont.truetype(F, 30), fill=AZUL)
+    return img
+
+
 def main():
     pasta = sys.argv[1]
     os.makedirs(pasta, exist_ok=True)
-    for nome, seg, titulo, sub, linhas in CARTOES:
+    feitos = [("k0", 8, "intro", cartao_intro())] + [(n, sg, t, cartao(t, sb, l)) for n, sg, t, sb, l in CARTOES]
+    for nome, seg, titulo, imagem in feitos:
         png = os.path.join(pasta, nome + ".png")
-        cartao(titulo, sub, linhas).save(png)
+        imagem.save(png)
         subprocess.check_call(["ffmpeg", "-v", "error", "-y", "-loop", "1", "-t", str(seg), "-i", png, "-r", str(FPS),
                                "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "20", os.path.join(pasta, nome + ".mp4")])
         print(f"  {nome}: {seg} s  {titulo}")
