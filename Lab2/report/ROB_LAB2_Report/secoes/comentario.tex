@@ -9,7 +9,8 @@
   \item \textbf{Cinemática direta validada de quatro formas}: pose de
         referência, segunda tabela do fabricante, modelo 3D e controlador.
   \item \textbf{Trajetória com folga em todos os limites} (no máximo
-        \SI{44}{\percent} de um limite) e \textbf{sem contacto}, verificado
+        \SI{44}{\percent} dos limites de velocidade e \SI{77}{\percent} do
+        alcance) e \textbf{sem contacto}, verificado
         em simulação com o volume real do robô antes de o mover.
   \item \textbf{Seguimento previsto e medido coincidem}: o erro é um ciclo de
         atraso, reprodutível, até \SI{43}{\percent} acima da velocidade
@@ -27,7 +28,7 @@
         velocidade planeada}; só o redesenho nas juntas o resolveu, e a causa
         exata não foi isolada.
   \item \textbf{Sem medição externa}: o erro é relativo à pose que o
-        controlador reporta.
+        controlador indica.
   \item \textbf{O swing é lento} face ao do Lab~1
         (\SI{0.22}{\meter\per\second} no impacto), pelas dimensões do robô e
         pelo limite de \SI{500}{\milli\meter\per\second}.

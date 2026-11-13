@@ -28,7 +28,8 @@ estão filmados; a ligação está no fim do relatório.
 \begin{table}[H]
 \centering
 \caption{Seguimento da trajetória (posição do flange). Todos os ensaios
-correram até ao fim, sem erros do controlador.}
+correram até ao fim, sem erros do controlador. A velocidade máxima é estimada
+dos dados gravados, com uma janela de \SI{0.1}{\second}.}
 \label{tab:exec}
 \small
 \begin{tabular}{lcccccc}
@@ -81,10 +82,12 @@ com \SI{0.54}{\milli\meter}, mas à velocidade planeada o erro médio subia
 para \SI{8.4}{\milli\meter} (máximo \SI{28}{\milli\meter}), com o flange a
 apenas \SI{170}{\milli\meter\per\second}. Não era um limite do controlador:
 a configuração lida dele tem os limites do fabricante, e a versão final foi
-seguida a \SI{306}{\milli\meter\per\second}. A diferença está na forma do
-movimento: no arco cartesiano o antebraço rodava \ang{121}, a
+seguida a \SI{306}{\milli\meter\per\second}. A diferença visível está na
+forma do movimento: no arco cartesiano o antebraço rodava \ang{121}, a
 \SI{95}{\degree\per\second} e \SI{227}{\degree\per\second\squared}; na
 versão final nenhuma junta passa de \SI{36}{\degree\per\second} e
 \SI{68}{\degree\per\second\squared}. Foi também nessa versão que se viu a
-singularidade do pulso: com a pinça a pique, a inversa pedia
-$\sim$\SI{1900}{\degree\per\second} às juntas 4 e 6.
+singularidade do pulso: com a pinça a pique a junta~5 ficava em \ang{0} e a
+inversa pedia $\sim$\SI{1900}{\degree\per\second} às juntas 4 e 6. Na versão
+final a pinça também está a pique na bola, mas com a junta~5 a \ang{29.5},
+porque o braço chega inclinado.

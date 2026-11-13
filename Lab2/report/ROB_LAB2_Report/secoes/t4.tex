@@ -51,13 +51,13 @@ círculos marcam os pontos em que a inversa devolveu o pulso virado.}
         do arredondamento.
   \item \textbf{A diferença de \SI{1.2}{\milli\meter} está no modelo
         geométrico, não na inversa.} É, ponto a ponto, a diferença entre a
-        nossa direta e a do controlador, com um desvio quase constante de
-        $(0{,}3;\,0{,}4;\,-0{,}9)$~mm, o mesmo padrão da primeira versão
-        (\SI{1.36}{\milli\meter}). A configuração lida do controlador
+        nossa direta e a do controlador, com um desvio médio de
+        $(0{,}3;\,0{,}4;\,-0{,}9)$~mm, que depende do ramo do pulso; a
+        primeira versão dava um valor semelhante (\SI{1.36}{\milli\meter}). A configuração lida do controlador
         explica-a: os parâmetros D-H guardados são os da
         Tabela~\ref{tab:dh}, mas com $q=0$ o controlador indica o flange a
         \SI{0.6}{\milli\meter} da nossa cinemática, logo aplica uma
-        calibração própria, que não é acessível. Ajustando pequenas correções
+        calibração própria, que não é acessível. Ajustando correções
         aos parâmetros D-H com os dados da primeira versão, a diferença
         desceu de 1,36 para \SI{0.06}{\milli\meter}, o que confirma que é
         geométrica (com uma só trajetória, porém, esse ajuste não é uma
