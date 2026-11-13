@@ -3,27 +3,25 @@
 \label{sec:traj}
 % =============================================================================
 
-\subsection{Analogia com o Laboratório 1: o swing desenhado nas juntas}
+\subsection{O swing desenhado nas juntas}
 \label{sec:perfis}
 
-No Lab~1 o swing era um pêndulo duplo~\cite{cochran1968} movido por três
-juntas: o tronco roda, o braço sobe e desce em torno do ombro e o pulso fica
-armado no topo e só solta perto do impacto. Aqui o robô faz de jogador e a
-pinça faz de taco, com a ponta a bater na bola. A analogia é feita junta a
-junta: a base (junta~1) é o \textbf{tronco}, a junta~2 é o \textbf{ombro} e a
-junta~5 é o \textbf{pulso}. O cotovelo fica fixo e as juntas 4 e 6 a zero, de
-modo que o braço se move sempre no plano vertical que a base roda.
-
-O movimento descreve-se com os dois ângulos do Lab~1, $\varphi(t)$ (braço,
-$\varphi=0$ na bola) e $\psi(t)$ (pulso), com as mesmas três fases e leis de
-movimento (Tabela~\ref{tab:fases}); $s(\tau) = 10\tau^3 - 15\tau^4 + 6\tau^5$
-é o polinómio de grau~5 com velocidade e aceleração nulas nos extremos.
+No Lab~1 o swing era um pêndulo duplo~\cite{cochran1968}: o tronco roda, o
+braço sobe e desce em torno do ombro e o pulso fica armado no topo e só solta
+perto do impacto. Aqui o robô faz de jogador e a pinça faz de taco, com a
+ponta a bater na bola. A analogia é feita junta a junta: a base (junta~1) é o
+\textbf{tronco}, a junta~2 o \textbf{ombro} e a junta~5 o \textbf{pulso}; o
+cotovelo fica fixo e as juntas 4 e 6 a zero. O movimento descreve-se com os
+dois ângulos do Lab~1, $\varphi(t)$ (braço, nulo na bola) e $\psi(t)$
+(pulso), com as mesmas fases e leis (Tabela~\ref{tab:fases});
+$s(\tau) = 10\tau^3 - 15\tau^4 + 6\tau^5$ tem velocidade e aceleração nulas
+nos extremos.
 
 \begin{table}[H]
 \centering
 \caption{Fases do swing. $\varphi_{top} = \ang{-90}$,
-$\varphi_{end} = \ang{50}$, $\psi_{top} = \ang{30}$; $u$ é o tempo contado
-desde o início de cada fase.}
+$\varphi_{end} = \ang{50}$, $\psi_{top} = \ang{30}$; $u$ é o tempo desde o
+início de cada fase.}
 \label{tab:fases}
 \small
 \begin{tabularx}{\textwidth}{@{}lcLL@{}}
@@ -36,94 +34,78 @@ Backswing & $T_b = \SI{4.5}{\second}$ &
   $\psi_{top}\,s(u/T_b)$: arma \\
 Downswing & $T_d = \SI{4.0}{\second}$ &
   $\varphi_{top}\bigl(1-(u/T_d)^2\bigr)$: aceleração constante, velocidade máxima na bola &
-  armado até $0{,}6\,T_d$; depois solta com $s$ e chega a 0 no impacto \\
+  armado até $0{,}6\,T_d$; solta com $s$ e chega a 0 no impacto \\
 Follow-through & $T_f = \SI{2.22}{\second}$ &
-  $\omega_{imp}\,u - \tfrac12 (\omega_{imp}/T_f)\,u^2$: desaceleração constante até $\varphi_{end}$ &
+  $\omega_{imp}\,u - \tfrac12 (\omega_{imp}/T_f)\,u^2$: desacelera até $\varphi_{end}$ &
   0 \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-As juntas seguem estes ângulos (em graus):
+As juntas seguem (em graus)
 \begin{equation}
-q_1 = -0{,}8\,\varphi,\qquad
-q_2 = 48{,}8 - 35\,(1-\cos\varphi),\qquad
-q_3 = 80,\qquad
-q_5 = 29{,}5 + \psi,\qquad
-q_4 = q_6 = 0 .
+q_1 = -0{,}8\,\varphi,\quad
+q_2 = 48{,}8 - 35\,(1-\cos\varphi),\quad
+q_3 = 80,\quad
+q_5 = 29{,}5 + \psi,\quad
+q_4 = q_6 = 0,
 \label{eq:juntas}
 \end{equation}
-A posição e a orientação da pinça em função do tempo, que é o que o enunciado
-pede, obtêm-se compondo~\eqref{eq:juntas} com a cinemática direta da Tarefa~1:
+e a posição e a orientação da pinça em função do tempo, que é o que o
+enunciado pede, obtêm-se compondo~\eqref{eq:juntas} com a cinemática direta:
 \begin{equation}
-\begin{bmatrix} R(t) & p(t)\\ 0 & 1\end{bmatrix} = \T{0}{6}\bigl(q(t)\bigr)\,T_z(L).
+\left[\begin{smallmatrix} R(t) & p(t)\\ 0 & 1\end{smallmatrix}\right]
+= \T{0}{6}\bigl(q(t)\bigr)\,T_z(L).
 \label{eq:pose}
 \end{equation}
-No endereço ($\varphi = \psi = 0$) a ponta da pinça está em
-$b = (347;\,0;\,80)$~mm, que é a posição da bola, com a pinça vertical (a
-menos de \ang{2}). No topo do backswing está em $(95;\,293;\,281)$~mm e no fim
-em $(287;\,-240;\,159)$~mm (Figuras~\ref{fig:cart} e~\ref{fig:3d}). No
-impacto, $\omega_{imp} = -2\varphi_{top}/T_d = \SI{0.785}{\radian\per\second}$
-e a ponta passa na bola a \SI{218}{\milli\meter\per\second}, na horizontal e
-ao longo de $-\hat y_0$: bate-lhe de lado, como a face de um taco.
+No endereço ($\varphi = \psi = 0$) a ponta está na bola, $b = (347;\,0;\,80)$~mm,
+com a pinça vertical (Figuras~\ref{fig:cart} e~\ref{fig:3d}). No impacto,
+$\omega_{imp} = -2\varphi_{top}/T_d = \SI{0.785}{\radian\per\second}$ e a
+ponta passa na bola a \SI{218}{\milli\meter\per\second}, na horizontal, como
+a face de um taco.
 
 \begin{figure}[H]
 \centering
 \begin{minipage}[b]{0.55\textwidth}
 \centering
 \fig{Photos/traj_golfista_perto_cartesiana.png}{\textwidth}
-\caption{Posição, orientação e velocidade da ponta da pinça e do flange, com
-o limite do fabricante.}
+\caption{Posição, orientação e velocidade da ponta e do flange, com o limite
+do fabricante.}
 \label{fig:cart}
 \end{minipage}\hfill
 \begin{minipage}[b]{0.43\textwidth}
 \centering
 \fig{Photos/traj_golfista_perto_3d.png}{\textwidth}
 \caption{Caminho da ponta e do flange; a cinzento, a pinça em instantes
-sucessivos; os círculos marcam o cilindro da base.}
+sucessivos.}
 \label{fig:3d}
 \end{minipage}
 \end{figure}
 
-Cinco escolhas justificam-se:
-
-\begin{itemize}[itemsep=3pt]
-  \item \textbf{Desenho nas juntas e não no espaço cartesiano.} Uma primeira
-        versão impunha à ponta um arco cartesiano e deixava a inversa escolher
-        as juntas; o antebraço tinha de rodar \ang{121} e o robô não seguia o
-        perfil à velocidade planeada (Secção~\ref{sec:v1}). Aqui cada junta
-        tem um papel e um perfil suave, e só três se movem.
-  \item \textbf{Velocidade máxima na bola.} O backswing é mais lento do que o
-        downswing, e o máximo de velocidade de toda a trajetória ocorre no
-        impacto, como num swing real.
-  \item \textbf{Pulso longe da singularidade.} Com as juntas 4 e 6 a zero, o
-        pulso é singular em $q_5 = 0$. O pulso arma no sentido que afasta
-        $q_5$ de zero: fica entre \ang{29.5} e \ang{59.5}.
-  \item \textbf{Cotovelo dobrado a \ang{80}.} O braço usa \SI{77}{\percent} do
-        comprimento esticado, longe da singularidade do cotovelo.
-  \item \textbf{Follow-through até \ang{50}.} Na primeira versão, com
-        \ang{70}, o controlador parava com um erro de deteção de colisão
-        (C31) no fim do movimento, com o braço esticado para o lado; com
-        \ang{50} nunca ocorreu.
-\end{itemize}
+As escolhas principais: \textbf{desenho nas juntas}, porque uma primeira
+versão, com um arco cartesiano, obrigava o antebraço a rodar \ang{121} e não
+era seguida à velocidade planeada (Secção~\ref{sec:v1}); \textbf{velocidade
+máxima no impacto}, como num swing real; \textbf{pulso longe da
+singularidade} $q_5 = 0$ (fica entre \ang{29.5} e \ang{59.5});
+\textbf{cotovelo a \ang{80}}, longe da singularidade do braço esticado; e
+\textbf{follow-through até \ang{50}}, porque com \ang{70} o controlador
+parava com um erro de deteção de colisão (C31) no fim do movimento.
 
 \subsection{Viabilidade}
 \label{sec:viab}
 
-As velocidades e acelerações calculam-se por diferenças centrais sobre os 1073
-pontos da trajetória (\SI{10.72}{\second} a \SI{100}{\hertz}). A
-Tabela~\ref{tab:viab} resume as três condições do enunciado, com
+Velocidades e acelerações calculam-se por diferenças centrais sobre os 1073
+pontos da trajetória (\SI{10.72}{\second} a \SI{100}{\hertz}), com
 \SI{20}{\percent} de margem sobre os limites do
-fabricante~\cite{ufactory_lite6,ufactory_specs}. O alcance mede-se do ombro
-ao centro do pulso, que não pode passar o braço esticado,
-$200 + \sqrt{87^2 + 227{,}6^2} = \SI{443.7}{\milli\meter}$; perto desse valor
-o cotovelo entra em singularidade, por isso só se aceita até
+fabricante~\cite{ufactory_lite6,ufactory_specs} (Tabela~\ref{tab:viab}). O
+alcance mede-se do ombro ao centro do pulso, que não pode passar o braço
+esticado, $200 + \sqrt{87^2 + 227{,}6^2} = \SI{443.7}{\milli\meter}$; perto
+desse valor o cotovelo é singular, por isso só se aceita até
 \SI{95}{\percent}.
 
 \begin{table}[H]
 \centering
-\caption{Verificação de viabilidade (\texttt{check\_feasibility} em
-\texttt{src/trajectory.py}).}
+\caption{Verificação de viabilidade.}
 \label{tab:viab}
 \small
 \begin{tabularx}{\textwidth}{@{}lLccc@{}}
@@ -148,7 +130,7 @@ Folga ao limite mais próximo & $\min_i$ (Tabela~\ref{tab:juntas}) & --- & $\geq
 
 \begin{figure}[H]
 \centering
-\begin{minipage}[c]{0.42\textwidth}
+\begin{minipage}[c]{0.40\textwidth}
 \centering
 \small
 \captionof{table}{Limites das juntas~\cite{ufactory_specs} e gama usada.}
@@ -167,7 +149,7 @@ Junta & Limites & Gama usada \\
 \bottomrule
 \end{tabular}
 \end{minipage}\hfill
-\begin{minipage}[c]{0.55\textwidth}
+\begin{minipage}[c]{0.57\textwidth}
 \centering
 \fig{Photos/traj_golfista_perto_juntas.png}{\textwidth}
 \captionof{figure}{Ângulos e velocidades das juntas; a tracejado, o limite
@@ -179,16 +161,14 @@ de \SI{180}{\degree\per\second}.}
 \subsection{Ausência de contacto perigoso: simulação no MuJoCo}
 \label{sec:contacto}
 
-A verificação anterior garante que a ponta, o flange e as origens de todos os
-referenciais ficam a mais de \SI{30}{\milli\meter} da mesa (mínimo:
-\SI{80}{\milli\meter}, na bola) e a mais de \SI{80}{\milli\meter} do eixo da
-base (mínimo: \SI{298}{\milli\meter}). Como isto só olha para pontos, antes de
-ir ao robô reproduziu-se a trajetória das juntas no MuJoCo~\cite{todorov2012},
-com o modelo oficial do Lite~6 com pinça~\cite{menagerie2022}, e mediu-se em
-cada instante a distância entre as malhas de colisão de todos os pares de
-elos, incluindo o corpo e os dedos da pinça, e entre o robô e a mesa
-(\texttt{src/mujoco\_preview.py}). As malhas são invólucros convexos, logo as
-distâncias são conservadoras.
+A verificação anterior só olha para pontos: a ponta, o flange e as origens
+dos referenciais ficam a pelo menos \SI{80}{\milli\meter} da mesa e
+\SI{298}{\milli\meter} do eixo da base. Por isso, antes de ir ao robô,
+reproduziu-se a trajetória das juntas no MuJoCo~\cite{todorov2012} com o
+modelo oficial do Lite~6 com pinça~\cite{menagerie2022} e mediu-se em cada
+instante a distância entre as malhas de colisão (invólucros convexos, logo
+conservadoras) de todos os pares de elos, incluindo o corpo e os dedos da
+pinça, e entre o robô e a mesa (Figuras~\ref{fig:seq} e~\ref{fig:folgas}).
 
 \begin{figure}[H]
 \centering
@@ -200,19 +180,22 @@ pinça; a esfera é a bola.}
 
 \begin{figure}[H]
 \centering
-\fig{Photos/mjgp_folgas.png}{0.6\textwidth}
+\begin{minipage}[c]{0.5\textwidth}
+\centering
+\fig{Photos/mjgp_folgas.png}{\textwidth}
+\end{minipage}\hfill
+\begin{minipage}[c]{0.47\textwidth}
 \caption{Folga mínima ao longo do swing: robô (com pinça) à mesa e entre elos
-não adjacentes. As linhas verticais marcam o topo do backswing e o impacto.}
+não adjacentes. As linhas verticais marcam o topo do backswing e o impacto.
+O ponto mais baixo do robô é a pinça, a \SI{82}{\milli\meter} da mesa; entre
+elos, o mínimo é de \SI{25}{\milli\meter} (corpo da pinça e elo~4), a
+distância construtiva entre os dois.}
 \label{fig:folgas}
+\end{minipage}
 \end{figure}
 
-O ponto mais baixo do robô é a pinça, a \SI{82}{\milli\meter} da mesa no
-endereço e no impacto. Entre elos, a menor distância é de
-\SI{25}{\milli\meter} (corpo da pinça e elo~4) e é praticamente a distância
-construtiva entre os dois; o par seguinte (elos 2 e 4) nunca fica a menos de
-\SI{35}{\milli\meter}. O modelo 3D, construído pelo fabricante a partir do
-desenho do robô, e a nossa cinemática direta coincidem a menos de
-\SI{0.7}{\milli\meter} no flange e \SI{1.9}{\milli\meter} na ponta da pinça ao
-longo de toda a trajetória, o que é uma verificação independente da Tarefa~1.
-A simulação serviu também para escolher a trajetória: várias versões anteriores
-foram postas de parte depois de vistas no modelo, sem chegarem ao robô.
+O modelo 3D e a nossa cinemática coincidem a menos de \SI{0.7}{\milli\meter}
+no flange e \SI{1.9}{\milli\meter} na ponta ao longo de todo o swing, uma
+verificação independente da Tarefa~1. A simulação serviu também para escolher
+a trajetória: várias versões foram postas de parte no modelo, sem chegarem ao
+robô.

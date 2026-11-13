@@ -3,44 +3,26 @@
 \label{sec:exec}
 % =============================================================================
 
-\subsection{Script}
-
-O script \texttt{src/run\_robot.py} usa só funções do SDK~\cite{xarm_sdk}:
-gera a trajetória e corre a verificação da Secção~\ref{sec:viab} (se alguma
-condição falhar, nada é enviado); liga ao robô, lê o desvio de ferramenta
-configurado e converte as poses para o ponto que o controlador comanda (no
-laboratório, o flange); aproxima-se da pose inicial junta a junta, a
-\SI{20}{\degree\per\second}; e envia uma pose~\eqref{eq:pose} a cada
-\SI{10}{\milli\second} com \texttt{set\_servo\_cartesian}
-(Listagem~\ref{lst:servo}). O controlador resolve a inversa em cada ponto e o
-perfil temporal é o nosso. O parâmetro \texttt{-{}-lento N} estica o tempo $N$
-vezes, mantendo o caminho.
-
-\begin{lstlisting}[language=Python, caption={Ciclo de envio
-(simplificado de \texttt{src/run\_robot.py}).},
-label={lst:servo}, captionpos=b]
-arm.set_mode(1); arm.set_state(0)            # modo servo
-t0 = time.perf_counter()
-for k, pose in enumerate(poses):             # [x, y, z, roll, pitch, yaw]
-    if arm.set_servo_cartesian(pose) != 0:   # erro do controlador: parar
-        break
-    _, medida = arm.get_position()
-    registo.append([time.perf_counter() - t0, *pose, *medida])
-    while time.perf_counter() - t0 < (k + 1) * dt:
-        pass                                 # espera até ao instante seguinte
-arm.set_mode(0); arm.set_state(0)
-\end{lstlisting}
+O script de execução usa só funções do SDK do robô~\cite{xarm_sdk}. Gera a
+trajetória e repete a verificação da Secção~\ref{sec:viab}, sem enviar nada
+se alguma condição falhar; lê o desvio de ferramenta configurado no
+controlador e converte as poses para o ponto que ele comanda (no laboratório,
+o flange); leva o robô à pose inicial junta a junta, devagar; e, em modo
+servo, envia uma pose~\eqref{eq:pose} a cada \SI{10}{\milli\second} com
+\texttt{set\_servo\_cartesian}, lendo em cada ciclo a pose atual com
+\texttt{get\_position}. É o controlador que resolve a inversa em cada ponto,
+mas o perfil temporal é o nosso. A mesma trajetória pode ser esticada no
+tempo, mantendo o caminho, para ensaiar a velocidades mais baixas.
 
 \subsection{Resultados}
 
-Os ensaios fizeram-se a 13/11/2026 (\emph{firmware} 2.7.1), a três
-velocidades: metade da planeada, a planeada e \SI{43}{\percent} acima dela. O
-erro é a distância entre o flange medido (\texttt{get\_position}) e o pedido
-no mesmo instante; o atraso é o deslocamento temporal que minimiza esse erro
-(Tabela~\ref{tab:exec}, Figura~\ref{fig:exec}). A pose medida é a que o
-controlador calcula a partir dos seus encoders: não se usou nenhum
-instrumento externo, pelo que o erro é relativo ao modelo interno do robô. Os
-vídeos estão no fim do relatório.
+Os ensaios fizeram-se a 13/11/2026 (\emph{firmware} 2.7.1) a três
+velocidades: metade da planeada, a planeada e \SI{43}{\percent} acima dela
+(Tabela~\ref{tab:exec}, Figura~\ref{fig:exec}). O erro é a distância entre o
+flange medido e o pedido no mesmo instante; o atraso é o deslocamento
+temporal que minimiza esse erro. A pose medida é a que o controlador calcula
+a partir dos seus \emph{encoders}, pelo que o erro é relativo ao modelo
+interno do robô (não se usou nenhum instrumento externo).
 
 \begin{table}[H]
 \centering
@@ -51,75 +33,56 @@ correram até ao fim, sem erros do controlador.}
 \begin{tabular}{lcccccc}
 \toprule
 \rowcolor{tabcab}
-Ensaio & Duração & Flange (máx.) & Erro médio & Erro máx. & Atraso & Erro sem o atraso \\
+Velocidade & Duração & Flange (máx.) & Erro médio & Erro máx. & Atraso & Sem o atraso \\
 \midrule
-\texttt{-{}-lento 2}, 1.º  & \SI{21.4}{\second} & \SI{108}{\milli\meter\per\second} & \SI{0.56}{\milli\meter} & \SI{1.08}{\milli\meter} & \SI{10}{\milli\second} & \SI{0.01}{\milli\meter} \\
-\texttt{-{}-lento 2}, 2.º  & \SI{21.4}{\second} & \SI{108}{\milli\meter\per\second} & \SI{0.56}{\milli\meter} & \SI{1.08}{\milli\meter} & \SI{10}{\milli\second} & \SI{0.01}{\milli\meter} \\
-\texttt{-{}-lento 1}, 1.º  & \SI{10.7}{\second} & \SI{215}{\milli\meter\per\second} & \SI{1.12}{\milli\meter} & \SI{2.16}{\milli\meter} & \SI{10}{\milli\second} & \SI{0.02}{\milli\meter} \\
-\texttt{-{}-lento 1}, 2.º  & \SI{10.7}{\second} & \SI{215}{\milli\meter\per\second} & \SI{1.10}{\milli\meter} & \SI{2.16}{\milli\meter} & \SI{10}{\milli\second} & \SI{0.04}{\milli\meter} \\
-\texttt{-{}-lento 0.7}     & \SI{7.5}{\second}  & \SI{306}{\milli\meter\per\second} & \SI{1.59}{\milli\meter} & \SI{3.09}{\milli\meter} & \SI{10}{\milli\second} & \SI{0.03}{\milli\meter} \\
+Metade, 1.º   & \SI{21.4}{\second} & \SI{108}{\milli\meter\per\second} & \SI{0.56}{\milli\meter} & \SI{1.08}{\milli\meter} & \SI{10}{\milli\second} & \SI{0.01}{\milli\meter} \\
+Metade, 2.º   & \SI{21.4}{\second} & \SI{108}{\milli\meter\per\second} & \SI{0.56}{\milli\meter} & \SI{1.08}{\milli\meter} & \SI{10}{\milli\second} & \SI{0.01}{\milli\meter} \\
+Planeada, 1.º & \SI{10.7}{\second} & \SI{215}{\milli\meter\per\second} & \SI{1.12}{\milli\meter} & \SI{2.16}{\milli\meter} & \SI{10}{\milli\second} & \SI{0.02}{\milli\meter} \\
+Planeada, 2.º & \SI{10.7}{\second} & \SI{215}{\milli\meter\per\second} & \SI{1.10}{\milli\meter} & \SI{2.16}{\milli\meter} & \SI{10}{\milli\second} & \SI{0.04}{\milli\meter} \\
+\SI{43}{\percent} acima & \SI{7.5}{\second} & \SI{306}{\milli\meter\per\second} & \SI{1.59}{\milli\meter} & \SI{3.09}{\milli\meter} & \SI{10}{\milli\second} & \SI{0.03}{\milli\meter} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{figure}[H]
 \centering
-\fig{Photos/run_servo_golfista_perto.png}{\textwidth}
+\fig{Photos/run_servo_golfista_perto.png}{0.9\textwidth}
 \caption{Posição do flange pedida (tracejado) e medida, e erro de posição, às
 três velocidades. As linhas verticais separam as três fases.}
 \label{fig:exec}
 \end{figure}
 
-\begin{itemize}[itemsep=3pt]
-  \item \textbf{O robô segue a trajetória às três velocidades}, incluindo
-        acima da planeada, e o resultado repete-se entre ensaios.
-  \item \textbf{O erro é um ciclo de atraso e nada mais.} O atraso é sempre
-        de \SI{10}{\milli\second}, o período de envio. Um atraso $\tau$ a uma
-        velocidade $v$ dá um erro $v\tau$: prevê-se um máximo de 1,1, 2,2 e
-        \SI{3.1}{\milli\meter} às três velocidades, e mediu-se 1,08, 2,16 e
-        \SI{3.09}{\milli\meter}. Descontado o atraso, o erro médio fica abaixo
-        de \SI{0.05}{\milli\meter}, muito abaixo da repetibilidade do robô
-        ($\pm\SI{0.5}{\milli\meter}$~\cite{ufactory_lite6}).
-  \item \textbf{A velocidade medida é a pedida}: 111, 215 e
-        \SI{306}{\milli\meter\per\second}.
-\end{itemize}
+O robô segue a trajetória às três velocidades, incluindo acima da planeada, e
+os ensaios repetidos dão o mesmo resultado. \textbf{O erro é um ciclo de
+atraso e nada mais}: o atraso é sempre de \SI{10}{\milli\second}, o período
+de envio, e um atraso $\tau$ a uma velocidade $v$ dá um erro $v\tau$. Isto
+prevê um máximo de 1,1, 2,2 e \SI{3.1}{\milli\meter}, e mediu-se 1,08, 2,16 e
+\SI{3.09}{\milli\meter}. Descontado o atraso, o erro médio fica abaixo de
+\SI{0.05}{\milli\meter}, muito abaixo da repetibilidade do robô
+($\pm\SI{0.5}{\milli\meter}$~\cite{ufactory_lite6}).
 
-\paragraph{Uma bola a sério.} Para ver o impacto, pôs-se uma tampa de caneta
-em cima de um apagador e levou-se a pinça à mão até ela. As juntas lidas
-nessa pose passaram a ser o endereço (opção \texttt{-{}-enderecio}); o resto
-do swing vem de~\eqref{eq:juntas}. Para essas juntas a nossa cinemática
-direta dá o flange em $(-15{,}9;\,-339{,}0;\,133{,}1)$~mm e o controlador
-indicava $(-16{,}8;\,-340{,}1;\,133{,}0)$~mm, uma diferença de
-\SI{1.4}{\milli\meter}. No modelo 3D a folga à mesa é de
-\SI{51}{\milli\meter}. O robô acertou na tampa. Escolheu-se de propósito um
-objeto de poucos gramas, para não forçar o robô: é uma demonstração de que a
-ponta passa onde se planeou, não um ensaio de impacto. Como esperado, os dados
-com tampa são iguais aos sem ela (erro médio \SI{0.56}{\milli\meter}, máximo
-\SI{1.07}{\milli\meter} em ambos).
+\paragraph{Um objeto na posição da bola.} Pôs-se uma tampa de caneta em cima
+de um apagador e levou-se a pinça à mão até ela; as juntas lidas nessa pose
+passaram a ser o endereço, e o resto do swing vem de~\eqref{eq:juntas}. No
+modelo 3D a folga à mesa é de \SI{51}{\milli\meter}. O robô acertou na
+tampa, um objeto de poucos gramas escolhido para não forçar o robô: é uma
+demonstração de que a ponta passa onde se planeou, e os dados com tampa são
+iguais aos sem ela (erro médio \SI{0.56}{\milli\meter} em ambos).
 
-\subsection{A primeira versão e o que se aprendeu com ela}
+\subsection{A primeira versão}
 \label{sec:v1}
 
-Nas sessões de 5 e 6/11 executou-se uma primeira trajetória, desenhada no
-espaço cartesiano: a ponta da pinça percorria um arco vertical de
-\SI{150}{\milli\meter} por cima da bola e a orientação rodava com o arco. Dois
-resultados dessa versão orientaram a final:
-
-\begin{itemize}[itemsep=3pt]
-  \item \textbf{À velocidade planeada o robô não seguia o perfil}: erro médio
-        de \SI{8.4}{\milli\meter} (máximo \SI{28}{\milli\meter}), com o flange
-        a apenas \SI{170}{\milli\meter\per\second}; a metade da velocidade
-        seguia com \SI{0.54}{\milli\meter}. A hipótese de um limite de
-        velocidade do controlador ficou refutada: a configuração lida do
-        controlador (\texttt{src/robot\_info.py}) tem os limites do
-        fabricante (\SI{500}{\milli\meter\per\second},
-        \SI{180}{\degree\per\second}), e a trajetória final foi seguida a
-        \SI{306}{\milli\meter\per\second}. A diferença está na forma do
-        movimento: no arco cartesiano o antebraço rodava \ang{121}, a
-        \SI{95}{\degree\per\second} e \SI{227}{\degree\per\second\squared};
-        na versão final nenhuma junta passa de
-        \SI{36}{\degree\per\second} e \SI{68}{\degree\per\second\squared}.
-  \item \textbf{Singularidade do pulso.} Com a pinça a pique e as juntas 4 e
-        6 livres, a inversa pedia $\sim$\SI{1900}{\degree\per\second} a essas
-        juntas perto de $q_5 = 0$.
-\end{itemize}
+Nas sessões de 5 e 6/11 executou-se uma primeira trajetória desenhada no
+espaço cartesiano: a ponta percorria um arco vertical de
+\SI{150}{\milli\meter} por cima da bola. A metade da velocidade era seguida
+com \SI{0.54}{\milli\meter}, mas à velocidade planeada o erro médio subia
+para \SI{8.4}{\milli\meter} (máximo \SI{28}{\milli\meter}), com o flange a
+apenas \SI{170}{\milli\meter\per\second}. Não era um limite do controlador:
+a configuração lida dele tem os limites do fabricante, e a versão final foi
+seguida a \SI{306}{\milli\meter\per\second}. A diferença está na forma do
+movimento: no arco cartesiano o antebraço rodava \ang{121}, a
+\SI{95}{\degree\per\second} e \SI{227}{\degree\per\second\squared}; na
+versão final nenhuma junta passa de \SI{36}{\degree\per\second} e
+\SI{68}{\degree\per\second\squared}. Foi também nessa versão que se viu a
+singularidade do pulso: com a pinça a pique, a inversa pedia
+$\sim$\SI{1900}{\degree\per\second} às juntas 4 e 6.

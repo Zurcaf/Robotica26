@@ -3,20 +3,19 @@
 \label{sec:ik}
 % =============================================================================
 
-Com o script \texttt{src/ik\_compare.py}, escolheram-se 100 pontos
-igualmente espaçados no tempo ao longo do swing da Tarefa~2. Para cada pose
-pedida $(p_k, R_k)$ obteve-se $q_k$ com a inversa do controlador, a função
-\texttt{get\_inverse\_kinematics} do SDK; calculou-se
+Escolheram-se 100 pontos igualmente espaçados no tempo ao longo do swing da
+Tarefa~2. Para cada pose pedida $(p_k, R_k)$ obteve-se $q_k$ com a inversa do
+controlador (\texttt{get\_inverse\_kinematics}), calculou-se
 $(\hat p_k, \hat R_k) = \T{0}{6}(q_k)$ com a nossa cinemática direta e
 mediram-se o erro de posição $\lVert\hat p_k - p_k\rVert$ e o de orientação
-(ângulo de $\hat R_k R_k^{T}$). Para separar o erro da inversa do erro do
-nosso modelo, repetiu-se com a cinemática direta do próprio controlador
+(ângulo de $\hat R_k R_k^{T}$). Para separar o erro da inversa do do nosso
+modelo, repetiu-se com a direta do controlador
 (\texttt{get\_forward\_kinematics}). O robô não se move neste ensaio.
 
 \begin{table}[H]
 \centering
 \caption{Pose recuperada a partir das juntas da inversa do robô, comparada com
-a pose pedida (100 pontos, 13/11/2026).}
+a pose pedida (100 pontos).}
 \label{tab:ik}
 \small
 \begin{tabular}{lcccc}
@@ -34,38 +33,40 @@ A nossa (Tabela~\ref{tab:dh}) & \SI{1.19}{\milli\meter} & \SI{1.95}{\milli\meter
 
 \begin{figure}[H]
 \centering
-\fig{Photos/ik_erros_golfista_perto.png}{0.66\textwidth}
+\begin{minipage}[c]{0.55\textwidth}
+\centering
+\fig{Photos/ik_erros_golfista_perto.png}{\textwidth}
+\end{minipage}\hfill
+\begin{minipage}[c]{0.42\textwidth}
 \caption{Erro da pose recuperada ao longo do swing: posição com as duas
-cinemáticas diretas, componentes da diferença com a nossa, e orientação. Os
+cinemáticas diretas, componentes da diferença com a nossa e orientação. Os
 círculos marcam os pontos em que a inversa devolveu o pulso virado.}
 \label{fig:ik}
+\end{minipage}
 \end{figure}
 
 \begin{itemize}[itemsep=3pt]
-  \item \textbf{A inversa do robô é exata face ao seu modelo.} Resolveu os
-        100 pontos, e a direta do controlador devolve a pose pedida com menos
-        de \SI{2}{\micro\meter} e \ang{0.0002}, ao nível do arredondamento.
+  \item \textbf{A inversa do robô é exata face ao seu modelo}: resolveu os
+        100 pontos, e a direta do controlador devolve a pose pedida ao nível
+        do arredondamento.
   \item \textbf{A diferença de \SI{1.2}{\milli\meter} está no modelo
         geométrico, não na inversa.} É, ponto a ponto, a diferença entre a
         nossa direta e a do controlador, com um desvio quase constante de
         $(0{,}3;\,0{,}4;\,-0{,}9)$~mm, o mesmo padrão da primeira versão
-        (\SI{1.36}{\milli\meter} em 60 pontos). A configuração lida do
-        controlador (\texttt{src/robot\_info.py}) explica-a: os parâmetros
-        D-H guardados são os da Tabela~\ref{tab:dh}, mas com $q=0$ o
-        controlador indica o flange a \SI{0.6}{\milli\meter} da nossa
-        cinemática, logo aplica uma calibração própria por cima da tabela
-        nominal, que não é acessível diretamente. Ajustando pequenas correções
-        aos parâmetros da Tabela~\ref{tab:dh} com os dados da primeira versão,
-        a diferença desceu de 1,36 para \SI{0.06}{\milli\meter}
-        (\texttt{src/ajuste\_dh.py}), o que confirma que é geométrica; com uma
-        só trajetória, porém, vários parâmetros compensam-se, e esse ajuste
-        não é uma calibração.
+        (\SI{1.36}{\milli\meter}). A configuração lida do controlador
+        explica-a: os parâmetros D-H guardados são os da
+        Tabela~\ref{tab:dh}, mas com $q=0$ o controlador indica o flange a
+        \SI{0.6}{\milli\meter} da nossa cinemática, logo aplica uma
+        calibração própria, que não é acessível. Ajustando pequenas correções
+        aos parâmetros D-H com os dados da primeira versão, a diferença
+        desceu de 1,36 para \SI{0.06}{\milli\meter}, o que confirma que é
+        geométrica (com uma só trajetória, porém, esse ajuste não é uma
+        calibração).
   \item \textbf{A inversa não garante continuidade das juntas.} Em 22 dos 100
         pontos devolveu a solução de pulso virado
         ($q_4 \pm \ang{180}$, $-q_5$, $q_6 \pm \ang{180}$), a mesma pose com
-        outros ângulos. Depois de convertidas, as juntas ficam a menos de
-        \ang{0.4} das planeadas na Tarefa~2; essa diferença é a própria
-        calibração do robô.
+        outros ângulos; convertidas, as juntas ficam a menos de \ang{0.4}
+        das planeadas.
 \end{itemize}
 
 \begin{destaque}
