@@ -37,8 +37,10 @@ Os ensaios fizeram-se a 13/11/2026 (\emph{firmware} 2.7.1), a três
 velocidades: metade da planeada, a planeada e \SI{43}{\percent} acima dela. O
 erro é a distância entre o flange medido (\texttt{get\_position}) e o pedido
 no mesmo instante; o atraso é o deslocamento temporal que minimiza esse erro
-(Tabela~\ref{tab:exec}, Figura~\ref{fig:exec}). Os vídeos estão no fim do
-relatório.
+(Tabela~\ref{tab:exec}, Figura~\ref{fig:exec}). A pose medida é a que o
+controlador calcula a partir dos seus encoders: não se usou nenhum
+instrumento externo, pelo que o erro é relativo ao modelo interno do robô. Os
+vídeos estão no fim do relatório.
 
 \begin{table}[H]
 \centering
@@ -89,16 +91,18 @@ do swing vem de~\eqref{eq:juntas}. Para essas juntas a nossa cinemática
 direta dá o flange em $(-15{,}9;\,-339{,}0;\,133{,}1)$~mm e o controlador
 indicava $(-16{,}8;\,-340{,}1;\,133{,}0)$~mm, uma diferença de
 \SI{1.4}{\milli\meter}. No modelo 3D a folga à mesa é de
-\SI{51}{\milli\meter}. O robô acertou na tampa, e o ensaio com tampa é
-igual ao ensaio sem ela (erro médio \SI{0.56}{\milli\meter}, máximo
-\SI{1.07}{\milli\meter} em ambos): o impacto não perturbou o movimento.
+\SI{51}{\milli\meter}. O robô acertou na tampa. Escolheu-se de propósito um
+objeto de poucos gramas, para não forçar o robô: é uma demonstração de que a
+ponta passa onde se planeou, não um ensaio de impacto. Como esperado, os dados
+com tampa são iguais aos sem ela (erro médio \SI{0.56}{\milli\meter}, máximo
+\SI{1.07}{\milli\meter} em ambos).
 
 \subsection{A primeira versão e o que se aprendeu com ela}
 \label{sec:v1}
 
 Nas sessões de 5 e 6/11 executou-se uma primeira trajetória, desenhada no
 espaço cartesiano: a ponta da pinça percorria um arco vertical de
-\SI{150}{\milli\meter} por cima da bola e a orientação rodava com o arco. Três
+\SI{150}{\milli\meter} por cima da bola e a orientação rodava com o arco. Dois
 resultados dessa versão orientaram a final:
 
 \begin{itemize}[itemsep=3pt]
@@ -115,13 +119,6 @@ resultados dessa versão orientaram a final:
         \SI{95}{\degree\per\second} e \SI{227}{\degree\per\second\squared};
         na versão final nenhuma junta passa de
         \SI{36}{\degree\per\second} e \SI{68}{\degree\per\second\squared}.
-  \item \textbf{Erro C31 (deteção de colisão)} com o follow-through até
-        \ang{70}: o robô parava sempre no mesmo ponto, quase parado e com o
-        braço esticado para o lado. A hipótese de a massa da pinça não estar
-        configurada também ficou refutada (o controlador tem
-        \SI{0.3}{\kilo\gram} declarados); a causa mais provável é o cabo da
-        pinça. Encurtar o follow-through para \ang{50} eliminou o erro, que
-        não voltou a aparecer.
   \item \textbf{Singularidade do pulso.} Com a pinça a pique e as juntas 4 e
         6 livres, a inversa pedia $\sim$\SI{1900}{\degree\per\second} a essas
         juntas perto de $q_5 = 0$.
