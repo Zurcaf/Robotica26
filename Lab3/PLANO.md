@@ -77,6 +77,61 @@ Levar: caixa ou esquadro rígido, fita-cola, transferidor, régua, tripé ou
 apoio para o telemóvel, **adaptador USB-C → USB-A** (o Arduino Uno liga por
 USB-A), portátil com o Arduino IDE e as bibliotecas do sketch já instaladas.
 
+## O robô como referência (proposta do professor)
+
+O Lite 6 do Lab 2 sabe a sua pose a cada 10 ms e já temos o código que o move
+e a grava. Com a IMU presa à pinça, substitui o transferidor e a régua por uma
+referência contínua no tempo.
+
+| Ensaio | Versão com o robô |
+|---|---|
+| B | 12 a 24 orientações exatas, parada 10 s em cada: desvio, escala e desalinhamento do acelerómetro |
+| C | uma junta a rodar a velocidade constante (10, 30, 60 °/s), nos dois sentidos: escala do giroscópio |
+| D | varrimento de inclinação com o ângulo verdadeiro em cada instante |
+| D2 | inclinar e transladar ao mesmo tempo, com aceleração conhecida |
+| F | "acenar" e "soco" desenhados nas juntas, como o swing do Lab 2, com posição e orientação verdadeiras |
+| G (novo) | deriva da posição: ver abaixo |
+
+Reservas: a tarefa 6 pede o gesto "holding the device in your hand", por isso
+os gestos à mão têm de existir e o robô entra como validação do método; o
+ensaio A faz-se na mesa com o robô desligado (os motores vibram), e repete-se
+com o robô parado a segurar a IMU para medir o ruído que ele acrescenta; a
+referência é a pose que o controlador indica.
+
+Sincronização: os dois registos (robô e IMU) são gravados no mesmo portátil,
+com o mesmo relógio, e cada ensaio começa com um movimento brusco e curto que
+se vê nos dois.
+
+**Suporte:** `modelos/suporte_imu/` (substitui um dedo da pinça; precisa da
+autorização do professor e de 2 parafusos M2,5 × 5). Medidas da pinça em
+`modelos/gripper_lite/MEDIDAS.md`.
+
+## Ensaio G: a posição deriva (resultado a mostrar)
+
+Um erro constante `b` na aceleração dá um erro de posição de `½·b·t²`:
+10 mg por corrigir são 44 cm ao fim de 3 s; 1° de erro na inclinação são
+77 cm (a gravidade mal subtraída deixa 0,17 m/s²). A previsão desenha-se com
+os valores de `b` da tarefa 2, antes de medir.
+
+1. Parado na mesa (o ensaio A): integrar duas vezes; a posição verdadeira é
+   zero, tudo o que aparece é erro. Comparar com `½·b·t²`.
+2. No robô, com trajetória conhecida: posição estimada contra a verdadeira.
+3. O mesmo com e sem calibração, e com e sem pôr a velocidade a zero quando o
+   sensor pára.
+
+## Extra: controlar o robô com a mão
+
+Demonstração da tarefa 5 em tempo real. Kit preso às costas da mão com
+`modelos/placa_mao/`.
+
+1. Primeiro no MuJoCo, com o modelo do Lite 6 do Lab 2: sem risco.
+2. Depois no robô, muito limitado: poucas juntas, gamas pequenas, velocidade
+   cortada, filtro, e uma tecla que tem de estar premida para ele se mexer.
+
+Modos: a pinça copia a inclinação da mão; e "inclinar para mover", como um
+joystick. Seguir a posição XYZ da mão diretamente não funciona (ensaio G), e
+mostrar isso faz parte do vídeo.
+
 ## Antes de ir ao laboratório
 
 A ideia é a do Lab 2: preparar e testar tudo em simulação, e ir ao laboratório
@@ -106,8 +161,8 @@ só para gravar.
 
 | Semana | O quê |
 |---|---|
-| 16–22 nov | gravador, simulador e análise das tarefas 2 a 4 em dados simulados |
+| 16–22 nov | gravador, simulador e análise das tarefas 2 a 4 em dados simulados; imprimir o suporte e a placa da mão; pedir autorização para tirar um dedo da pinça |
 | 23–29 nov | 1.ª ida ao laboratório: ensaios 0, A, B, C, D; rever a análise com dados reais |
-| 30 nov–6 dez | CI (tarefa 5) e gestos em simulação; 2.ª ida: D2, E, F1, F2 |
+| 30 nov–6 dez | CI (tarefa 5) e gestos em simulação; 2.ª ida: D2, E, F1, F2, G, e os ensaios com a IMU na pinça |
 | 7–13 dez | relatório; 3.ª ida só se faltar algum ensaio |
 | 14–18 dez | revisão e entrega |
