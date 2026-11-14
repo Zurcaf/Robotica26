@@ -17,9 +17,10 @@ laboratório (Arduino Uno + acrílico, com a IMU colada entre os dois).
    1,6 mm de rosca no espaçador. A parede tem o padrão de furos do Uno e o seu
    espelho: serve com o kit virado para qualquer lado.
 2. Tirar **um** dedo da pinça (2 parafusos M2,5, por baixo) e guardá-lo.
-3. Aparafusar a peça no lugar do dedo, com **M2,5 × 5** (a peça tem 2 mm de
-   plástico por baixo da cabeça; o dedo original tem 0,9 mm e usa M2,5 × 4).
-   A rosca na corrediça só tem 3 mm de fundo: não usar parafusos mais compridos.
+3. Aparafusar a peça no lugar do dedo com os **mesmos parafusos do dedo**
+   (M2,5 × 4). A peça tem 1,2 mm de plástico por baixo da cabeça, por isso ficam
+   2,8 mm de rosca na corrediça (o dedo original deixa 3,1). A rosca só tem 3 mm
+   de fundo: não usar parafusos mais compridos.
 4. Prender o cabo USB com uma abraçadeira nos rasgos da parede, com folga.
 
 No fim, voltar a montar o dedo original.
@@ -31,8 +32,8 @@ PLA ou PETG, 3 perímetros, 30 % de enchimento.
 
 ## Por confirmar antes de imprimir
 
-- Autorização do professor para tirar um dedo da pinça.
 - Que os parafusos dos dedos são M2,5 e entram por baixo (é o que o ficheiro do fabricante mostra).
 - Se a pinça fica **fechada** quando está parada. A peça foi desenhada para isso: com a pinça aberta fica 8,1 mm mais para fora.
 - Que os parafusos M3 do kit ainda apertam bem com menos 1,6 mm de rosca. Se não, baixar `m3_sob_cabeca` no `.scad` (mínimo razoável: 1,2 mm).
-- A peça desce 67 mm abaixo do corpo da pinça e o kit fica de lado: as trajetórias do robô têm de contar com isso (a verificação de colisões do Lab 2 não o inclui).
+- A peça desce 67 mm abaixo do corpo da pinça e o kit fica de lado. Os ensaios do robô já contam com isso: `src/robo/geometria.py` põe este STL e uma caixa do tamanho do kit no modelo MuJoCo, e `src/robo/verificar.py` procura colisões com eles.
+- O STL é binário (`--export-format binstl`), porque o MuJoCo não lê STL em texto.

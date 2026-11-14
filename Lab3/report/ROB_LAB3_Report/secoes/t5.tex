@@ -36,17 +36,37 @@ escolher $w$.
 1. É o que o enunciado pede, e permite ver o efeito do parâmetro.
 
 \paragraph{Dinâmico.} Em cada instante escolhe-se o $w$ que minimiza o traço
-de $P$ em~\eqref{eq:ci}, com covariâncias que acompanham o movimento:
-\begin{itemize}
-  \item $P_a$ é o ruído do acelerómetro propagado por~\eqref{eq:incl},
-        aumentado quando há sinais de que o sensor acelera: o módulo da
-        medição afasta-se de $1\,g$, ou a velocidade angular é elevada;
-  \item $P_g$ cresce a cada passo de integração com $\sigma_g$, e diminui
-        quando há fusão.
-\end{itemize}
-Com o sensor parado ou lento domina o acelerómetro; em movimento rápido,
-o giroscópio. Um módulo próximo de $1\,g$ não garante aceleração nula, por
-isso o critério usa os dois sinais e não é infalível.
+de $P$ em~\eqref{eq:ci}, com covariâncias que acompanham o movimento.
+$P_g$ cresce a cada passo de integração com $\sigma_g$ e diminui quando há
+fusão. $P_a$ é o ruído do acelerómetro propagado por~\eqref{eq:incl},
+aumentado quando há sinais de que o sensor acelera
+(Tabela~\ref{tab:criterios}).
+
+\begin{table}[H]
+\centering
+\caption{Sinais de que o acelerómetro não está a medir só a gravidade.}
+\label{tab:criterios}
+\small
+\begin{tabular}{p{0.3\textwidth}p{0.27\textwidth}p{0.33\textwidth}}
+\toprule
+\rowcolor{tabcab}
+Critério & Apanha & Falha \\
+\midrule
+$\lVert\tilde a\rVert$ longe de $1\,g$ & acelerações verticais ou fortes &
+acelerações horizontais pequenas: $0{,}1\,g$ de lado dá $\lVert a\rVert =
+1{,}005\,g$ e \ang{5.7} de erro \\
+$\lVert\tilde\omega\rVert$ elevada & gestos com rotação & translações sem
+rodar \\
+Diferença entre a inclinação medida e a prevista pelo giroscópio & qualquer
+aceleração que desvie a vertical medida & reage tarde se o giroscópio já
+derivou \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+O ensaio de vaivém no robô (D3: $\pm\SI{50}{\milli\meter}$ de lado e na
+vertical, a $0{,}1$ e $0{,}2\,g$) mostra a falha do primeiro critério na
+horizontal. O terceiro é o que um filtro de Kalman faz com a inovação.
 \todo{expressões finais de $P_a$ e $P_g$ e os limiares usados.}
 
 \subsection{Resultados}

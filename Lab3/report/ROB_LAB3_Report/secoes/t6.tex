@@ -30,10 +30,20 @@ ou \SI{77}{\centi\meter} ao fim de \SI{3}{\second}. Por isso os gestos são
 curtos e começam e acabam com o sensor parado.
 \end{destaque}
 
-Como cada gesto começa e acaba em repouso, a velocidade nos dois extremos é
-conhecida (zero). \todo{correção usada: retirar à velocidade a deriva linear
-entre os dois instantes de repouso; e, tudo sendo pós-processado, um
-suavizador~\cite{rauch1965} em vez de um filtro só para a frente.}
+\paragraph{Correção entre repousos.} Cada gesto começa e acaba em repouso,
+por isso a velocidade verdadeira é zero nos dois extremos. A velocidade
+integrada no fim, $\hat v(T)$, não dá zero: é erro. Com um desvio constante
+esse erro cresce como uma rampa de $0$ a $\hat v(T)$, que se subtrai antes de
+integrar outra vez:
+\begin{equation}
+v_c(t) = \hat v(t) - \frac{t}{T}\,\hat v(T), \qquad
+p_c(t) = \int_0^t v_c\,\mathrm d\tau .
+\label{eq:repousos}
+\end{equation}
+O erro de um desvio constante desaparece por completo; fica o que muda
+durante o movimento (ruído, inclinação mal estimada). \todo{com e sem
+\eqref{eq:repousos}, contra a posição do robô; tudo sendo pós-processado,
+um suavizador~\cite{rauch1965} é a generalização.}
 
 \subsection{Validação com o robô (ensaios F e G)}
 

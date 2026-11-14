@@ -10,7 +10,7 @@
 // Desenhada para a pinça FECHADA: a base do dedo começa em Y = 0, no eixo da
 // ferramenta.
 //
-// Gerar:  openscad -o suporte_imu.stl suporte_imu.scad
+// Gerar:  openscad --export-format binstl -o suporte_imu.stl suporte_imu.scad
 // Imprimir com a face de fora da parede (onde encosta o acrílico) na mesa.
 
 /* [Pinça: do STEP, não mexer sem medir] */
@@ -23,8 +23,9 @@ lamina_y       = 11.1;   // Y onde começava a lâmina do dedo original
 /* [Parafusos da pinça (M2,5)] */
 m25_passagem   = 2.9;    // furo de passagem
 m25_cabeca     = 5.4;    // caixa da cabeça
-sob_cabeca     = 2.0;    // plástico por baixo da cabeça. Original: 0,9 mm (parafuso M2,5x4).
-                         // Com 2,0 mm usar M2,5x5; a rosca na corrediça tem 3 mm de fundo.
+sob_cabeca     = 1.2;    // plástico por baixo da cabeça. Usa os parafusos do próprio dedo
+                         // (M2,5x4): ficam 2,8 mm de rosca na corrediça (o dedo original
+                         // tem 0,9 mm e deixa 3,1; a rosca tem 3 mm de fundo).
 base_alt       = 7;      // Z, altura da base (igual à do dedo original)
 
 /* [Parede e kit] */

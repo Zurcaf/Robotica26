@@ -4,7 +4,7 @@
 // O lado liso encosta à mão (ou à luva); as cabeças dos parafusos ficam
 // embutidas desse lado.
 //
-// Gerar:  openscad -o placa_mao.stl placa_mao.scad
+// Gerar:  openscad --export-format binstl -o placa_mao.stl placa_mao.scad
 // Imprimir com o lado da mão virado para a mesa.
 
 larg          = 82;      // ao longo do lado comprido do Arduino

@@ -1,6 +1,8 @@
 # Lab 3 — plano de ataque
 
-Prazo: 18 dez 2026. Escrito a 13 nov, antes de qualquer ida ao laboratório.
+Prazo: 18 dez 2026. Escrito a 13 nov, antes de qualquer ida ao laboratório;
+atualizado a 14 nov com o software pronto (ver `src/README.md`) e o roteiro da
+primeira ida (`ROTEIRO_17NOV.md`).
 O que está marcado **(a confirmar)** é suposição minha, ainda não verificada no
 material.
 
@@ -22,20 +24,26 @@ portátil. Seis tarefas, respondidas uma a uma no relatório:
 O título é "trajectory estimation": na tarefa 6 espera-se a orientação ao longo
 do gesto e, tanto quanto der, a trajetória da mão.
 
-## O que já se sabe do material (lido dos scripts da cadeira)
+## O que já se sabe do material (lido dos scripts e da biblioteca)
 
-- O Arduino envia uma linha por amostra: `tempo ax ay az wx wy wz`, com a
-  aceleração em **mg** e a velocidade angular em **graus/s**.
-- **A porta série está a 9600 baud.** Cada linha tem ~64 caracteres, o que dá
-  no máximo **~15 amostras por segundo**. É pouco para integrar um soco. O
-  enunciado deixa alterar o sketch: passar para 115200 baud deve dar mais de
-  100 Hz **(a confirmar no laboratório; é a primeira coisa a medir)**.
-- O sketch escolhe a gama do acelerómetro com `setAccScaleRange(0x00)` e deixa
-  a do giroscópio por omissão. Para gestos lentos convém a gama mais pequena
-  dos dois, que dá mais resolução **(a confirmar que valores são na biblioteca)**.
-- O tempo vem do Arduino em microssegundos: usa-se esse, não o relógio do PC.
-- O script Python da cadeira só imprime no ecrã, com a porta `COM3` (Windows).
-  Precisamos de um que grave para ficheiro e funcione em Mac (`/dev/cu.usbmodem*`).
+- O kit é um **ICM-20600** (Grove, I2C, endereço 0x69), lido com a biblioteca
+  da Seeed no sketch da cadeira, que envia `tempo ax ay az wx wy wz` em mg e
+  °/s a **9600 baud, ~15 amostras/s**.
+- **A biblioteca arredonda**: devolve inteiros em mg e °/s. O sketch deixa o
+  giroscópio a ±2000 °/s, logo a resolução é 1 °/s, maior do que o desvio
+  que queremos medir. E `getTemperature()` lê o registo sem sinal: abaixo de
+  25 °C dá lixo.
+- **O nosso sketch** (`src/arduino/imu_bruto/`) lê os registos diretamente,
+  só com `Wire`: contagens em bruto e temperatura, **±4 g e ±500 °/s, 200 Hz a
+  taxa fixa, 500000 baud** (0 % de erro com o cristal do Uno; a linha ocupa
+  ~25 % da porta). Compila para o Uno (16 % da memória). Não precisa de
+  bibliotecas instaladas.
+- **Guardar no Arduino não dá**: o Uno tem 2 KB de RAM (o sketch deixa 1,6 KB
+  livres, ~1 s de dados) e 1 KB de EEPROM. O sketch da cadeira tem código
+  para cartão SD comentado, mas o kit não tem módulo SD. Com 500000 baud a
+  porta série chega e sobra.
+- O tempo vem do Arduino (µs); o gravador junta a hora do computador a cada
+  linha, para sincronizar com o robô.
 
 ## Modelos (Tarefa 1), para saber o que medir
 
@@ -59,7 +67,7 @@ Cada ensaio é um ficheiro de dados e um vídeo. Nome sugerido:
 
 | | Ensaio | Como | Duração | Para quê |
 |---|---|---|---|---|
-| 0 | Taxa de amostragem | sensor parado; 30 s a 9600 baud e 30 s a 115200 | 1 min | saber a que frequência amostramos e se há falhas |
+| 0 | Taxa de amostragem | sensor parado; 30 s com o sketch da cadeira (9600 baud) e 30 s com o nosso (500000 baud, 200 Hz) | 1 min | confirmar a taxa e que não há falhas; mostrar a diferença de resolução |
 | A | Parado, longo | sensor pousado na mesa, sem tocar | 10 a 30 min | desvio e ruído do giroscópio; ruído do acelerómetro; deriva ao aquecer (ligar e gravar logo) |
 | B | Seis posições | sensor preso a uma caixa ou esquadro; cada face para baixo, 30 s parado em cada (±x, ±y, ±z) | 5 min | desvio e escala do acelerómetro: desvio = média das duas leituras opostas; escala = metade da diferença, a dividir por g |
 | C | Rotação conhecida | rodar a caixa encostada a uma régua: 90° e 360° em torno de cada eixo, nos dois sentidos, 3 vezes | 10 min | escala do giroscópio: ângulo integrado a dividir pelo ângulo real |
@@ -67,6 +75,7 @@ Cada ensaio é um ficheiro de dados e um vídeo. Nome sugerido:
 | T | Temperatura | sensor parado, a começar frio (acabado de ligar, ou vindo do frigorífico num saco) até estabilizar, a gravar a temperatura do chip | 20 a 30 min | desvio do giroscópio e do acelerómetro em função da temperatura; pode ser o mesmo registo do ensaio A |
 | D | Inclinações conhecidas | inclinar a 0, 15, 30, 45, 60, 90° em rolamento e em arfagem, parando 5 s em cada, e voltar a 0; referência: transferidor ou inclinómetro do telemóvel | 5 min, 3 vezes | inclinómetro (T3), giroscópio (T4) e fusão (T5) sobre os mesmos dados, com valor de referência |
 | D2 | Inclinar a abanar | o mesmo que D, mas a meio dar pequenos abanões laterais | 2 min | mostrar onde o acelerómetro falha e o giroscópio não: é o que justifica a fusão |
+| D3 | Vaivém (no robô) | sem rodar, vaivém de ±50 mm de lado e na vertical, a 0,1 g e 0,2 g | 1 min | mostra quando o teste "|a| ≈ 1 g" falha: na horizontal |a| quase não muda (0,1 g de lado dá 1,005 g) mas a inclinação erra 5,7°; na vertical |a| muda 10 % e o teste apanha |
 | E | Parado depois de mexer | mexer 20 s e pousar na posição inicial; 2 min parado | 3 min, 3 vezes | deriva do giroscópio; erro ao voltar ao ponto de partida |
 | F1 | Acenar | cotovelo apoiado, antebraço a oscilar devagar; começar e acabar parado 3 s; régua visível no vídeo | 20 s, 5 vezes | Tarefa 6 (i) |
 | F2 | Soco | mão a avançar devagar ao longo de uma régua de comprimento conhecido e a voltar; começar e acabar parado 3 s | 20 s, 5 vezes | Tarefa 6 (ii) |
@@ -93,18 +102,34 @@ Notas sobre a calibração:
 
 ## O robô como referência (proposta do professor)
 
-O Lite 6 do Lab 2 sabe a sua pose a cada 10 ms e já temos o código que o move
-e a grava. Com a IMU presa à pinça, substitui o transferidor e a régua por uma
-referência contínua no tempo.
+O Lite 6 do Lab 2 sabe a sua pose a cada 10 ms. Com a IMU presa à pinça,
+substitui o transferidor e a régua por uma referência contínua no tempo.
+Os ensaios estão planeados e verificados no MuJoCo com o suporte e o kit
+(`src/robo/`, imagens em `resultados/robo/`):
 
-| Ensaio | Versão com o robô |
-|---|---|
-| B | 12 a 24 orientações exatas, parada 10 s em cada: desvio, escala e desalinhamento do acelerómetro |
-| C | uma junta a rodar a velocidade constante (10, 30, 60 °/s), nos dois sentidos: escala do giroscópio |
-| D | varrimento de inclinação com o ângulo verdadeiro em cada instante |
-| D2 | inclinar e transladar ao mesmo tempo, com aceleração conhecida |
-| F | "acenar" e "soco" desenhados nas juntas, como o swing do Lab 2, com posição e orientação verdadeiras |
-| G (novo) | deriva da posição: ver abaixo |
+| Ensaio | Duração | O que faz | Para quê |
+|---|---|---|---|
+| poses | 279 s | 17 orientações paradas 8 s (5 faces + 12 ao acaso); a face com a pinça para cima não tem solução | B e B2 no robô; rotação entre o chip e o flange |
+| rotacoes | 115 s | J6 ±270° e J5 ±45° a velocidade constante (30, 90, 140 °/s; J5 até 120) | C: escala e desalinhamento do giroscópio |
+| inclinacoes | 103 s | rolamento e arfagem de 0 a 90° em passos de 15°, parado 5 s, a rodar em torno da própria IMU | D |
+| abanar | 47 s | arfagem de 30° e 60°, com abanões de ±10 mm a 2 Hz (0,16 g) | D2 |
+| vaivem | 50 s | ±50 mm de lado e na vertical, 0,1 g e 0,2 g | D3 |
+| deriva | 25 s | soco de 300 mm em 2 s e um quadrado de 150 × 200 mm, parado no início e no fim | G |
+| acenar | 18 s | ±30° em torno de um "cotovelo" 150 mm abaixo, 0,5 Hz | F1 com verdade |
+
+Todos cumprem: juntas a ≥ 5° dos limites, ≤ 80 % das velocidades e
+acelerações máximas, flange ≤ 400 mm/s, folga ≥ 20 mm no MuJoCo (a mais
+pequena, 25 mm, é o corpo da pinça ao elo 4, cujo invólucro convexo é
+conservador). Corre-se como no Lab 2, uma pose de juntas a cada 10 ms
+(`set_servo_angle_j`), a gravar a IMU ao mesmo tempo:
+
+    .venv/bin/python src/robo/verificar.py             # verifica todos
+    .venv/bin/python src/robo/verificar.py acenar --ver  # janela MuJoCo
+    .venv/bin/python src/robo/correr.py acenar --go     # no robô
+
+A orientação do chip no flange (`R_F_IMU` em `src/robo/geometria.py`) é uma
+hipótese até ao ensaio de poses; medir no laboratório o kit e a posição do
+chip e corrigir `P_F_IMU`.
 
 Reservas: a tarefa 6 pede o gesto "holding the device in your hand", por isso
 os gestos à mão têm de existir e o robô entra como validação do método; o
@@ -113,11 +138,14 @@ com o robô parado a segurar a IMU para medir o ruído que ele acrescenta; a
 referência é a pose que o controlador indica.
 
 Sincronização: os dois registos (robô e IMU) são gravados no mesmo portátil,
-com o mesmo relógio, e cada ensaio começa com um movimento brusco e curto que
-se vê nos dois.
+com a hora do computador. O relógio do Arduino passa para essa hora por uma
+reta, e o desfasamento fino é o que sobrepõe |ω| do robô e do giroscópio
+(`src/robo/verdade.py`). Testado com atrasos inventados (relógio 120 ms
+desviado, USB 2 a 15 ms, juntas 10 ms): a verdade fica a < 0,13° em 99 % das
+amostras.
 
-**Suporte:** `modelos/suporte_imu/` (substitui um dedo da pinça; precisa da
-autorização do professor e de 2 parafusos M2,5 × 5). Medidas da pinça em
+**Suporte:** `modelos/suporte_imu/` (substitui um dedo da pinça; o professor
+autorizou; usa os próprios parafusos do dedo, M2,5 × 4, e os M3 do kit). Medidas da pinça em
 `modelos/gripper_lite/MEDIDAS.md`.
 
 ### O que se ganha em fazer os ensaios no robô
@@ -155,6 +183,14 @@ os valores de `b` da tarefa 2, antes de medir.
 2. No robô, com trajetória conhecida: posição estimada contra a verdadeira.
 3. O mesmo com e sem calibração, e com e sem pôr a velocidade a zero quando o
    sensor pára.
+4. **Extra da tarefa 6: correção da deriva entre repousos.** O robô (e o
+   gesto à mão) começa e acaba parado, logo a velocidade verdadeira é zero
+   nas duas pontas. A velocidade integrada no fim não dá zero: esse valor é
+   erro puro. Com um desvio constante o erro de velocidade é uma rampa de 0
+   até b·T; subtrai-se a rampa e integra-se outra vez. Fica só o erro que
+   muda durante o movimento (inclinação mal estimada, ruído). Figura: posição
+   do robô, IMU sem correção e IMU corrigida. Custa umas linhas e usa os
+   dados que já se gravam.
 
 ## Peso da fusão: fixo e dinâmico (tarefas 5 e 6)
 
@@ -165,8 +201,16 @@ isso e mais:
 2. O melhor peso fixo no ensaio lento (D) e no ensaio com abanões (D2): os
    mínimos caem em sítios diferentes, logo um valor fixo não chega.
 3. Peso dinâmico: em cada instante, o que minimiza a incerteza final, com a
-   incerteza do acelerómetro a subir quando o módulo se afasta de 1 g ou a
-   rotação é rápida.
+   incerteza do acelerómetro a subir conforme três critérios:
+
+   | Critério | Apanha | Falha |
+   |---|---|---|
+   | \|a\| longe de 1 g | acelerações verticais e fortes | acelerações horizontais pequenas: 0,1 g de lado dá \|a\| = 1,005 g e 5,7° de erro |
+   | rotação rápida (\|ω\|) | gestos com rotação | translações sem rodar |
+   | diferença entre o acelerómetro e a previsão do giroscópio | qualquer aceleração que desvie a vertical medida | demora a reagir se o giroscópio já tiver derivado |
+
+   O ensaio D3 (vaivém) mostra a falha do primeiro na horizontal; o terceiro
+   é o que um filtro de Kalman faz com a inovação.
 4. Tarefa 6 com os dois: o melhor fixo e o dinâmico. O acenar testa a
    orientação; o soco testa a posição e a resistência da fusão à aceleração.
 
@@ -203,20 +247,28 @@ Modos: a pinça copia a inclinação da mão; e "inclinar para mover", como um
 joystick. Seguir a posição XYZ da mão diretamente não funciona (ensaio G), e
 mostrar isso faz parte do vídeo.
 
-## Antes de ir ao laboratório
+## Antes de ir ao laboratório (feito a 14 nov)
 
 A ideia é a do Lab 2: preparar e testar tudo em simulação, e ir ao laboratório
-só para gravar.
+só para gravar. Tudo em `src/` (ver `src/README.md`):
 
-1. **Gravador** (`src/gravar.py`): lê a porta série, grava CSV com o tempo do
-   Arduino, mostra a taxa de amostragem e avisa se houver linhas partidas.
-2. **Simulador de IMU** (`src/simular.py`): gera dados de acelerómetro e
-   giroscópio para um movimento conhecido, com desvio, escala e ruído à
-   escolha. Serve para testar cada passo sabendo a resposta certa.
-3. **Análise**, um script por tarefa: calibração (A, B, C), inclinómetro,
-   integração do giroscópio, CI, gestos. Testados no simulador antes de verem
-   dados reais.
-4. **Sketch** com 115200 baud e as gamas escolhidas, pronto a carregar.
+1. **Gravador** (`gravar.py`): lê a porta série, grava CSV com o tempo do
+   Arduino e a hora do computador, mostra a taxa, as falhas e |a|. Testado
+   com um Arduino falso numa porta virtual (deteta amostras perdidas e linhas
+   partidas).
+2. **Simulador** (`simular.py`): nove cenários à mão e sete do robô, com
+   desvio, escala, eixos não perpendiculares, ruído, deriva do desvio e
+   temperatura conhecidos.
+3. **Análise** das tarefas 2 a 4 (`t2_calibracao.py`, `t3_t4_orientacao.py`),
+   verificada no simulador: recupera o desvio do acelerómetro a < 1 mg, as
+   escalas a < 0,1 %, o desvio e o ruído do giroscópio.
+4. **Sketch** a 500000 baud, compilado.
+5. **Ensaios do robô** planeados e verificados no MuJoCo (secção acima).
+
+Do simulador já sai uma conclusão para o ensaio T: em 10 min a aquecer 6 °C,
+a deriva lenta do desvio confunde-se com o efeito da temperatura (sem ela, o
+declive sai certo). O ensaio T precisa de uma variação maior, com o sensor a
+vir do frio.
 
 ## Figuras do relatório (6 páginas: oito figuras no máximo)
 
@@ -244,8 +296,9 @@ Para poupar espaço: as tarefas 3, 4 e 5 partilham a figura 5; a figura 3 ou a
 
 ## Riscos conhecidos
 
-- **Taxa de amostragem baixa**: se nem a 115200 passar de ~50 Hz, o soco tem
-  de ser mesmo lento, e o relatório diz porquê.
+- **A porta a 500000 baud não funcionar** (algum clone do Uno): baixar
+  `BAUD` para 250000 ou 115200 no sketch e `RATE_HZ` para 100; o gravador
+  aceita `--baud`.
 - **Posição por dupla integração deriva em segundos.** A trajetória da tarefa
   6 só é credível em gestos curtos, com paragem no início e no fim.
 - **Guinada**: o acelerómetro não a vê. A fusão só corrige rolamento e
@@ -254,10 +307,12 @@ Para poupar espaço: as tarefas 3, 4 e 5 partilham a figura 5; a figura 3 ou a
 
 ## Calendário proposto
 
-| Semana | O quê |
+| Quando | O quê |
 |---|---|
-| 16–22 nov | gravador, simulador e análise das tarefas 2 a 4 em dados simulados; imprimir o suporte e a placa da mão; pedir autorização para tirar um dedo da pinça |
-| 23–29 nov | 1.ª ida ao laboratório: ensaios 0, A, B, C, D; rever a análise com dados reais |
-| 30 nov–6 dez | CI (tarefa 5) e gestos em simulação; 2.ª ida: D2, E, F1, F2, G, e os ensaios com a IMU na pinça |
-| 7–13 dez | relatório; 3.ª ida só se faltar algum ensaio |
+| 14 nov | software, simulador e ensaios do robô verificados no MuJoCo (feito) |
+| seg 17 nov | 1.ª ida: ensaios à mão (0, A/T, B, B2, C, D, D2, E, F1, F2) e confirmar no robô o que falta para o suporte (`ROTEIRO_17NOV.md`) |
+| sex 21 nov | imprimir o suporte e a placa da mão na Composites |
+| 23–29 nov | 2.ª ida: suporte na pinça e os sete ensaios do robô; tarefa 5 (CI) com os dados reais |
+| 30 nov–6 dez | gestos com a placa da mão; o que faltar; extras |
+| 7–13 dez | relatório |
 | 14–18 dez | revisão e entrega |
