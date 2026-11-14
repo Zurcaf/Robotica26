@@ -120,6 +120,29 @@ se vê nos dois.
 autorização do professor e de 2 parafusos M2,5 × 5). Medidas da pinça em
 `modelos/gripper_lite/MEDIDAS.md`.
 
+### O que se ganha em fazer os ensaios no robô
+
+- **Verdade conhecida**: o método das posições ao acaso (B2) funciona às cegas;
+  no robô sabe-se a orientação de cada posição e verifica-se se o método deu a
+  resposta certa.
+- **Montagem**: só com orientações conhecidas se tira a rotação entre o chip e
+  o suporte.
+- **Repetibilidade**: um script percorre as mesmas posições três vezes; sai a
+  calibração e a dispersão entre repetições, que é a barra de erro.
+- **Cobertura**: as posições escolhem-se para ficarem bem espalhadas.
+
+Ficam na mesa: A (ruído; os motores vibram mesmo parados), T (temperatura) e,
+à mão, os gestos da tarefa 6.
+
+Cuidados com a referência:
+
+1. A mesa pode não estar nivelada: o robô sabe a orientação em relação à sua
+   base, não à gravidade. Essa inclinação é a mesma em todas as posições, por
+   isso estima-se junto com a calibração.
+2. "Parado" no robô não é tão parado como na mesa: medir primeiro o ruído com
+   o robô a segurar a posição.
+3. A referência é a pose que o controlador indica.
+
 ## Ensaio G: a posição deriva (resultado a mostrar)
 
 Um erro constante `b` na aceleração dá um erro de posição de `½·b·t²`:
@@ -177,6 +200,30 @@ só para gravar.
    integração do giroscópio, CI, gestos. Testados no simulador antes de verem
    dados reais.
 4. **Sketch** com 115200 baud e as gamas escolhidas, pronto a carregar.
+
+## Figuras do relatório (6 páginas: oito figuras no máximo)
+
+Cada figura responde a uma pergunta. As marcadas com ★ são as indispensáveis.
+
+| # | Tarefa | Figura | O que mostra | Ensaio |
+|---|---|---|---|---|
+| 1 ★ | 2 | Módulo da aceleração em cada posição, antes e depois de calibrar | a calibração funciona: os pontos passam a cair em 1 g | B, B2 |
+| 2 ★ | 2 | Velocidade medida pelo giroscópio contra a imposta pelo robô, por eixo | a escala é o declive, o desvio é a ordenada na origem | C |
+| 3 | 2 | Desvio do giroscópio em função da temperatura | quanto muda ao aquecer | T |
+| 4 | 2 | Desvio de Allan dos dois sensores (ou sinal em bruto e filtrado, se faltar espaço) | o ruído e o efeito de filtrar, como o enunciado sugere | A |
+| 5 ★ | 3, 4, 5 | Um varrimento de inclinação: ângulo verdadeiro (robô), acelerómetro, giroscópio e fusão; por baixo, o erro de cada um | cada método e onde falha, nos mesmos dados; inclui o troço com abanões | D, D2 |
+| 6 ★ | 5 | Erro (RMS) da fusão em função do parâmetro da CI, com o mínimo marcado; curvas no tempo para 3 valores | o que o enunciado pede: o efeito do parâmetro e qual é o melhor | D, D2 |
+| 7 ★ | 6 | Acenar e soco à mão: orientação ao longo do tempo e trajetória estimada, com fotogramas do vídeo | os dois gestos pedidos | F |
+| 8 ★ | 6 | Erro de posição ao longo do tempo no robô, com a previsão ½·b·t² | até onde se pode confiar na trajetória, previsto contra medido | G |
+
+Tabelas: (i) parâmetros estimados (desvio, escala, ruído) com a dispersão de 3
+repetições, pelos três métodos (seis posições, posições ao acaso, robô);
+(ii) erro RMS de orientação de cada método (acelerómetro, giroscópio, CI,
+e Kalman se entrar).
+
+Para poupar espaço: as tarefas 3, 4 e 5 partilham a figura 5; a figura 3 ou a
+4 podem ir para o vídeo se não couberem. Vídeos de todos os ensaios da tarefa
+2 (o enunciado exige-os), com ligação no relatório.
 
 ## Riscos conhecidos
 
