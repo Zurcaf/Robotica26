@@ -3,22 +3,49 @@
 \label{sec:gyro}
 % =============================================================================
 
-A orientação obtém-se integrando a velocidade angular corrigida. Para evitar
-a singularidade dos ângulos de Euler (a \ang{90} de arfagem dois eixos
-alinham-se, como na singularidade do pulso do robô no Laboratório~2), a
-orientação é guardada num quaternião unitário $q$ e integrada
-por~\cite{titterton2004}
+O giroscópio não mede ângulos, mede velocidades de rotação. Para um só eixo,
+o ângulo obtém-se somando os incrementos:
 \begin{equation}
-\dot q = \tfrac12\, q \otimes (0;\ \vect\omega), \qquad
-q_{k+1} = q_k \otimes \exp\!\bigl(\tfrac12\,\vect\omega_k\,\Delta t\bigr),
+\theta_{k+1} = \theta_k + \omega_k\,\Delta t .
+\label{eq:int1d}
+\end{equation}
+
+A três dimensões não basta repetir esta soma para três ângulos, por duas
+razões. As rotações não comutam: rodar em torno de $x$ e depois de $y$ não dá
+o mesmo que pela ordem inversa. E os eixos em que o giroscópio mede rodam com
+o sensor. Em vez de somar ângulos, compõem-se rotações: em cada amostra o
+sensor fez uma rotação pequena, de ângulo $\lVert\vect\omega_k\rVert\Delta t$
+em torno do eixo $\vect\omega_k/\lVert\vect\omega_k\rVert$, que é aplicada
+sobre a orientação que já tinha.
+
+A orientação é guardada num quaternião unitário $q$, que representa uma
+rotação de ângulo $\varphi$ em torno de um eixo $\hat{\vect n}$ como
+$q = (\cos\tfrac{\varphi}{2};\ \hat{\vect n}\sin\tfrac{\varphi}{2})$. Evita a
+singularidade dos ângulos de Euler: a \ang{90} de arfagem dois dos três eixos
+ficam alinhados e a conversão de velocidades em ângulos divide por zero, o
+mesmo fenómeno da singularidade do pulso do robô no Laboratório~2. Com
+$\otimes$ o produto de quaterniões (uma rotação a seguir à
+outra)~\cite{titterton2004},
+\begin{equation}
+q_{k+1} = q_k \otimes \delta q_k, \qquad
+\delta q_k = \Bigl(\cos\tfrac{\lVert\vect\omega_k\rVert\Delta t}{2};\
+\frac{\vect\omega_k}{\lVert\vect\omega_k\rVert}\,
+\sin\tfrac{\lVert\vect\omega_k\rVert\Delta t}{2}\Bigr),
 \label{eq:quat}
 \end{equation}
-com normalização a cada passo. Os ângulos só são calculados no fim, para
-apresentação. A orientação inicial vem do inclinómetro, com o sensor parado.
+com $\vect\omega_k$ a medição já corrigida do desvio e da escala
+(Tarefa~2), e $q$ normalizado a cada passo. Os ângulos de rolamento, arfagem
+e guinada só são calculados no fim, para apresentação.
 
-O método responde depressa e não é afetado pela aceleração do sensor, mas o
-erro cresce com o tempo: um desvio residual $\delta b_g$ acumula
-$\delta b_g\,t$, e o ruído soma-se como um passeio aleatório.
+\paragraph{Condição inicial.} A integração precisa de um ponto de partida. Com
+o sensor parado no início de cada ensaio, a inclinação vem do
+inclinómetro~\eqref{eq:incl}; a guinada inicial não é observável e fixa-se em
+zero.
+
+\paragraph{Limites.} O método responde depressa e não é afetado pela
+aceleração do sensor. Mas todo o erro na velocidade é somado e nunca sai: um
+desvio residual $\delta b_g$ acumula um erro $\delta b_g\,t$, e o ruído
+soma-se como um passeio aleatório. É a deriva.
 
 \todo{resultados no ensaio D (erro ao longo do tempo) e no E (erro ao
 regressar à pose inicial; deriva em \si{\degree\per\minute}), com e sem a
