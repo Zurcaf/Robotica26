@@ -3,6 +3,13 @@
 \label{sec:gestos}
 % =============================================================================
 
+Os dois gestos pedidos põem à prova coisas diferentes. O \textbf{acenar} é
+quase só rotação: testa a estimativa de orientação da Tarefa~5 num movimento
+real. O \textbf{soco} é quase só translação: a aceleração da mão é lida pelo
+acelerómetro como inclinação, e a posição só se obtém integrando duas vezes.
+A pergunta a que esta tarefa responde é a do título do trabalho: até onde se
+consegue estimar uma trajetória só com uma IMU, e o que a limita.
+
 \subsection{Da orientação à posição}
 
 Com a orientação $R(t)$ da Tarefa~5, a aceleração do sensor em $\{w\}$
@@ -48,8 +55,9 @@ fica abaixo de um valor útil (por exemplo \SI{5}{\centi\meter}).}
 
 \subsection{Gestos à mão}
 
-Com o melhor $w$ da Tarefa~5 e o sensor seguro na mão, fizeram-se devagar um
-gesto de acenar e um de soco, \todo{$n$} vezes cada.
+Com o sensor seguro na mão, fizeram-se devagar um gesto de acenar e um de
+soco, \todo{$n$} vezes cada. A orientação é estimada com o melhor $w$ fixo da
+Tarefa~5, como pede o enunciado, e com o peso dinâmico.
 
 \begin{figure}[H]
 \centering
@@ -60,5 +68,10 @@ régua, raio do antebraço).}}
 \label{fig:gestos}
 \end{figure}
 
-\todo{resultados: amplitude e forma de cada gesto contra a referência;
-repetibilidade entre repetições; o que se reconhece e o que não.}
+\todo{resultados, por esta ordem: (1) no acenar, a orientação acompanha o
+gesto? (2) no soco, quanta inclinação falsa indica o acelerómetro sozinho, e
+quanto resistem o $w$ fixo e o dinâmico? (3) a trajetória reconhece-se? até
+que duração? comparar com a previsão $\tfrac12 b t^2$; (4) limites: guinada
+sem referência, deriva, necessidade de começar e acabar em repouso.
+Amplitude e forma de cada gesto contra a referência geométrica;
+repetibilidade entre repetições.}

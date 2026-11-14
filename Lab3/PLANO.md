@@ -156,6 +156,23 @@ os valores de `b` da tarefa 2, antes de medir.
 3. O mesmo com e sem calibração, e com e sem pôr a velocidade a zero quando o
    sensor pára.
 
+## Peso da fusão: fixo e dinâmico (tarefas 5 e 6)
+
+O enunciado fala em "o melhor parâmetro", que sugere um valor fixo. Faz-se
+isso e mais:
+
+1. Peso fixo, vários valores (o pedido).
+2. O melhor peso fixo no ensaio lento (D) e no ensaio com abanões (D2): os
+   mínimos caem em sítios diferentes, logo um valor fixo não chega.
+3. Peso dinâmico: em cada instante, o que minimiza a incerteza final, com a
+   incerteza do acelerómetro a subir quando o módulo se afasta de 1 g ou a
+   rotação é rápida.
+4. Tarefa 6 com os dois: o melhor fixo e o dinâmico. O acenar testa a
+   orientação; o soco testa a posição e a resistência da fusão à aceleração.
+
+Perguntar ao professor se na tarefa 6 espera só a orientação ou também a
+posição.
+
 ## Extra: filtro de Kalman, como comparação
 
 O enunciado pede a fusão com CI ("for example"); o Kalman foi referido pelo
@@ -212,7 +229,7 @@ Cada figura responde a uma pergunta. As marcadas com ★ são as indispensáveis
 | 3 | 2 | Desvio do giroscópio em função da temperatura | quanto muda ao aquecer | T |
 | 4 | 2 | Desvio de Allan dos dois sensores (ou sinal em bruto e filtrado, se faltar espaço) | o ruído e o efeito de filtrar, como o enunciado sugere | A |
 | 5 ★ | 3, 4, 5 | Um varrimento de inclinação: ângulo verdadeiro (robô), acelerómetro, giroscópio e fusão; por baixo, o erro de cada um | cada método e onde falha, nos mesmos dados; inclui o troço com abanões | D, D2 |
-| 6 ★ | 5 | Erro (RMS) da fusão em função do parâmetro da CI, com o mínimo marcado; curvas no tempo para 3 valores | o que o enunciado pede: o efeito do parâmetro e qual é o melhor | D, D2 |
+| 6 ★ | 5 | Erro (RMS) da fusão em função do parâmetro da CI, para o ensaio lento e para o ensaio com abanões, com os mínimos marcados; por baixo, o peso dinâmico ao longo do tempo | o que o enunciado pede (o efeito do parâmetro), que o melhor valor depende do movimento, e o peso a adaptar-se sozinho | D, D2 |
 | 7 ★ | 6 | Acenar e soco à mão: orientação ao longo do tempo e trajetória estimada, com fotogramas do vídeo | os dois gestos pedidos | F |
 | 8 ★ | 6 | Erro de posição ao longo do tempo no robô, com a previsão ½·b·t² | até onde se pode confiar na trajetória, previsto contra medido | G |
 

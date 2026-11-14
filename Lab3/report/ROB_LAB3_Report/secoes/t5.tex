@@ -26,10 +26,28 @@ ponto de partida da integração seguinte, e os erros do acelerómetro (desvio
 residual, acelerações que duram várias amostras) estão correlacionados no
 tempo.
 
-\todo{como se obtêm $P_a$ (ruído do acelerómetro propagado
-por~\eqref{eq:incl}; aumentada quando o módulo se afasta de $1\,g$) e $P_g$
-(cresce a cada passo com $\sigma_g$); se $w$ é fixo ou escolhido a cada
-instante para minimizar o traço de $P$.}
+\subsection{Peso fixo e peso dinâmico}
+
+Um peso fixo é um compromisso: o valor adequado ao sensor parado é mau quando
+ele se move depressa, e vice-versa. Estudaram-se por isso duas formas de
+escolher $w$.
+
+\paragraph{Fixo.} O mesmo $w$ em todo o ensaio, para vários valores entre 0 e
+1. É o que o enunciado pede, e permite ver o efeito do parâmetro.
+
+\paragraph{Dinâmico.} Em cada instante escolhe-se o $w$ que minimiza o traço
+de $P$ em~\eqref{eq:ci}, com covariâncias que acompanham o movimento:
+\begin{itemize}
+  \item $P_a$ é o ruído do acelerómetro propagado por~\eqref{eq:incl},
+        aumentado quando há sinais de que o sensor acelera: o módulo da
+        medição afasta-se de $1\,g$, ou a velocidade angular é elevada;
+  \item $P_g$ cresce a cada passo de integração com $\sigma_g$, e diminui
+        quando há fusão.
+\end{itemize}
+Com o sensor parado ou lento domina o acelerómetro; em movimento rápido,
+o giroscópio. Um módulo próximo de $1\,g$ não garante aceleração nula, por
+isso o critério usa os dois sinais e não é infalível.
+\todo{expressões finais de $P_a$ e $P_g$ e os limiares usados.}
 
 \subsection{Resultados}
 
@@ -45,8 +63,10 @@ erro de cada uma.}}
 \begin{figure}[H]
 \centering
 \fig{Photos/fusao_w.png}{0.7\textwidth}
-\caption{\todo{erro quadrático médio da fusão em função de $w$, com o mínimo
-assinalado; estimativas no tempo para três valores de $w$.}}
+\caption{\todo{erro quadrático médio da fusão em função de $w$ fixo, para o
+ensaio lento (D) e para o ensaio com perturbação (D2), com os mínimos
+assinalados: o melhor valor depende do movimento. Em baixo, o peso dinâmico
+ao longo do ensaio D2.}}
 \label{fig:ciw}
 \end{figure}
 
@@ -65,7 +85,8 @@ Método & RMS & máx. & RMS & máx. \\
 \midrule
 Acelerómetro (Tarefa 3) & & & & \\
 Giroscópio (Tarefa 4)   & & & & \\
-CI, melhor $w$          & & & & \\
+CI, melhor $w$ fixo     & & & & \\
+CI, $w$ dinâmico        & & & & \\
 Filtro de Kalman        & & & & \\
 \bottomrule
 \end{tabular}
