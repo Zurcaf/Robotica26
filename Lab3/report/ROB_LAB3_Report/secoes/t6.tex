@@ -1,0 +1,64 @@
+% =============================================================================
+\section{Tarefa 6 --- Gestos e estimação da trajetória}
+\label{sec:gestos}
+% =============================================================================
+
+\subsection{Da orientação à posição}
+
+Com a orientação $R(t)$ da Tarefa~5, a aceleração do sensor em $\{w\}$
+obtém-se de~\eqref{eq:acc}, e a posição integrando duas vezes:
+\begin{equation}
+\vect a = R\,S_a^{-1}(\med a - \vect b_a) + \vect g, \qquad
+\vect v(t) = \int_0^t \vect a\,d\tau, \qquad
+\vect p(t) = \int_0^t \vect v\,d\tau .
+\label{eq:pos}
+\end{equation}
+
+\begin{destaque}
+\textbf{Previsão.} Um erro constante $b$ na aceleração dá um erro de posição
+$\tfrac12\,b\,t^2$. Há duas fontes: o desvio residual do acelerómetro, e o
+erro de inclinação $\delta\theta$, que deixa por subtrair $g\sin\delta\theta$.
+Com \ang{1} de erro de inclinação são \SI{0.17}{\meter\per\second\squared},
+ou \SI{77}{\centi\meter} ao fim de \SI{3}{\second}. Por isso os gestos são
+curtos e começam e acabam com o sensor parado.
+\end{destaque}
+
+Como cada gesto começa e acaba em repouso, a velocidade nos dois extremos é
+conhecida (zero). \todo{correção usada: retirar à velocidade a deriva linear
+entre os dois instantes de repouso; e, tudo sendo pós-processado, um
+suavizador~\cite{rauch1965} em vez de um filtro só para a frente.}
+
+\subsection{Validação com o robô (ensaios F e G)}
+
+Antes dos gestos à mão, o método foi aplicado a dois movimentos executados
+pelo robô, de que se conhece a posição em cada instante: um ``acenar'' e um
+``soco'', desenhados nas juntas como o swing do Laboratório~2.
+
+\begin{figure}[H]
+\centering
+\fig{Photos/deriva.png}{0.75\textwidth}
+\caption{\todo{erro de posição ao longo do tempo, com o sensor parado e numa
+trajetória do robô, com a curva prevista $\tfrac12 b t^2$; com e sem
+calibração e com e sem correção de velocidade nula.}}
+\label{fig:deriva}
+\end{figure}
+
+\todo{erro de posição no fim de cada gesto do robô; até que duração o erro
+fica abaixo de um valor útil (por exemplo \SI{5}{\centi\meter}).}
+
+\subsection{Gestos à mão}
+
+Com o melhor $w$ da Tarefa~5 e o sensor seguro na mão, fizeram-se devagar um
+gesto de acenar e um de soco, \todo{$n$} vezes cada.
+
+\begin{figure}[H]
+\centering
+\fig{Photos/gestos.png}{\textwidth}
+\caption{\todo{acenar e soco à mão: orientação ao longo do tempo e trajetória
+estimada, com fotogramas do vídeo; referência geométrica (comprimento da
+régua, raio do antebraço).}}
+\label{fig:gestos}
+\end{figure}
+
+\todo{resultados: amplitude e forma de cada gesto contra a referência;
+repetibilidade entre repetições; o que se reconhece e o que não.}

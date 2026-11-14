@@ -1,0 +1,80 @@
+% =============================================================================
+\section{Tarefa 5 --- Fusão das duas estimativas}
+\label{sec:fusao}
+% =============================================================================
+
+As duas estimativas de inclinação têm defeitos complementares: a do
+acelerómetro não deriva mas é ruidosa e falha quando o sensor acelera; a do
+giroscópio é suave e imune à aceleração, mas deriva.
+
+\subsection{Covariance Intersection}
+
+Sejam $\hat{\vect x}_a$ e $\hat{\vect x}_g$ as duas estimativas de
+$(\phi;\,\theta)$, com covariâncias $P_a$ e $P_g$. A
+\emph{Covariance Intersection}~\cite{julier1997} combina-as com um peso
+$w \in [0,1]$:
+\begin{equation}
+P^{-1} = w\,P_a^{-1} + (1-w)\,P_g^{-1}, \qquad
+\hat{\vect x} = P\bigl(w\,P_a^{-1}\hat{\vect x}_a + (1-w)\,P_g^{-1}\hat{\vect x}_g\bigr).
+\label{eq:ci}
+\end{equation}
+Com $w=1$ fica só o acelerómetro e com $w=0$ só o giroscópio. Ao contrário
+de um filtro de Kalman, a CI não assume que os erros das duas estimativas são
+independentes, e o resultado nunca é mais confiante do que os dados
+justificam. Aqui isso é relevante: a estimativa fundida de cada instante é o
+ponto de partida da integração seguinte, e os erros do acelerómetro (desvio
+residual, acelerações que duram várias amostras) estão correlacionados no
+tempo.
+
+\todo{como se obtêm $P_a$ (ruído do acelerómetro propagado
+por~\eqref{eq:incl}; aumentada quando o módulo se afasta de $1\,g$) e $P_g$
+(cresce a cada passo com $\sigma_g$); se $w$ é fixo ou escolhido a cada
+instante para minimizar o traço de $P$.}
+
+\subsection{Resultados}
+
+\begin{figure}[H]
+\centering
+\fig{Photos/fusao_tempo.png}{\textwidth}
+\caption{\todo{um varrimento de inclinação (ensaios D e D2): ângulo imposto
+pelo robô, estimativa do acelerómetro, do giroscópio e da fusão; por baixo, o
+erro de cada uma.}}
+\label{fig:fusao}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\fig{Photos/fusao_w.png}{0.7\textwidth}
+\caption{\todo{erro quadrático médio da fusão em função de $w$, com o mínimo
+assinalado; estimativas no tempo para três valores de $w$.}}
+\label{fig:ciw}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Erro de inclinação de cada método contra a referência do robô.
+\todo{preencher.}}
+\label{tab:fusao}
+\small
+\begin{tabular}{lcccc}
+\toprule
+\rowcolor{tabcab}
+ & \multicolumn{2}{c}{Ensaio D} & \multicolumn{2}{c}{Ensaio D2 (com perturbação)} \\
+\rowcolor{tabcab}
+Método & RMS & máx. & RMS & máx. \\
+\midrule
+Acelerómetro (Tarefa 3) & & & & \\
+Giroscópio (Tarefa 4)   & & & & \\
+CI, melhor $w$          & & & & \\
+Filtro de Kalman        & & & & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Comparação com um filtro de Kalman}
+
+\todo{opcional, a confirmar com o docente. As Tarefas 3 e 4 são as duas
+metades de um filtro de Kalman~\cite{kalman1960}: o giroscópio faz a previsão
+e o acelerómetro a correção. Estado: orientação e desvio do giroscópio.
+Comparar com a CI nos mesmos dados (Tabela~\ref{tab:fusao}) e discutir a
+confiança de cada um (covariância estimada contra erro real).}

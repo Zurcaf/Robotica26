@@ -1,0 +1,25 @@
+% =============================================================================
+\section{Tarefa 4 --- Orientação com o giroscópio}
+\label{sec:gyro}
+% =============================================================================
+
+A orientação obtém-se integrando a velocidade angular corrigida. Para evitar
+a singularidade dos ângulos de Euler (a \ang{90} de arfagem dois eixos
+alinham-se, como na singularidade do pulso do robô no Laboratório~2), a
+orientação é guardada num quaternião unitário $q$ e integrada
+por~\cite{titterton2004}
+\begin{equation}
+\dot q = \tfrac12\, q \otimes (0;\ \vect\omega), \qquad
+q_{k+1} = q_k \otimes \exp\!\bigl(\tfrac12\,\vect\omega_k\,\Delta t\bigr),
+\label{eq:quat}
+\end{equation}
+com normalização a cada passo. Os ângulos só são calculados no fim, para
+apresentação. A orientação inicial vem do inclinómetro, com o sensor parado.
+
+O método responde depressa e não é afetado pela aceleração do sensor, mas o
+erro cresce com o tempo: um desvio residual $\delta b_g$ acumula
+$\delta b_g\,t$, e o ruído soma-se como um passeio aleatório.
+
+\todo{resultados no ensaio D (erro ao longo do tempo) e no E (erro ao
+regressar à pose inicial; deriva em \si{\degree\per\minute}), com e sem a
+calibração da Tarefa~2.}

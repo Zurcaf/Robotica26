@@ -1,0 +1,65 @@
+% =============================================================================
+\section{Tarefa 1 --- Modelos dos sensores}
+\label{sec:modelos}
+% =============================================================================
+
+Designa-se por $\{s\}$ o referencial do sensor e por $\{w\}$ um referencial
+fixo, com $z$ vertical para cima; $R$ é a orientação de $\{s\}$ em $\{w\}$.
+As grandezas medidas levam til.
+
+\paragraph{Acelerómetro.} Não mede a aceleração $\vect a$ do sensor, mas a
+força específica: a aceleração menos a gravidade
+$\vect g = (0;\,0;\,-g)$, vista no referencial do sensor. Parado, mede $1\,g$
+para cima. O modelo adotado é
+\begin{equation}
+\med a = S_a\,R^{T}\,(\vect a - \vect g) + \vect b_a + \vect n_a ,
+\label{eq:acc}
+\end{equation}
+com $\vect b_a$ o desvio (\emph{bias}), $S_a$ uma matriz $3\times3$ com os
+fatores de escala na diagonal e o desalinhamento entre eixos fora dela, e
+$\vect n_a$ ruído branco de variância $\sigma_a^2$ por eixo.
+
+\paragraph{Giroscópio.} Mede a velocidade angular $\vect\omega$ do sensor,
+expressa em $\{s\}$:
+\begin{equation}
+\med\omega = S_g\,\vect\omega + \vect b_g + \vect n_g ,
+\label{eq:gyro}
+\end{equation}
+com os mesmos três tipos de erro. O desvio $\vect b_g$ não é constante: muda
+cada vez que o sensor é ligado e com a temperatura~\cite{titterton2004}.
+
+\paragraph{Montagem.} O integrado não está alinhado com o suporte. A rotação
+$R_{ms}$ entre os eixos do sensor e os da ferramenta do robô, e a posição
+$\vect r$ do sensor em relação ao eixo de rotação, entram nas medições: um
+acelerómetro a uma distância $\vect r$ do eixo mede a mais
+$\vect\alpha\times\vect r + \vect\omega\times(\vect\omega\times\vect r)$.
+
+\paragraph{Parâmetros a estimar.} Tabela~\ref{tab:param}.
+
+\begin{table}[H]
+\centering
+\caption{Parâmetros dos modelos e ensaio de onde se tira cada um.}
+\label{tab:param}
+\small
+\begin{tabularx}{\textwidth}{@{}lLcl@{}}
+\toprule
+\rowcolor{tabcab}
+Parâmetro & Significado & N.º & Ensaio \\
+\midrule
+$\vect b_a$ & desvio do acelerómetro & 3 & B, B2 \\
+$S_a$ & escala (e desalinhamento) do acelerómetro & 3 (+3) & B, B2 \\
+$\sigma_a$ & ruído do acelerómetro & 3 & A \\
+$\vect b_g$ & desvio do giroscópio & 3 & A, e início de cada ensaio \\
+$S_g$ & escala do giroscópio & 3 & C \\
+$\sigma_g$ & ruído do giroscópio & 3 & A \\
+$R_{ms}$, $\vect r$ & orientação e posição do sensor no suporte & 3 + 3 & B2 e C, no robô \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{destaque}
+\textbf{Porque é que estes parâmetros importam:} as Tarefas 4 e 6 integram as
+medições no tempo. Um desvio $b_g$ no giroscópio dá um erro de orientação
+$b_g\,t$; um desvio $b$ na aceleração dá um erro de posição
+$\tfrac12\,b\,t^2$. Erros pequenos e constantes deixam de ser pequenos.
+\end{destaque}

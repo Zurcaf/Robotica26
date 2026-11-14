@@ -1,0 +1,23 @@
+% =============================================================================
+\section{Tarefa 3 --- Inclinómetro com o acelerómetro}
+\label{sec:incl}
+% =============================================================================
+
+Se o sensor não acelera, o acelerómetro calibrado mede só a gravidade, e a
+sua direção no referencial do sensor dá a inclinação. Com
+$\vect a = (a_x;\,a_y;\,a_z)$ a medição corrigida,
+\begin{equation}
+\phi = \operatorname{atan2}(a_y,\ a_z), \qquad
+\theta = \operatorname{atan2}\!\bigl(-a_x,\ \sqrt{a_y^2 + a_z^2}\bigr),
+\label{eq:incl}
+\end{equation}
+onde $\phi$ é o rolamento e $\theta$ a arfagem. A rotação em torno da
+vertical não altera a gravidade vista pelo sensor, por isso não se obtém.
+
+O método tem dois limites. É ruidoso, porque cada estimativa usa uma só
+amostra. E assume aceleração nula: qualquer aceleração do sensor é lida como
+inclinação. O módulo da medição indica quando isso acontece, porque se afasta
+de $1\,g$.
+
+\todo{resultados no ensaio D (erro médio e máximo contra o ângulo do robô) e
+no D2 (erro durante a perturbação); remeter para a Figura~\ref{fig:fusao}.}

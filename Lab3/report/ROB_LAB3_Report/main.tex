@@ -1,0 +1,116 @@
+% =============================================================================
+%  Robótica (MEEC, IST) — Lab 3: estimação de trajetória com uma IMU
+%  Compilar com:  latexmk -pdf main.tex
+%  Figuras em Photos/ (cópias de ../*.png; refazer com os scripts de ../../src)
+%  Bibliografia em refs.bib (bibtex, estilo IEEEtran)
+% =============================================================================
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[portuguese]{babel}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{siunitx}
+\usepackage{caption}
+\usepackage[table]{xcolor}
+\usepackage{listings}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage[most]{tcolorbox}
+\usepackage[colorlinks=true, linkcolor=azul, citecolor=verde!85!black,
+            urlcolor=azul]{hyperref}
+
+\sisetup{output-decimal-marker={,}, per-mode=symbol}
+
+% ----------------------------------------------------------------------------
+% Paleta (a mesma do Lab 1): verde para a estrutura, azul para o detalhe, e
+% duas cores de sinal usadas só no comentário final (o que correu bem / mal).
+% ----------------------------------------------------------------------------
+\definecolor{verde}{HTML}{1B7F3B}
+\definecolor{azul}{HTML}{1F3A5F}
+\definecolor{bom}{HTML}{1B7F3B}
+\definecolor{mau}{HTML}{B03A2E}
+\colorlet{tabcab}{verde!16}      % linha de cabeçalho das tabelas
+\colorlet{tabgrupo}{azul!8}      % linhas que separam grupos dentro das tabelas
+
+\setlist{nosep, leftmargin=*}
+\setlist[itemize]{label=\textcolor{verde}{\textbullet}}
+
+\titleformat{\section}{\Large\bfseries\color{verde}}{\thesection}{0.6em}{}
+            [{\color{verde}\titlerule[0.8pt]}]
+\titleformat{\subsection}{\large\bfseries\color{azul}}{\thesubsection}{0.6em}{}
+\titleformat{\paragraph}[runin]{\normalsize\bfseries\color{azul}}{}{0pt}{}
+
+\captionsetup{labelfont={bf,color=azul}, font=small}
+
+\newtcolorbox{caixaresumo}{colback=azul!4, colframe=azul!45, boxrule=0.5pt,
+  arc=2pt, left=8pt, right=8pt, top=6pt, bottom=6pt, parbox=false}
+\newtcolorbox{destaque}{colback=verde!7, colframe=verde, boxrule=0pt,
+  leftrule=3pt, arc=0pt, left=8pt, right=8pt, top=5pt, bottom=5pt}
+
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\textfraction}{0.07}
+\renewcommand{\floatpagefraction}{0.8}
+
+\lstset{basicstyle=\ttfamily\footnotesize, breaklines=true,
+        frame=single, framesep=4pt, rulecolor=\color{azul!45},
+        backgroundcolor=\color{azul!4}, keywordstyle=\color{azul}\bfseries,
+        stringstyle=\color{verde!85!black}, commentstyle=\color{black!55},
+        columns=flexible, keepspaces=true, showstringspaces=false,
+        literate={ç}{{\c c}}1 {ã}{{\~a}}1 {é}{{\'e}}1 {ó}{{\'o}}1 {í}{{\'i}}1}
+\renewcommand{\lstlistingname}{List}
+
+% \fig{ficheiro}{largura}: inclui a figura se existir; senão deixa um aviso
+\newcommand{\fig}[2]{\IfFileExists{#1}{\includegraphics[width=#2]{#1}}%
+  {\fbox{\parbox{#2}{\centering\ttfamily\small figura em falta: \detokenize{#1}}}}}
+
+% \todo{...}: ponto do rascunho por preencher (apagar antes de entregar)
+\newcommand{\todo}[1]{\textcolor{mau}{\textbf{[Por fazer: #1]}}}
+
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\newcommand{\T}[2]{{}^{#1}T_{#2}}
+\newcommand{\vect}[1]{\boldsymbol{#1}}
+\newcommand{\med}[1]{\tilde{\vect{#1}}}   % grandeza medida pelo sensor
+
+\title{{\color{verde}\textbf{Trajectory estimation using an IMU}}\\[2mm]
+       {\large\color{azul} Robótica --- Laboratório 3}}
+\author{{Afonso Cruz (102815)} \and {Eduardo Batista (99931)} \and {Henrique Póvoa (102109)}}
+\date{Grupo {nº\textbf{37}} \quad --- \quad 18/12/2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\begin{caixaresumo}
+\todo{Resumo, a escrever no fim. Estrutura prevista: (1) o que se fez ---
+calibração de uma IMU (acelerómetro e giroscópio) com o robô Lite~6 como
+referência; inclinómetro, integração do giroscópio e fusão por
+\emph{Covariance Intersection}; estimação de dois gestos. (2) Os três ou
+quatro números principais: parâmetros estimados, erro de orientação de cada
+método, melhor parâmetro da fusão, deriva da posição prevista e medida.
+(3) A conclusão sobre até onde se pode confiar na trajetória estimada.}
+\end{caixaresumo}
+\end{abstract}
+
+% Cada secção no seu ficheiro, para se poder trabalhar em paralelo sem conflitos.
+\input{secoes/montagem}     % Montagem experimental (sensor, aquisição, robô como referência)
+\input{secoes/t1}           % Tarefa 1 - modelos dos sensores
+\input{secoes/t2}           % Tarefa 2 - ensaios e parâmetros
+\input{secoes/t3}           % Tarefa 3 - inclinómetro
+\input{secoes/t4}           % Tarefa 4 - orientação com o giroscópio
+\input{secoes/t5}           % Tarefa 5 - fusão (CI)
+\input{secoes/t6}           % Tarefa 6 - gestos e trajetória
+\input{secoes/extra}        % Para além do enunciado: controlar o robô com a mão
+\input{secoes/comentario}   % comentário, contribuições, declaração de IA
+\input{secoes/videos}       % vídeos
+
+% =============================================================================
+\bibliographystyle{IEEEtran}
+\bibliography{refs}
+
+\end{document}

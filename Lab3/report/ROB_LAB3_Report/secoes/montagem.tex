@@ -1,0 +1,68 @@
+% =============================================================================
+\section{Montagem experimental}
+\label{sec:montagem}
+% =============================================================================
+
+\paragraph{Sensor e aquisição.} A IMU é uma Grove IMU 9DOF, com um
+acelerómetro e um giroscópio de três eixos no mesmo integrado
+(ICM-20600~\cite{icm20600}); o magnetómetro não é usado. Está ligada por
+I\textsuperscript{2}C a um Arduino Uno, que lê os seis valores e os envia por
+porta série para o portátil, uma linha por amostra: o instante (relógio do
+Arduino, em microssegundos), a aceleração em m\emph{g} e a velocidade angular
+em \si{\degree\per\second}. Guardam-se sempre os dados em bruto; toda a
+correção é feita depois.
+\todo{taxa de amostragem conseguida e alterações ao \emph{sketch} da cadeira
+(velocidade da porta série, gamas dos sensores); se a biblioteca der a
+temperatura do integrado, gravá-la também.}
+
+\paragraph{O robô como referência.} Para conhecer a orientação e a posição
+verdadeiras do sensor, o conjunto foi montado na pinça do UFactory Lite~6 do
+Laboratório~2, com um suporte impresso em 3D que substitui um dos dedos
+(Figura~\ref{fig:montagem}). O robô executa movimentos programados e regista a
+sua pose a cada \SI{10}{\milli\second}; essa pose é a referência com que se
+comparam as estimativas. Os dois registos (robô e IMU) são gravados no mesmo
+portátil e alinhados no tempo por um movimento brusco no início de cada
+ensaio. \todo{confirmar o método de sincronização e a incerteza que deixa.}
+
+Três limitações desta referência: é a pose que o controlador do robô indica,
+e não uma medição externa; os motores acrescentam vibração, pelo que os
+ensaios de ruído se fazem com o sensor pousado na mesa; e o robô conhece a
+orientação em relação à sua base, não à gravidade, pelo que a inclinação da
+mesa é estimada junto com a calibração.
+
+\begin{figure}[H]
+\centering
+\fig{Photos/montagem.png}{0.7\textwidth}
+\caption{\todo{fotografia do sensor montado na pinça, com os eixos do
+integrado e os da ferramenta desenhados por cima; ao lado, o suporte.}}
+\label{fig:montagem}
+\end{figure}
+
+\paragraph{Ensaios.} A Tabela~\ref{tab:ensaios} lista os ensaios e a que
+tarefa servem. Todos começam e acabam com o sensor parado durante 5 a
+\SI{10}{\second}, e todos foram filmados (ligações no fim do relatório).
+
+\begin{table}[H]
+\centering
+\caption{Ensaios realizados. \todo{preencher datas, durações e repetições
+reais.}}
+\label{tab:ensaios}
+\small
+\begin{tabularx}{\textwidth}{@{}clLc@{}}
+\toprule
+\rowcolor{tabcab}
+ & Ensaio & O que se faz & Tarefas \\
+\midrule
+A & Parado, longo & sensor na mesa, 10 a 30 min & 2 \\
+B & Seis posições & cada eixo para cima e para baixo & 2 \\
+B2 & Posições ao acaso & 15 a 20 orientações, paradas & 2 \\
+C & Rotação conhecida & uma junta do robô a velocidade constante, nos dois sentidos & 2 \\
+T & Temperatura & parado, do frio até estabilizar & 2 \\
+D & Inclinações conhecidas & varrimento de inclinação imposto pelo robô & 3, 4, 5 \\
+D2 & Inclinar com perturbação & o mesmo, com translação sobreposta & 3, 5 \\
+E & Mexer e voltar & regressa à pose inicial & 4 \\
+F & Gestos & acenar e soco, pelo robô e à mão & 6 \\
+G & Deriva da posição & parado e em trajetória conhecida & 6 \\
+\bottomrule
+\end{tabularx}
+\end{table}

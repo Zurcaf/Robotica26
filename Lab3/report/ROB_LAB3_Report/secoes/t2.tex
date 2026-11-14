@@ -1,0 +1,114 @@
+% =============================================================================
+\section{Tarefa 2 --- Ensaios e estimação dos parâmetros}
+\label{sec:calib}
+% =============================================================================
+
+Cada ensaio foi desenhado para que o valor verdadeiro seja conhecido; a
+diferença para o valor medido é o erro do sensor.
+
+\subsection{Ruído e desvio do giroscópio (ensaio A)}
+
+Com o sensor parado a velocidade angular é nula, logo a média de cada eixo do
+giroscópio é o desvio $\vect b_g$ e a dispersão em torno dela é o ruído. Para
+o acelerómetro, o mesmo registo dá $\sigma_a$. A análise de
+Allan~\cite{elsheimy2008} separa o ruído branco das variações lentas do
+desvio e indica até que duração compensa integrar.
+\todo{valores de $\vect b_g$, $\sigma_g$, $\sigma_a$; comparar com a ficha
+técnica.}
+
+\paragraph{Filtragem.} \todo{filtro usado (mediana ou passa-baixo), frequência
+de corte e porquê; efeito no ruído; cuidado: filtrar atrasa o sinal, por isso
+aplica-se o mesmo filtro aos dois sensores ou um filtro sem atraso
+(para a frente e para trás), já que tudo é pós-processado.}
+
+\begin{figure}[H]
+\centering
+\fig{Photos/ruido.png}{0.8\textwidth}
+\caption{\todo{ruído dos dois sensores: desvio de Allan, ou sinal em bruto e
+filtrado.}}
+\label{fig:ruido}
+\end{figure}
+
+\subsection{Acelerómetro: desvio e escala (ensaios B e B2)}
+
+Parado, o acelerómetro só sente a gravidade, que é conhecida. Usaram-se dois
+métodos.
+
+\paragraph{Seis posições.} Com um eixo alinhado com a vertical, para cima e
+depois para baixo, o sensor devia ler $+g$ e $-g$. Das leituras $m^{+}$ e
+$m^{-}$:
+\begin{equation}
+b = \frac{m^{+} + m^{-}}{2}, \qquad s = \frac{m^{+} - m^{-}}{2g}.
+\end{equation}
+
+\paragraph{Posições ao acaso.} Em qualquer orientação parada, o módulo da
+aceleração corrigida tem de ser $g$. Com $N$ orientações bem distribuídas,
+procuram-se os parâmetros que minimizam~\cite{tedaldi2014}
+\begin{equation}
+\sum_{k=1}^{N}\Bigl(\bigl\lVert S_a^{-1}(\med a_k - \vect b_a)\bigr\rVert - g\Bigr)^2 .
+\end{equation}
+Não exige alinhar o sensor, mas também não diz como ele está montado: o
+módulo é igual para qualquer rotação.
+
+\paragraph{Com o robô.} As mesmas orientações, impostas pelo robô, são
+conhecidas. Isso permite verificar o método anterior e estimar a rotação
+$R_{ms}$ entre o sensor e a ferramenta, juntamente com a inclinação da mesa.
+
+\begin{figure}[H]
+\centering
+\fig{Photos/calib_acc.png}{0.75\textwidth}
+\caption{\todo{módulo da aceleração em cada posição, antes e depois de
+calibrar: os pontos devem passar a cair em $1\,g$.}}
+\label{fig:calibacc}
+\end{figure}
+
+\subsection{Giroscópio: escala (ensaio C)}
+
+Uma junta do robô roda a velocidade constante conhecida, nos dois sentidos e
+a várias velocidades, com o eixo de rotação alinhado sucessivamente com cada
+eixo do sensor. A escala é o declive da reta que relaciona a velocidade medida
+com a imposta, e o desvio a ordenada na origem.
+
+\begin{figure}[H]
+\centering
+\fig{Photos/calib_gyro.png}{0.75\textwidth}
+\caption{\todo{velocidade angular medida contra a imposta pelo robô, por eixo,
+com a reta ajustada.}}
+\label{fig:calibgyro}
+\end{figure}
+
+\subsection{Efeito da temperatura (ensaio T)}
+
+\todo{desvio do giroscópio e do acelerómetro em função da temperatura do
+integrado, do arranque a frio até estabilizar; declive em
+\si{\degree\per\second} por \si{\celsius}; comparar com a ficha técnica.}
+
+\subsection{Resultados}
+
+\begin{table}[H]
+\centering
+\caption{Parâmetros estimados (média e dispersão de 3 repetições).
+\todo{preencher.}}
+\label{tab:calib}
+\small
+\begin{tabular}{llccc}
+\toprule
+\rowcolor{tabcab}
+Parâmetro & Método & $x$ & $y$ & $z$ \\
+\midrule
+$b_a$ [m\emph{g}] & seis posições & & & \\
+                  & posições ao acaso & & & \\
+                  & robô & & & \\
+$s_a$ [--]        & seis posições & & & \\
+                  & posições ao acaso & & & \\
+                  & robô & & & \\
+$b_g$ [\si{\degree\per\second}] & parado & & & \\
+$s_g$ [--]        & robô & & & \\
+$\sigma_a$ [m\emph{g}], $\sigma_g$ [\si{\degree\per\second}] & parado & & & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\todo{comentário aos resultados: os três métodos concordam? qual é a
+dispersão entre repetições? quanto mudou o desvio do giroscópio entre sessões?
+orientação do sensor no suporte.}
