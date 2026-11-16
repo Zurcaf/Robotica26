@@ -248,8 +248,10 @@ def _rodar_no_sitio(pl, eixo_imu, graus, vmax=20.0, texto=""):
                   lambda s: p0, dur, texto)
 
 
-def inclinacoes(passo=15, n=6, espera=5.0):
-    q0 = q_inicial(R_IMU_NIVEL)
+def inclinacoes(passo=15, n=6, espera=5.0, guinada=30.0):
+    # De nível, mas rodada 30° em torno da vertical: com a pinça a apontar a
+    # direito para a frente, o rolamento leva a junta 5 a 0 (pulso singular).
+    q0 = q_inicial(Rot.from_euler("z", guinada, degrees=True).as_matrix() @ R_IMU_NIVEL)
     pl = Plano("inclinacoes", q0).parar(5, "nível")
     for eixo, nome in (([1, 0, 0], "rolamento"), ([0, 1, 0], "arfagem")):
         for k in range(1, n + 1):

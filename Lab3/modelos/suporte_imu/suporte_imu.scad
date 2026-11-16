@@ -1,17 +1,24 @@
-// Suporte da IMU (kit Arduino Uno + acrílico) para a pinça do UFACTORY Lite 6.
+// Suporte da IMU para a pinça do UFACTORY Lite 6 (peça "1").
 //
-// A peça SUBSTITUI UM DEDO da pinça: prende-se à corrediça com os 2 parafusos
-// M2,5 desse dedo, e o kit aparafusa-se à parede vertical pelos furos do
-// Arduino Uno, com os MESMOS parafusos M3 que já lá estão (os dos espaçadores).
+// A peça SUBSTITUI UM DEDO da pinça: prende-se ao carro com os 2 parafusos
+// M2,5 desse dedo e abraça o carro com dois rebordos, como o dedo original.
+// Na parede aparafusa-se o Arduino Uno, sem o acrílico: as torres de
+// espaçadores do kit (16 mm) encostam à parede e o parafuso M3 entra por
+// dentro, com a cabeça à vista. A placa Grove da IMU (40 x 20 mm) fica debaixo
+// do Uno, apertada pela aresta por 3 parafusos M3 x 10; só a ponta com a ficha
+// Grove sai para lá da aresta da parede (o cabo entra na perpendicular à placa
+// e não caberia debaixo do Uno). A posição do chip fica conhecida pelo desenho.
 //
-// Medidas da pinça: ficheiro STEP do fabricante (../gripper_lite/MEDIDAS.md).
+// Medidas da pinça: ficheiro STEP do fabricante (../gripper_lite/MEDIDAS.md),
+// confirmadas no laboratório a 16/11. Placa da IMU: ficheiro Eagle da Seeed
+// (Grove - IMU 9DOF ICM20600 & AK09918) e medidas no laboratório. Furos do Uno:
+// desenho de referência da Arduino.
 // Eixos (os da pinça): X = largura do dedo, Y = direção em que os dedos abrem
-// (positivo para fora), Z = para baixo, a partir da face inferior do corpo.
-// Desenhada para a pinça FECHADA: a base do dedo começa em Y = 0, no eixo da
-// ferramenta.
+// (positivo para fora), Z = para baixo, a partir da face inferior do corpo
+// (onde assenta o dedo; os rebordos sobem 1,5 mm à volta do carro).
 //
 // Gerar:  openscad --export-format binstl -o suporte_imu.stl suporte_imu.scad
-// Imprimir com a face de fora da parede (onde encosta o acrílico) na mesa.
+// Imprimir com a face de fora da parede (a da IMU e do Uno) na mesa.
 
 /* [Pinça: do STEP, não mexer sem medir] */
 dedo_larg      = 20;     // X, largura da base do dedo
@@ -19,39 +26,56 @@ dedo_prof      = 15.3;   // Y, profundidade da base do dedo
 furo_y         = 7.7;    // Y dos 2 parafusos, a contar da aresta de dentro
 furo_dx        = 12;     // distância entre os 2 parafusos (X = ±6)
 lamina_y       = 11.1;   // Y onde começava a lâmina do dedo original
+carro_larg     = 17;     // X, largura do carro (medido): os rebordos abraçam-no
+rebordo        = [1.5, 1.5];   // espessura (X) e altura (Z, para cima) dos rebordos
+folga_carro    = 0.2;    // de cada lado, entre o rebordo e o carro
 
-/* [Parafusos da pinça (M2,5)] */
-m25_passagem   = 2.9;    // furo de passagem
-m25_cabeca     = 5.4;    // caixa da cabeça
-sob_cabeca     = 1.2;    // plástico por baixo da cabeça. Usa os parafusos do próprio dedo
-                         // (M2,5x4): ficam 2,8 mm de rosca na corrediça (o dedo original
-                         // tem 0,9 mm e deixa 3,1; a rosca tem 3 mm de fundo).
-base_alt       = 7;      // Z, altura da base (igual à do dedo original)
+/* [Parafusos da pinça (M2,5 x 4, os do dedo)] */
+m25_passagem   = 3.0;    // furo de passagem
+m25_cabeca     = 5.4;    // caixa da cabeça (cabeça medida: Ø 4,5 x 2,5)
+sob_cabeca     = 1.2;    // plástico por baixo da cabeça: ficam 2,8 mm de rosca no carro
+base_alt       = 7;      // Z, altura da base
 
-/* [Parede e kit] */
-parede_esp     = 5;      // Y
-parede_larg    = 78;     // X
-placa_topo     = 10;     // Z onde começa a placa do Arduino (aresta de cima)
+/* [Parede e Arduino] */
+parede_esp     = 3;      // Y: com o parafuso M3 de 6 mm ficam 3 mm de rosca na torre
+parede_larg    = 74;     // X: furos do Uno (±31,7) e margem para a cabeça do M3
+placa_topo     = 3;      // Z onde começa a placa do Arduino (aresta de cima)
+uno_margem     = 3;      // parede abaixo da aresta de baixo do Uno
 folga_corpo    = 0.6;    // folga entre a parede e a face do corpo da pinça
 m3_passagem    = 3.4;
-m3_cabeca      = 6.6;    // caixa para a cabeça do M3, do lado de dentro
-m3_sob_cabeca  = 1.6;    // plástico entre a cabeça do parafuso e o acrílico: é o que os
-                         // parafusos que já estão no kit perdem de rosca no espaçador
-m3_caixa       = parede_esp - m3_sob_cabeca;
 
-/* [Reforços e cabo] */
+/* [Placa da IMU (Grove 40 x 20 x 1,75), ficheiro Eagle da Seeed] */
+imu_comp       = 40;
+imu_larg       = 20;
+imu_esp        = 1.75;
+imu_saida      = 7.2;    // quanto a placa sai para lá da aresta da parede (a ficha)
+imu_z          = 24.6;   // Z do centro da placa: entre as torres do Uno
+imu_chip_dx    = 6.16;   // do chip à aresta curta do lado do chip
+// A placa prende-se pela aresta: parafusos M3 x 10 por fora do contorno, com a
+// cabeça (Ø 5,5) a apertar 1,2 mm da aresta da placa, e porca M3 do lado de
+// dentro da parede. Posições a contar da aresta do lado do chip (X) e do
+// centro (Z). Nas arestas compridas ficam nas zonas sem cobre do ficheiro
+// Eagle (a 14,2 mm da aresta do lado do chip); o terceiro a meio da aresta do
+// lado do chip serve de batente: encostar lá a placa.
+m3_aperto      = 1.6;    // do centro do parafuso à aresta da placa (corpo Ø 3 + folga)
+imu_furos      = [[14.2, imu_larg / 2 + m3_aperto], [14.2, -imu_larg / 2 - m3_aperto], [-m3_aperto, 0]];
+
+/* [Reforços, cabo e marca] */
 nervura_esp    = 3;
 nervura_alt    = 38;     // até onde descem as nervuras (Z)
 rasgo          = [2.2, 5];   // rasgos para abraçadeira do cabo USB
+numero         = "1";
 
 $fn = 48;
 
 // Furos de fixação do Arduino Uno (mm, placa de 68,6 x 53,3 vista de cima,
-// fichas à esquerda). Como não sabemos para que lado fica virado o kit, a
-// parede leva o padrão e o seu espelho: serve em qualquer das posições.
+// fichas à esquerda). A parede leva o padrão e o seu espelho: o Uno pode ir
+// virado para qualquer dos lados.
 uno = [[14.0, 2.5], [15.2, 50.8], [66.0, 7.6], [66.0, 35.6]];
 uno_larg = 68.6;  uno_alt = 53.3;
-parede_alt = placa_topo + uno_alt + 4;         // Z onde acaba a parede
+parede_alt = placa_topo + uno_alt + uno_margem;   // Z onde acaba a parede
+imu_x1 = parede_larg / 2 + imu_saida;             // X da aresta da placa do lado da ficha
+imu_x0 = imu_x1 - imu_comp;                       // X da aresta do lado do chip
 
 module furos_uno() {
     for (h = uno) for (s = [1, -1])
@@ -61,6 +85,10 @@ module furos_uno() {
 
 module base() {
     translate([-dedo_larg / 2, 0, 0]) cube([dedo_larg, dedo_prof, base_alt]);
+    // rebordos que abraçam o carro (sobem acima da face do carro, Z < 0)
+    for (s = [1, -1])
+        translate([s > 0 ? carro_larg / 2 + folga_carro : -dedo_larg / 2, 0, -rebordo[1]])
+            cube([dedo_larg / 2 - carro_larg / 2 - folga_carro, dedo_prof, rebordo[1] + 0.01]);
 }
 
 module parede() {
@@ -82,35 +110,46 @@ module suporte() {
         union() { base(); parede(); nervuras(); }
         // parafusos M2,5 da pinça: passagem e caixa da cabeça, por baixo
         for (s = [1, -1]) translate([s * furo_dx / 2, furo_y, 0]) {
-            translate([0, 0, -1]) cylinder(d = m25_passagem, h = base_alt + 2);
+            translate([0, 0, -rebordo[1] - 1]) cylinder(d = m25_passagem, h = base_alt + rebordo[1] + 2);
             translate([0, 0, sob_cabeca]) cylinder(d = m25_cabeca, h = parede_alt);
         }
-        // parafusos M3 do kit: passagem e caixa da cabeça do lado de dentro
-        furos_uno() {
-            translate([0, 0, lamina_y - 1]) cylinder(d = m3_passagem, h = parede_esp + 2);
-            translate([0, 0, lamina_y - 20]) cylinder(d = m3_cabeca, h = 20 + m3_caixa);
-        }
+        // parafusos M3 das torres do Uno (cabeça do lado de dentro, à vista)
+        furos_uno() translate([0, 0, lamina_y - 1]) cylinder(d = m3_passagem, h = parede_esp + 2);
+        // parafusos M3 que apertam a placa da IMU pela aresta
+        for (f = imu_furos)
+            translate([imu_x0 + f[0], lamina_y - 1, imu_z + f[1]])
+                rotate([-90, 0, 0]) cylinder(d = m3_passagem, h = parede_esp + 2);
         // rasgos para a abraçadeira do cabo
         for (s = [1, -1]) for (dz = [0, 9])
-            translate([s * (parede_larg / 2 - 4) - rasgo[0] / 2, lamina_y - 1, parede_alt - 22 + dz])
+            translate([s * (parede_larg / 2 - 3) - rasgo[0] / 2, lamina_y - 1, parede_alt - 18 + dz])
                 cube([rasgo[0], parede_esp + 2, rasgo[1]]);
+        // número da peça, gravado 0,6 mm na face de baixo da base
+        translate([0, dedo_prof / 2 - 2, base_alt - 0.6])
+            linear_extrude(1) text(numero, size = 6, halign = "center", valign = "center",
+                                   font = "Liberation Sans:style=Bold");
     }
 }
 
-// ---- contexto, só para ver (não entra no STL): pinça, o outro dedo e o kit
+// ---- contexto, só para ver (não entra no STL): pinça, o outro dedo, a IMU e o Uno
 module contexto() {
     color("gainsboro", 0.5) translate([0, 0, -34]) cylinder(d = 77.5, h = 34, $fn = 96);
-    color("dimgray") {                                   // o dedo que fica (fechado)
+    color("dimgray") {                                   // o dedo que fica
         translate([-10, -15.3, 0]) cube([20, 15.3, 7]);
         translate([-10, -15.3, 0]) cube([20, 4.2, 23.5]);
     }
     y0 = lamina_y + parede_esp;
-    color("lightskyblue", 0.6) translate([-38, y0, placa_topo - 3]) cube([76, 3, uno_alt + 6]);      // acrílico
-    color("royalblue") translate([-10, y0 + 3, placa_topo + 18]) cube([20, 3, 26]);                  // IMU
-    color("seagreen") translate([-uno_larg / 2, y0 + 15, placa_topo]) cube([uno_larg, 1.6, uno_alt]); // Arduino
+    color("seagreen") translate([imu_x0, y0, imu_z - imu_larg / 2]) cube([imu_comp, imu_esp, imu_larg]);
+    color("white") translate([imu_x1 - 8.1, y0 + imu_esp, imu_z - 6.1]) cube([6.7, 8.25, 12.2]);   // ficha Grove
+    color("black") translate([imu_x0 + imu_chip_dx - 1.5, y0 + imu_esp, imu_z - 1.25]) cube([3, 0.9, 2.5]);
+    color("silver") for (f = imu_furos)
+        translate([imu_x0 + f[0], y0 + imu_esp, imu_z + f[1]]) rotate([-90, 0, 0]) cylinder(d = 5.5, h = 3);
+    color("goldenrod") furos_uno() translate([0, 0, y0]) cylinder(d = 5, h = 16);    // torres
+    if (mostrar_uno) color("royalblue", 0.8) translate([-uno_larg / 2, y0 + 16, placa_topo])
+        cube([uno_larg, 14, uno_alt]);                                               // Uno e fichas
 }
 
 mostrar_contexto = false;
+mostrar_uno = true;
 // vira-se o modelo para Z ficar para baixo no ecrã, como no robô
 rotate([180, 0, 0]) {
     color("darkorange") suporte();

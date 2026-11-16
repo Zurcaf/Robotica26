@@ -310,8 +310,8 @@ Para poupar espaço: as tarefas 3, 4 e 5 partilham a figura 5; a figura 3 ou a
 | Quando | O quê |
 |---|---|
 | 14 nov | software, simulador e ensaios do robô verificados no MuJoCo (feito) |
-| seg 17 nov | 1.ª ida: ensaios à mão (0, A/T, B, B2, C, D, D2, E, F1, F2) e confirmar no robô o que falta para o suporte (`ROTEIRO_17NOV.md`) |
-| sex 21 nov | imprimir o suporte e a placa da mão na Composites |
+| seg 16 nov | 1.ª ida: medidas da pinça e do kit, suporte redesenhado (`ROTEIRO_17NOV.md`); um colega pôs o suporte a imprimir na Composites. Os ensaios à mão (0, A/T, B, B2, C, D, D2, E, F1, F2) passam para casa |
+| ter 17 nov | verificar a peça impressa; placa da mão por imprimir |
 | 23–29 nov | 2.ª ida: suporte na pinça e os sete ensaios do robô; tarefa 5 (CI) com os dados reais |
 | 30 nov–6 dez | gestos com a placa da mão; o que faltar; extras |
 | 7–13 dez | relatório |

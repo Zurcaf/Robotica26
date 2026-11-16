@@ -1,7 +1,8 @@
 # Segunda, 17 nov — roteiro da 1.ª ida ao laboratório
 
 Objetivo: gravar todos os ensaios que não precisam do robô e confirmar no
-robô o que falta para o suporte. O suporte só é impresso na sexta, 21 nov.
+robô o que falta para o suporte. Um colega pôs o suporte a imprimir na
+Composites a 16 nov; a peça é verificada na terça, 17 nov.
 
 ## Levar
 
