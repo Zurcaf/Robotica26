@@ -5,6 +5,9 @@ Uno (sem o acrílico) e a placa Grove da IMU (ICM-20600, 40 × 20 mm), aparafusa
 
 - `suporte_imu.scad`: modelo paramétrico (OpenSCAD). Todas as medidas estão no topo do ficheiro.
 - `suporte_imu.stl`: pronto a imprimir.
+- `suporte_imu.step`: a mesma peça em sólido (B-rep), para abrir e editar em CAD. Gerado por
+  `suporte_imu_step.py` (CadQuery, num ambiente à parte), que refaz a peça com os mesmos
+  parâmetros do `.scad`; se o `.scad` mudar, mudar também o script.
 - `vistas.png`: a peça (laranja) com a pinça, a IMU, as torres e o Uno.
 
 ![vistas](vistas.png)
