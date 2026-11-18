@@ -125,3 +125,5 @@ Lab3/data/planos/
 
 # ===== Paper: pre-calculos (regeneram-se com src/posicao.py e src/volume.py) =====
 Paper/cache/
+Lab3/video/media/
+Paper/videos/
