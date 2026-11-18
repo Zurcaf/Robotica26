@@ -122,3 +122,6 @@ Lab3/data/sim/
 Lab3/resultados/sim/
 Lab3/resultados/sim_robo/
 Lab3/data/planos/
+
+# ===== Paper: pre-calculos (regeneram-se com src/posicao.py e src/volume.py) =====
+Paper/cache/

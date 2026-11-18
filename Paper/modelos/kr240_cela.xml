@@ -1,0 +1,87 @@
+<mujoco model="kr240_cela">
+  <compiler angle="radian"/>
+
+  <option gravity="0 0 0"/>
+
+  <size nkey="1"/>
+
+  <statistic extent="5" center="2 3.5 1.5"/>
+
+  <visual>
+    <global offwidth="1600" offheight="1200"/>
+  </visual>
+
+  <asset>
+    <texture type="2d" colorspace="auto" name="grelha" builtin="checker" rgb1="0.82 0.82 0.8" rgb2="0.74 0.74 0.72" width="300" height="300"/>
+    <material name="chao" texture="grelha" texrepeat="8 14"/>
+  </asset>
+
+  <worldbody>
+    <geom name="chao" size="3 4.5 0.5" pos="2 3.5 -0.5" type="box" conaffinity="0" material="chao"/>
+    <geom name="parede_esq" size="0.5 4.5 1.5" pos="-0.5 3.5 1.5" type="box" contype="4" conaffinity="0" rgba="0.6 0.65 0.75 0.12"/>
+    <geom name="parede_dir" size="0.5 4.5 1.5" pos="4.5 3.5 1.5" type="box" contype="4" conaffinity="0" rgba="0.6 0.65 0.75 0.12"/>
+    <geom name="parede_cima" size="2 0.5 1.5" pos="2 7.5 1.5" type="box" contype="4" conaffinity="0" rgba="0.6 0.65 0.75 0.12"/>
+    <geom name="parede_baixo" size="2 0.5 1.5" pos="2 -0.5 1.5" type="box" contype="4" conaffinity="0" rgba="0.6 0.65 0.75 0.12"/>
+    <geom name="teto" size="3 4.5 0.5" pos="2 3.5 3.5" type="box" contype="4" conaffinity="0" rgba="0.6 0.65 0.75 0.04"/>
+    <geom name="placa" size="0.65 0.65 0.02" pos="1.95 5.35 3.02" type="box" contype="4" conaffinity="0" rgba="0.45 0.45 0.5 1"/>
+    <light pos="2 3.5 5"/>
+    <light pos="7 -3 4" dir="-0.615457 0.615457 -0.492366" diffuse="0.4 0.4 0.4"/>
+    <body name="base" pos="1.95 5.35 3" quat="0 1 0 0">
+      <geom size="0.45 0.12" pos="0 0 0.12" type="cylinder" contype="2" conaffinity="23" rgba="0.25 0.25 0.27 1"/>
+      <site name="robo" size="0.02"/>
+      <body name="A1">
+        <joint name="A1" range="-3.22886 3.22886" armature="1" damping="50" axis="0 0 -1" limited="true"/>
+        <geom size="0.38 0.17" pos="0 0 0.41" type="cylinder" contype="2" conaffinity="23" rgba="0.95 0.45 0.05 1"/>
+        <geom size="0.25 0.3 0.18" pos="0.25 0 0.7" type="box" contype="2" conaffinity="23" rgba="0.95 0.45 0.05 1"/>
+        <body name="A2" pos="0.35 0 0.75">
+          <joint name="A2" range="-2.44346 0" armature="1" damping="50" axis="0 1 0" limited="true"/>
+          <geom size="0.22 0.12" pos="0 -0.32 0" quat="0.707107 0.707107 0 0" type="cylinder" contype="2" conaffinity="23" rgba="0.25 0.25 0.27 1"/>
+          <geom size="0.14 0.625" pos="0.625 -0.32 0" quat="0.707107 0 -0.707107 0" type="capsule" contype="2" conaffinity="23" rgba="0.95 0.45 0.05 1"/>
+          <body name="A3" pos="1.25 0 0">
+            <joint name="A3" range="-2.07694 2.70526" armature="1" damping="50" axis="0 1 0" limited="true"/>
+            <geom size="0.2 0.2" quat="0.707107 0.707107 0 0" type="cylinder" contype="2" conaffinity="23" rgba="0.95 0.45 0.05 1"/>
+            <geom size="0.22 0.17 0.17" pos="-0.05 0 -0.055" type="box" contype="2" conaffinity="23" rgba="0.95 0.45 0.05 1"/>
+            <body name="A4" pos="0.2 0 -0.055">
+              <joint name="A4" range="-6.10865 6.10865" armature="1" damping="50" axis="-1 0 0" limited="true"/>
+              <geom size="0.12 0.275" pos="0.275 0 0" quat="0.707107 0 -0.707107 0" type="capsule" contype="2" conaffinity="23" rgba="0.95 0.45 0.05 1"/>
+              <geom size="0.12 0.17 0.06" pos="0.78 0 0" type="box" contype="2" conaffinity="23" rgba="0.95 0.45 0.05 1"/>
+              <body name="A5" pos="0.9 0 0">
+                <joint name="A5" range="-2.18166 2.18166" armature="1" damping="50" axis="0 1 0" limited="true"/>
+                <geom size="0.11 0.12" quat="0.707107 0.707107 0 0" type="cylinder" contype="2" conaffinity="23" rgba="0.95 0.45 0.05 1"/>
+                <site name="punho" size="0.015" rgba="0 0.6 1 1"/>
+                <body name="A6" pos="0.12 0 0">
+                  <joint name="A6" range="-6.10865 6.10865" armature="1" damping="50" axis="-1 0 0" limited="true"/>
+                  <geom size="0.1 0.055" pos="0.055 0 0" quat="0.707107 0 0.707107 0" type="cylinder" contype="2" conaffinity="23" rgba="0.25 0.25 0.27 1"/>
+                  <body name="flange" pos="0.11 0 0" quat="0.707107 0 0.707107 0">
+                    <geom name="extrusora" size="0.075 0.634" pos="0.029 0 0" quat="0.707107 0 -0.707107 0" type="cylinder" contype="2" conaffinity="23" rgba="0.75 0.75 0.78 1"/>
+                    <geom name="ponta_bico" size="0.02 0.03" pos="0.693 0 0" quat="0.707107 0 -0.707107 0" type="cylinder" contype="8" conaffinity="4" rgba="0.25 0.25 0.27 1"/>
+                    <site name="flange" size="0.02" rgba="1 1 0 1"/>
+                    <site name="bico" size="0.015" pos="0.723 0 0" quat="0.707107 0 0.707107 0" rgba="1 0 0 1"/>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <contact>
+    <exclude body1="world" body2="base"/>
+    <exclude body1="A5" body2="flange"/>
+  </contact>
+
+  <actuator>
+    <general name="A1" joint="A1" ctrlrange="-3.22886 3.22886" ctrllimited="true" biastype="affine" gainprm="0"/>
+    <general name="A2" joint="A2" ctrlrange="-2.44346 0" ctrllimited="true" biastype="affine" gainprm="0"/>
+    <general name="A3" joint="A3" ctrlrange="-2.07694 2.70526" ctrllimited="true" biastype="affine" gainprm="0"/>
+    <general name="A4" joint="A4" ctrlrange="-6.10865 6.10865" ctrllimited="true" biastype="affine" gainprm="0"/>
+    <general name="A5" joint="A5" ctrlrange="-2.18166 2.18166" ctrllimited="true" biastype="affine" gainprm="0"/>
+    <general name="A6" joint="A6" ctrlrange="-6.10865 6.10865" ctrllimited="true" biastype="affine" gainprm="0"/>
+  </actuator>
+
+  <keyframe>
+    <key name="casa" qpos="0 -1.5708 1.5708 0 0 0" ctrl="0 -1.5708 1.5708 0 0 0"/>
+  </keyframe>
+</mujoco>
