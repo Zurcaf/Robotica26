@@ -37,6 +37,9 @@ from imu_io import DADOS         # noqa: E402
 PLANOS = DADOS / "planos"
 DT = 0.01
 V_APROX = 20.0                   # °/s, ida à pose inicial
+# Pose "casa": todos os ensaios começam e acabam aqui. Os caminhos casa -> pose
+# inicial de cada ensaio (e de volta) foram verificados no MuJoCo (folga 25 mm).
+CASA = np.array([0.0, 10.0, 40.0, 0.0, 30.0, 0.0])
 
 
 def carregar_plano(nome, lento=1.0):
@@ -62,6 +65,7 @@ def main():
     ap.add_argument("--sem-imu", action="store_true", help="corre sem gravar a IMU")
     ap.add_argument("--porta", default=None, help="porta série do Arduino (por omissão: procura)")
     ap.add_argument("--ip", default=None)
+    ap.add_argument("--ja-confirmado", action="store_true", help="não pede 'sim' (usado por sessao.py, que já pediu)")
     a = ap.parse_args()
 
     t, q, etiquetas = carregar_plano(a.ensaio, a.lento)
@@ -79,13 +83,33 @@ def main():
     from robot import check, connect          # Lab 2
     arm = connect(a.ip)
     print(f"\nLigado. Juntas atuais: {np.round(arm.get_servo_angle()[1][:6], 1)}")
-    if input("Mão no botão de emergência. Escreva 'sim' para avançar: ").strip().lower() != "sim":
+    if not a.ja_confirmado and input("Mão no botão de emergência. Escreva 'sim' para avançar: ").strip().lower() != "sim":
         arm.disconnect()
         return
 
     carimbo = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-    print(f"A ir para a pose inicial a {V_APROX:.0f} °/s...")
-    check(arm.set_servo_angle(angle=[float(x) for x in q[0]], speed=V_APROX, wait=True), "set_servo_angle")
+    # 1) Casa, em duas etapas (braço, depois pulso), porque o caminho desde onde
+    #    o robô estiver não é verificado; se o controlador recusar (C22 =
+    #    autocolisão no modelo dele), fica-se a saber em qual.
+    # 2) Casa -> pose inicial do ensaio, num só movimento (caminho verificado).
+    atual = np.array(arm.get_servo_angle()[1][:6], float)
+    etapas = [("casa: braço (J1-J3)", np.r_[CASA[:3], atual[3:]]), ("casa: pulso (J4-J6)", CASA),
+              ("pose inicial do ensaio", q[0])]
+    for nome_etapa, alvo in etapas:
+        print(f"A ir a {V_APROX:.0f} °/s para {nome_etapa} -> {np.round(alvo, 1)}")
+        code = arm.set_servo_angle(angle=[float(x) for x in alvo], speed=V_APROX, wait=True)
+        if code != 0:
+            print(f"PAROU na etapa {nome_etapa}: código {code}, erro do controlador {arm.error_code}, "
+                  f"juntas {np.round(arm.get_servo_angle()[1][:6], 1)}")
+            arm.disconnect()
+            sys.exit(1)
+
+    # Muda para o modo servo ANTES de começar a gravar: a mudança de modo faz o
+    # controlador prender as juntas por um instante (um solavanco), e não pode
+    # cair nos troços parados que medem o desvio do giroscópio.
+    arm.set_mode(1)
+    arm.set_state(0)
+    time.sleep(1.0)
 
     grav = None
     if not a.sem_imu:
@@ -95,35 +119,29 @@ def main():
         grav.caminho = DADOS / f"{carimbo}_{a.ensaio}_imu.csv"
         grav.iniciar()
         print(f"IMU a gravar: {grav.caminho.name}")
-    time.sleep(3.0)
 
+    # 3 s parado no início e no fim, sempre em modo servo (a segurar a pose)
+    n_parado = int(round(3.0 / DT))
+    seq = np.vstack([np.repeat(q[:1], n_parado, 0), q, np.repeat(q[-1:], n_parado, 0)])
     log = []
-    arm.set_mode(1)
-    arm.set_state(0)
-    time.sleep(0.5)
+    completo = False
     t0 = time.perf_counter()
     try:
-        for k in range(len(q)):
-            code = arm.set_servo_angle_j([float(x) for x in q[k]], is_radian=False)
+        for k in range(len(seq)):
+            code = arm.set_servo_angle_j([float(x) for x in seq[k]], is_radian=False)
             if code != 0:
-                print(f"PAROU no ponto {k}/{len(q)} (t = {t[k]:.2f} s): código {code}, "
+                print(f"PAROU no ponto {k}/{len(seq)} (t = {k * DT - 3.0:.2f} s do plano): código {code}, "
                       f"erro {arm.error_code}, aviso {arm.warn_code}")
                 break
             _, med = arm.get_servo_angle(is_real=True)   # encoders, não o pedido
-            log.append([time.time(), *q[k], *med[:6]])
+            log.append([time.time(), *seq[k], *med[:6]])
             while time.perf_counter() - t0 < (k + 1) * DT:
                 pass
+        else:
+            completo = True
     except KeyboardInterrupt:
         print("Interrompido.")
     finally:
-        arm.set_mode(0)
-        arm.set_state(0)
-        # 3 s parado no fim, a gravar (dá o desvio do giroscópio no fim do ensaio)
-        t_fim = time.time() + 3.0
-        while time.time() < t_fim:
-            _, med = arm.get_servo_angle(is_real=True)   # encoders, não o pedido
-            log.append([time.time(), *q[min(len(log), len(q) - 1)], *med[:6]])
-            time.sleep(DT)
         if grav:
             grav.parar()
             print(f"IMU: {grav.n} amostras, {grav.falhas} falhas -> {grav.caminho}")
@@ -136,7 +154,15 @@ def main():
                    + ",".join(f"q{j}" for j in range(1, 7)))
             np.savetxt(out, np.array(log), delimiter=",", fmt="%.6f", header=cab, comments="# ")
             print(f"Robô: {len(log)} amostras -> {out}")
+        arm.set_mode(0)                            # já fora da gravação
+        arm.set_state(0)
+        time.sleep(0.5)
+        if completo and arm.error_code == 0:      # acabou o ensaio sem erro: volta a casa
+            print(f"A voltar a casa a {V_APROX:.0f} °/s...")
+            arm.set_servo_angle(angle=[float(x) for x in CASA], speed=V_APROX, wait=True)
         arm.disconnect()
+        if not completo:
+            sys.exit(1)
 
 
 if __name__ == "__main__":
