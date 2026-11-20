@@ -4,6 +4,7 @@ Enunciado: [lab_3_2026.pdf](lab_3_2026.pdf). Prazo: **18 dez 2026, 23:59:59**. G
 Relatório: sem limite, mas "6 páginas A4 devem chegar"; pouco texto.
 
 - [PLANO.md](PLANO.md) — plano de ataque: o que preparar, que ensaios gravar no laboratório e porquê.
+- [ESTADO.md](ESTADO.md) — ponto de situação: o que está feito, porquê, e o que falta, tarefa a tarefa.
 - [ROTEIRO_17NOV.md](ROTEIRO_17NOV.md) — o que fazer na 1.ª ida ao laboratório, com os comandos.
 - [ROTEIRO_ROBO.md](ROTEIRO_ROBO.md) — lista do que fazer numa ida ao laboratório (ensaios à mão, montagem na pinça, ensaios no robô), com a razão de cada passo.
 - [CONCEITOS.md](CONCEITOS.md) — conceitos para o relatório (desvio, variância de Allan, temperatura, vibração do robô, inclinómetro e giroscópio), com os nomes em inglês e os números dos nossos dados.
